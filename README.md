@@ -126,3 +126,12 @@ See the [contributing guidelines](CONTRIBUTING.md) for more information.
 ## License
 
 WinSW is licensed under the [MIT](LICENSE.txt) license.
+
+## Similar projects
+
+* [srvany.exe](https://learn.microsoft.com/en-us/troubleshoot/windows-client/setup-upgrade-and-drivers/create-user-defined-service)
+* [nssm](https://git.nssm.cc/nssm/nssm.git)
+* [srvany-ng](https://github.com/birkett/srvany-ng)
+* [shawl](https://github.com/mtkennerly/shawl)
+
+
