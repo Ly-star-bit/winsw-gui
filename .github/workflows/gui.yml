@@ -52,6 +52,8 @@ jobs:
           dotnet test WinSW.Gui.Tests -c Release --no-restore --logger "console;verbosity=normal" 2>&1 | Tee-Object -FilePath ../test.log
           exit $LASTEXITCODE
 
+      # Self-contained means the whole .NET runtime plus the WPF/WinForms frameworks ride
+      # along (~155 MB uncompressed); WPF cannot be trimmed, so compression is the lever.
       - name: Publish (x64, self-contained, single file)
         working-directory: ./src
         run: >
@@ -133,6 +135,3 @@ jobs:
           Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/issues" `
             -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/vnd.github+json" } `
             -Body $payload -ContentType "application/json" | Out-Null
-
-      # Self-contained means the whole .NET runtime plus the WPF/WinForms frameworks ride
-      # along (~155 MB uncompressed); WPF cannot be trimmed, so compression is the lever.
