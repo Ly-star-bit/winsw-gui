@@ -17,6 +17,9 @@
                 <!-- Ours: palette, cards, rail, pills, page transitions. -->
                 <ResourceDictionary Source="Theme/Palette.xaml" />
                 <ResourceDictionary Source="Theme/Controls.xaml" />
+
+                <!-- UI strings. Localizer swaps this entry at runtime for the chosen language. -->
+                <ResourceDictionary Source="Localization/Strings.en.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <!-- View model → view. The shell's ContentControl resolves pages through these. -->

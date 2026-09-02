@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.ServiceProcess;
 using WinSW.Gui.Mvvm;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.Model
 {
@@ -103,17 +104,20 @@ namespace WinSW.Gui.Model
             _ => ServiceHealth.Pending,
         };
 
-        public string StatusText => this.status switch
+        public string StatusText => Localizer.Get(this.status switch
         {
-            ServiceControllerStatus.Running => "Running",
-            ServiceControllerStatus.Stopped => "Stopped",
-            ServiceControllerStatus.StartPending => "Starting",
-            ServiceControllerStatus.StopPending => "Stopping",
-            ServiceControllerStatus.PausePending => "Pausing",
-            ServiceControllerStatus.ContinuePending => "Resuming",
-            ServiceControllerStatus.Paused => "Paused",
-            _ => "Unknown",
-        };
+            ServiceControllerStatus.Running => "M.Status.Running",
+            ServiceControllerStatus.Stopped => "M.Status.Stopped",
+            ServiceControllerStatus.StartPending => "M.Status.Starting",
+            ServiceControllerStatus.StopPending => "M.Status.Stopping",
+            ServiceControllerStatus.PausePending => "M.Status.Pausing",
+            ServiceControllerStatus.ContinuePending => "M.Status.Resuming",
+            ServiceControllerStatus.Paused => "M.Status.Paused",
+            _ => "M.Status.Unknown",
+        });
+
+        /// <summary>Re-evaluates the localized text after a language change.</summary>
+        public void RefreshLocalized() => this.Raise(nameof(this.StatusText));
 
         public bool CanStart => this.status == ServiceControllerStatus.Stopped;
 

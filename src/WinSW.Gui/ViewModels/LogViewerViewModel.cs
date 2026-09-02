@@ -8,6 +8,7 @@ using System.Windows.Threading;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -66,7 +67,7 @@ namespace WinSW.Gui.ViewModels
         private LogFileEntry? selectedFile;
         private string logDirectory = string.Empty;
         private string filter = string.Empty;
-        private string statusMessage = "Select a service to tail its logs.";
+        private string statusMessage = string.Empty;
         private bool autoScroll = true;
         private bool isPaused;
 
@@ -74,6 +75,13 @@ namespace WinSW.Gui.ViewModels
         {
             this.timer = new DispatcherTimer { Interval = PollInterval };
             this.timer.Tick += (_, _) => this.Pump();
+
+            this.statusMessage = Localizer.Get("M.Log.SelectService");
+            Localizer.Changed += () =>
+            {
+                this.Raise(nameof(this.ServiceName));
+                this.Raise(nameof(this.PauseLabel));
+            };
 
             this.RescanCommand = new RelayCommand(this.Rescan, () => this.service != null);
             this.ClearCommand = new RelayCommand(() =>
@@ -102,7 +110,7 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand RevealCommand { get; }
 
-        public string ServiceName => this.service?.ServiceName ?? "No service selected";
+        public string ServiceName => this.service?.ServiceName ?? Localizer.Get("M.Log.NoService");
 
         public string LogDirectory
         {
@@ -155,7 +163,7 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        public string PauseLabel => this.isPaused ? "Resume" : "Pause";
+        public string PauseLabel => Localizer.Get(this.isPaused ? "M.Log.Resume" : "M.Log.Pause");
 
         public string StatusMessage
         {
@@ -190,7 +198,7 @@ namespace WinSW.Gui.ViewModels
             var entry = this.service;
             if (entry?.ConfigPath is null)
             {
-                this.StatusMessage = "This service has no configuration file, so its log location is unknown.";
+                this.StatusMessage = Localizer.Get("M.Log.NoConfig");
                 return;
             }
 
@@ -206,7 +214,7 @@ namespace WinSW.Gui.ViewModels
                 var directory = new DirectoryInfo(this.LogDirectory);
                 if (!directory.Exists)
                 {
-                    this.StatusMessage = $"The log directory '{this.LogDirectory}' does not exist yet.";
+                    this.StatusMessage = Localizer.Format("M.Log.DirMissing", this.LogDirectory);
                     return;
                 }
 
@@ -225,14 +233,14 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 this.StatusMessage = this.Files.Count == 0
-                    ? $"No log files matching '{stem}*' were found in {this.LogDirectory}."
-                    : $"{this.Files.Count} log file{(this.Files.Count == 1 ? string.Empty : "s")} in {this.LogDirectory}.";
+                    ? Localizer.Format("M.Log.NoFiles", stem, this.LogDirectory)
+                    : Localizer.Format("M.Log.Files", this.Files.Count, this.LogDirectory);
 
                 this.SelectedFile = this.Files.FirstOrDefault(f => f.Path == previous) ?? this.Files.FirstOrDefault();
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
             {
-                this.StatusMessage = $"Could not read the log directory: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Log.DirFailed", e.Message);
             }
         }
 
@@ -267,7 +275,7 @@ namespace WinSW.Gui.ViewModels
             {
                 this.history.Clear();
                 this.Lines.Clear();
-                this.Append("── the log file was reset or rolled ──");
+                this.Append(Localizer.Get("M.Log.Rolled"));
             }
 
             foreach (string line in lines)
@@ -327,7 +335,7 @@ namespace WinSW.Gui.ViewModels
             }
             catch (Exception e)
             {
-                this.StatusMessage = $"Could not open the file: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Log.OpenFailed", e.Message);
             }
         }
 
@@ -344,7 +352,7 @@ namespace WinSW.Gui.ViewModels
             }
             catch (Exception e)
             {
-                this.StatusMessage = $"Could not open Explorer: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Common.ExplorerFailed", e.Message);
             }
         }
     }

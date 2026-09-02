@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using WinSW.Gui.Mvvm;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.Model
 {
@@ -728,49 +729,49 @@ namespace WinSW.Gui.Model
 
             if (string.IsNullOrWhiteSpace(this.id))
             {
-                problems.Add("Service ID (<id>) is required.");
+                problems.Add(Localizer.Get("M.Val.IdRequired"));
             }
             else if (this.id.IndexOfAny(new[] { ' ', '/', '\\' }) >= 0)
             {
-                problems.Add("Service ID must not contain spaces, '/' or '\\'.");
+                problems.Add(Localizer.Get("M.Val.IdChars"));
             }
 
             if (string.IsNullOrWhiteSpace(this.executable))
             {
-                problems.Add("Executable (<executable>) is required.");
+                problems.Add(Localizer.Get("M.Val.ExeRequired"));
             }
 
-            CheckTime(this.stopTimeout, "Stop timeout");
-            CheckTime(this.preshutdownTimeout, "Preshutdown timeout");
-            CheckTime(this.resetFailureAfter, "Reset failure after");
+            CheckTime(this.stopTimeout, Localizer.Get("M.Val.StopTimeout"));
+            CheckTime(this.preshutdownTimeout, Localizer.Get("M.Val.PreshutdownTimeout"));
+            CheckTime(this.resetFailureAfter, Localizer.Get("M.Val.ResetFailure"));
 
             foreach (var action in this.FailureActions)
             {
-                CheckTime(action.Delay, $"Failure action delay ('{action.Action}')");
+                CheckTime(action.Delay, Localizer.Format("M.Val.FailureDelay", action.Action));
             }
 
             if (this.UsesTimePattern && string.IsNullOrWhiteSpace(this.rollPattern))
             {
-                problems.Add($"Log mode '{this.logMode}' requires a <pattern>.");
+                problems.Add(Localizer.Format("M.Val.PatternRequired", this.logMode));
             }
 
-            CheckInt(this.rollPeriod, "Roll period");
-            CheckInt(this.keepFiles, "Files to keep");
-            CheckInt(this.sizeThreshold, "Size threshold");
-            CheckInt(this.zipOlderThanNumDays, "Zip older than (days)");
+            CheckInt(this.rollPeriod, Localizer.Get("M.Val.RollPeriod"));
+            CheckInt(this.keepFiles, Localizer.Get("M.Val.KeepFiles"));
+            CheckInt(this.sizeThreshold, Localizer.Get("M.Val.SizeThreshold"));
+            CheckInt(this.zipOlderThanNumDays, Localizer.Get("M.Val.ZipDays"));
 
             if (this.UsesZipOptions
                 && !string.IsNullOrWhiteSpace(this.autoRollAtTime)
                 && !TimeSpan.TryParse(this.autoRollAtTime, out _))
             {
-                problems.Add("Auto roll at time must use the HH:mm:ss format.");
+                problems.Add(Localizer.Get("M.Val.BadAutoRoll"));
             }
 
             foreach (var variable in this.EnvironmentVariables)
             {
                 if (string.IsNullOrWhiteSpace(variable.Name))
                 {
-                    problems.Add("An environment variable is missing its name.");
+                    problems.Add(Localizer.Get("M.Val.EnvName"));
                 }
             }
 
@@ -778,7 +779,7 @@ namespace WinSW.Gui.Model
             {
                 if (string.IsNullOrWhiteSpace(download.From) || string.IsNullOrWhiteSpace(download.To))
                 {
-                    problems.Add("A download entry is missing 'from' or 'to'.");
+                    problems.Add(Localizer.Get("M.Val.DownloadIncomplete"));
                     continue;
                 }
 
@@ -787,7 +788,7 @@ namespace WinSW.Gui.Model
                     && !download.From.StartsWith("https:", StringComparison.OrdinalIgnoreCase)
                     && !download.UnsecureAuth)
                 {
-                    problems.Add($"Basic authentication over a non-HTTPS URL ({download.From}) requires 'unsecureAuth'.");
+                    problems.Add(Localizer.Format("M.Val.BasicInsecure", download.From));
                 }
             }
 
@@ -802,7 +803,7 @@ namespace WinSW.Gui.Model
 
                 if (!TryParseTime(value!))
                 {
-                    problems.Add($"{label} '{value}' is not a valid duration. Use a number, optionally followed by {string.Join(", ", TimeSuffixes)}.");
+                    problems.Add(Localizer.Format("M.Val.BadTime", label, value, string.Join(", ", TimeSuffixes)));
                 }
             }
 
@@ -811,7 +812,7 @@ namespace WinSW.Gui.Model
                 if (!string.IsNullOrWhiteSpace(value)
                     && !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
                 {
-                    problems.Add($"{label} '{value}' is not a whole number.");
+                    problems.Add(Localizer.Format("M.Val.BadInt", label, value));
                 }
             }
         }

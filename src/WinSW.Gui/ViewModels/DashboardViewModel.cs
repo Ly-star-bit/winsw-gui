@@ -10,6 +10,7 @@ using System.Windows.Threading;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -51,17 +52,17 @@ namespace WinSW.Gui.ViewModels
 
             this.KillCommand = new RelayCommand(
                 () => this.Ask(
-                    "Terminate the service process?",
-                    $"'{this.selectedService?.ServiceName}' and every process it started will be killed without a graceful shutdown. Use this only when the service has stopped responding.",
-                    "Terminate",
+                    Localizer.Get("M.Dash.KillTitle"),
+                    Localizer.Format("M.Dash.KillBody", this.selectedService?.ServiceName),
+                    Localizer.Get("M.Dash.KillAction"),
                     () => this.RunAsync("dev kill", (w, c) => WinSwCli.KillAsync(w, c))),
                 () => this.selectedService != null);
 
             this.UninstallCommand = new RelayCommand(
                 () => this.Ask(
-                    "Uninstall this service?",
-                    $"'{this.selectedService?.ServiceName}' will be removed from the service control manager. Its configuration file and logs are left on disk.",
-                    "Uninstall",
+                    Localizer.Get("M.Dash.UninstallTitle"),
+                    Localizer.Format("M.Dash.UninstallBody", this.selectedService?.ServiceName),
+                    Localizer.Get("M.Dash.UninstallAction"),
                     () => this.RunAsync("uninstall", (w, c) => WinSwCli.UninstallAsync(w, c))),
                 () => this.selectedService != null);
 
@@ -80,6 +81,14 @@ namespace WinSW.Gui.ViewModels
 
             this.timer = new DispatcherTimer { Interval = PollInterval };
             this.timer.Tick += (_, _) => this.RefreshStatuses();
+
+            Localizer.Changed += () =>
+            {
+                foreach (var entry in this.Services)
+                {
+                    entry.RefreshLocalized();
+                }
+            };
         }
 
         /// <summary>Raised when the user asks to edit the selected service's configuration.</summary>
@@ -229,7 +238,7 @@ namespace WinSW.Gui.ViewModels
         public async Task ReloadAsync()
         {
             this.IsScanning = true;
-            this.StatusMessage = "Scanning installed services…";
+            this.StatusMessage = Localizer.Get("M.Dash.Scanning");
 
             try
             {
@@ -252,12 +261,12 @@ namespace WinSW.Gui.ViewModels
                     : this.Services.FirstOrDefault(s => s.ServiceName == previous) ?? this.Services.FirstOrDefault();
 
                 this.StatusMessage = this.Services.Count == 0
-                    ? "No WinSW-managed services are installed on this machine."
-                    : $"Found {this.Services.Count} WinSW-managed service{(this.Services.Count == 1 ? string.Empty : "s")}.";
+                    ? Localizer.Get("M.Dash.NoneFound")
+                    : Localizer.Format("M.Dash.Found", this.Services.Count);
             }
             catch (Exception e)
             {
-                this.StatusMessage = $"Scan failed: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Dash.ScanFailed", e.Message);
             }
             finally
             {
@@ -270,12 +279,12 @@ namespace WinSW.Gui.ViewModels
             var entry = this.selectedService;
             if (entry?.ConfigPath is null)
             {
-                this.StatusMessage = "This service has no usable configuration file, so it cannot be controlled from here.";
+                this.StatusMessage = Localizer.Get("M.Dash.NoConfig");
                 return;
             }
 
             this.IsBusy = true;
-            this.StatusMessage = $"Running 'winsw {label}' for '{entry.ServiceName}'…";
+            this.StatusMessage = Localizer.Format("M.Dash.Running", label, entry.ServiceName);
 
             try
             {
@@ -283,9 +292,9 @@ namespace WinSW.Gui.ViewModels
 
                 this.StatusMessage = result switch
                 {
-                    { Cancelled: true } => "Elevation was declined, so nothing was changed.",
-                    { Succeeded: true } => $"'winsw {label}' completed for '{entry.ServiceName}'.",
-                    _ => result.Error ?? $"'winsw {label}' failed.",
+                    { Cancelled: true } => Localizer.Get("M.Common.ElevationDeclined"),
+                    { Succeeded: true } => Localizer.Format("M.Dash.Completed", label, entry.ServiceName),
+                    _ => result.Error ?? Localizer.Format("M.Dash.Failed", label),
                 };
 
                 // An uninstall removes the entry entirely; anything else only moves its state.
@@ -392,7 +401,7 @@ namespace WinSW.Gui.ViewModels
             string? target = this.selectedService?.ConfigPath ?? this.selectedService?.WrapperPath;
             if (target is null || !File.Exists(target))
             {
-                this.StatusMessage = "There is nothing to reveal: the file no longer exists.";
+                this.StatusMessage = Localizer.Get("M.Dash.NothingToReveal");
                 return;
             }
 
@@ -402,7 +411,7 @@ namespace WinSW.Gui.ViewModels
             }
             catch (Exception e)
             {
-                this.StatusMessage = $"Could not open Explorer: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Common.ExplorerFailed", e.Message);
             }
         }
     }

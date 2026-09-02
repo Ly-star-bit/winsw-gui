@@ -49,7 +49,7 @@
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="WinSW" />
-                            <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="Service Wrapper" />
+                            <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="{DynamicResource S.ServiceWrapper}" />
                         </StackPanel>
                     </StackPanel>
 
@@ -72,16 +72,27 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Elevation state -->
-                    <Border Grid.Row="2" Margin="14" Padding="12,10" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE7EF;" />
-                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ElevationLabel}" />
+                    <!-- Language and elevation state -->
+                    <StackPanel Grid.Row="2">
+                        <Grid Margin="14,0,14,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" FontSize="12" Foreground="{StaticResource TextMutedBrush}" Text="{DynamicResource M.Shell.Language}" />
+                            <ComboBox Grid.Column="1" DisplayMemberPath="NativeName" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" />
+                        </Grid>
+
+                        <Border Margin="14,0,14,14" Padding="12,10" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="8">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE7EF;" />
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ElevationLabel}" />
+                                </StackPanel>
+                                <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="{Binding ElevationHint}" TextWrapping="Wrap" />
                             </StackPanel>
-                            <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{StaticResource TextMutedBrush}" Text="{Binding ElevationHint}" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
+                        </Border>
+                    </StackPanel>
                 </Grid>
             </Border>
 

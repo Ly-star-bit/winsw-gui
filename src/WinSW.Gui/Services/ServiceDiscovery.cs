@@ -6,6 +6,7 @@ using System.ServiceProcess;
 using System.Xml;
 using Microsoft.Win32;
 using WinSW.Gui.Model;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.Services
 {
@@ -156,8 +157,8 @@ namespace WinSW.Gui.Services
             }
 
             problem = candidate is null
-                ? $"No configuration file could be resolved for '{serviceName}'."
-                : $"Configuration file '{candidate}' is missing or is not a WinSW configuration.";
+                ? Localizer.Format("M.Discovery.NoConfig", serviceName)
+                : Localizer.Format("M.Discovery.ConfigMissing", candidate);
             return true;
         }
 

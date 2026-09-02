@@ -9,6 +9,7 @@ using System.Windows.Threading;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -51,7 +52,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseExecutableCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFile("Select the executable to run as a service", "Executables|*.exe;*.bat;*.cmd|All files|*.*") is { } path)
+                if (Dialogs.PickFile(Localizer.Get("M.Dlg.SelectExecutable"), Localizer.Get("M.Filter.Executables")) is { } path)
                 {
                     this.Model.Executable = path;
                 }
@@ -59,7 +60,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseStopExecutableCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFile("Select the shutdown executable", "Executables|*.exe;*.bat;*.cmd|All files|*.*") is { } path)
+                if (Dialogs.PickFile(Localizer.Get("M.Dlg.SelectStopExecutable"), Localizer.Get("M.Filter.Executables")) is { } path)
                 {
                     this.Model.StopExecutable = path;
                 }
@@ -67,7 +68,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseWorkingDirectoryCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFolder("Select the working directory") is { } path)
+                if (Dialogs.PickFolder(Localizer.Get("M.Dlg.SelectWorkingDirectory")) is { } path)
                 {
                     this.Model.WorkingDirectory = path;
                 }
@@ -75,7 +76,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseLogPathCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFolder("Select the log directory") is { } path)
+                if (Dialogs.PickFolder(Localizer.Get("M.Dlg.SelectLogDirectory")) is { } path)
                 {
                     this.Model.LogPath = path;
                 }
@@ -102,6 +103,12 @@ namespace WinSW.Gui.ViewModels
                 p => Remove(this.Model.Dependencies, p as DependencyItem));
 
             this.Attach(this.model);
+
+            Localizer.Changed += () =>
+            {
+                this.Raise(nameof(this.FileLabel));
+                this.Recompute();
+            };
 
             static void Remove<T>(ObservableCollection<T> collection, T? item)
             {
@@ -179,7 +186,7 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        public string FileLabel => this.filePath ?? "Unsaved configuration";
+        public string FileLabel => this.filePath ?? Localizer.Get("M.Editor.Unsaved");
 
         /// <summary>Set when the configuration being edited belongs to an installed service.</summary>
         public ServiceEntry? InstalledService
@@ -229,7 +236,7 @@ namespace WinSW.Gui.ViewModels
         {
             if (entry.ConfigPath is null)
             {
-                this.StatusMessage = $"'{entry.ServiceName}' has no configuration file to edit.";
+                this.StatusMessage = Localizer.Format("M.Editor.NoConfig", entry.ServiceName);
                 return;
             }
 
@@ -247,12 +254,12 @@ namespace WinSW.Gui.ViewModels
                 this.FilePath = loaded.FilePath;
                 this.InstalledService = null;
                 this.IsDirty = false;
-                this.StatusMessage = $"Loaded {Path.GetFileName(path)}.";
+                this.StatusMessage = Localizer.Format("M.Editor.Loaded", Path.GetFileName(path));
                 this.Recompute();
             }
             catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
             {
-                this.StatusMessage = $"Could not open {Path.GetFileName(path)}: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Editor.OpenFailed", Path.GetFileName(path), e.Message);
             }
         }
 
@@ -264,13 +271,13 @@ namespace WinSW.Gui.ViewModels
             this.FilePath = null;
             this.InstalledService = null;
             this.IsDirty = false;
-            this.StatusMessage = "Started a new configuration.";
+            this.StatusMessage = Localizer.Get("M.Editor.New");
             this.Recompute();
         }
 
         private void Open()
         {
-            if (Dialogs.PickFile("Open a WinSW configuration", "WinSW configuration|*.xml|All files|*.*") is { } path)
+            if (Dialogs.PickFile(Localizer.Get("M.Dlg.OpenConfig"), Localizer.Get("M.Filter.Config")) is { } path)
             {
                 this.Load(path);
             }
@@ -300,7 +307,7 @@ namespace WinSW.Gui.ViewModels
         private Task SaveAsAsync()
         {
             string suggested = string.IsNullOrWhiteSpace(this.Model.Id) ? "myapp.xml" : this.Model.Id + ".xml";
-            if (Dialogs.PickSaveFile("Save the WinSW configuration", "WinSW configuration|*.xml", suggested) is { } path)
+            if (Dialogs.PickSaveFile(Localizer.Get("M.Dlg.SaveConfig"), Localizer.Get("M.Filter.ConfigSave"), suggested) is { } path)
             {
                 this.Write(path);
             }
@@ -313,7 +320,7 @@ namespace WinSW.Gui.ViewModels
             this.Recompute();
             if (this.Problems.Count > 0)
             {
-                this.StatusMessage = "Fix the reported problems before saving.";
+                this.StatusMessage = Localizer.Get("M.Editor.FixProblems");
                 return;
             }
 
@@ -323,14 +330,14 @@ namespace WinSW.Gui.ViewModels
                 this.FilePath = this.Model.FilePath;
                 this.IsDirty = false;
                 this.StatusMessage = this.installedService is null
-                    ? $"Saved to {path}."
-                    : $"Saved to {path}. Run 'Apply to service' to push the change to the running service.";
+                    ? Localizer.Format("M.Editor.Saved", path)
+                    : Localizer.Format("M.Editor.SavedApply", path);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 // The configuration usually sits next to the service binary, where a
                 // standard user has no write access.
-                this.StatusMessage = $"Could not write {path}: {e.Message}";
+                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", path, e.Message);
             }
         }
 
@@ -351,14 +358,14 @@ namespace WinSW.Gui.ViewModels
                 }
             }
 
-            this.StatusMessage = $"Applying configuration to '{entry.ServiceName}'…";
+            this.StatusMessage = Localizer.Format("M.Editor.Applying", entry.ServiceName);
             var result = await WinSwCli.RefreshAsync(entry.WrapperPath, this.filePath).ConfigureAwait(true);
 
             this.StatusMessage = result switch
             {
-                { Cancelled: true } => "Elevation was declined, so the service was not updated.",
-                { Succeeded: true } => $"'{entry.ServiceName}' was updated. Properties that only apply at start, such as the executable, take effect on the next restart.",
-                _ => result.Error ?? "The refresh command failed.",
+                { Cancelled: true } => Localizer.Get("M.Editor.ElevationDeclined"),
+                { Succeeded: true } => Localizer.Format("M.Editor.Applied", entry.ServiceName),
+                _ => result.Error ?? Localizer.Get("M.Editor.RefreshFailed"),
             };
         }
 
@@ -429,7 +436,7 @@ namespace WinSW.Gui.ViewModels
             }
             catch (Exception e)
             {
-                this.XmlPreview = $"<!-- The configuration could not be rendered: {e.Message} -->";
+                this.XmlPreview = Localizer.Format("M.Editor.RenderFailed", e.Message);
             }
         }
     }

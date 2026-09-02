@@ -47,8 +47,8 @@
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,18">
-            <TextBlock Style="{StaticResource PageTitle}" Text="New service" />
-            <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="Turn any program into a Windows service. The wizard writes the configuration and installs it." />
+            <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource S.NewService}" />
+            <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="{DynamicResource S.TurnAnyProgramIntoAWindows}" />
         </StackPanel>
 
         <!-- Step indicator: the dot for the current step is filled with the accent. -->
@@ -66,7 +66,7 @@
                 </Border.Style>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="1" />
             </Border>
-            <TextBlock Style="{StaticResource StepLabel}" Text="Program" />
+            <TextBlock Style="{StaticResource StepLabel}" Text="{DynamicResource S.Program}" />
             <Border>
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource StepDot}">
@@ -80,7 +80,7 @@
                 </Border.Style>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="2" />
             </Border>
-            <TextBlock Style="{StaticResource StepLabel}" Text="Identity" />
+            <TextBlock Style="{StaticResource StepLabel}" Text="{DynamicResource S.Identity}" />
             <Border>
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource StepDot}">
@@ -94,7 +94,7 @@
                 </Border.Style>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="3" />
             </Border>
-            <TextBlock Style="{StaticResource StepLabel}" Text="Logging &amp; recovery" />
+            <TextBlock Style="{StaticResource StepLabel}" Text="{DynamicResource S.LoggingRecovery}" />
             <Border>
                 <Border.Style>
                     <Style TargetType="Border" BasedOn="{StaticResource StepDot}">
@@ -108,7 +108,7 @@
                 </Border.Style>
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="4" />
             </Border>
-            <TextBlock Style="{StaticResource StepLabel}" Text="Install" />
+            <TextBlock Style="{StaticResource StepLabel}" Text="{DynamicResource S.Install}" />
         </StackPanel>
 
         <Border Grid.Row="2" Style="{StaticResource Card}" Padding="24">
@@ -127,26 +127,26 @@
                         </StackPanel.Style>
                         <TextBlock Margin="0,0,0,16" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="WinSW executable" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WinSWExecutable}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWrapperCommand}" />
                                 <TextBox Text="{Binding WrapperPath, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
-                            <TextBlock Style="{StaticResource FieldHint}" Text="The configuration file is written next to this executable and registered with it. Copy WinSW.exe to where the service should live before choosing it." />
+                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.TheConfigurationFileIsWrittenNext}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Program to run" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.ProgramToRun}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseTargetCommand}" />
                                 <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Arguments" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Arguments}" />
                             <TextBox Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Working directory" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WorkingDirectory}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWorkingDirectoryCommand}" />
                                 <TextBox Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
@@ -167,23 +167,23 @@
                         </StackPanel.Style>
                         <TextBlock Margin="0,0,0,16" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Service ID" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.ServiceID}" />
                             <TextBox Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Style="{StaticResource FieldHint}" Text="No spaces. Also becomes the configuration file name." />
+                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.NoSpacesAlsoBecomesTheConfiguration}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Display name" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.DisplayName}" />
                             <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Description" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Description}" />
                             <TextBox AcceptsReturn="True" MinHeight="64" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Start mode" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.StartMode}" />
                             <ComboBox HorizontalAlignment="Left" MinWidth="200" ItemsSource="{Binding StartModes}" SelectedItem="{Binding StartMode}" />
                         </StackPanel>
-                        <CheckBox Content="Delayed automatic start" IsChecked="{Binding DelayedAutoStart}" />
+                        <CheckBox Content="{DynamicResource S.DelayedAutomaticStart}" IsChecked="{Binding DelayedAutoStart}" />
                     </StackPanel>
 
                     <!-- Step 3: logging & recovery -->
@@ -199,9 +199,9 @@
                         </StackPanel.Style>
                         <TextBlock Margin="0,0,0,16" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Log mode" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.LogMode}" />
                             <ComboBox HorizontalAlignment="Left" MinWidth="200" ItemsSource="{Binding LogModes}" SelectedItem="{Binding LogMode}" />
-                            <TextBlock Style="{StaticResource FieldHint}" Text="roll-by-size keeps a bounded number of files and is the safe default for long-running services." />
+                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.RollBySizeKeepsABounded}" />
                         </StackPanel>
                         <Grid Margin="0,0,0,16" Visibility="{Binding UsesSizeRolling, Converter={StaticResource BoolToVisibility}}">
                             <Grid.ColumnDefinitions>
@@ -210,24 +210,24 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Style="{StaticResource FieldLabel}" Text="Roll after (KB)" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.RollAfterKB}" />
                                 <TextBox Text="{Binding SizeThresholdKb, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Style="{StaticResource FieldLabel}" Text="Files to keep" />
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.FilesToKeep}" />
                                 <TextBox Text="{Binding KeepFiles, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </Grid>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Log directory (optional)" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.LogDirectoryOptional}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseLogPathCommand}" />
                                 <TextBox Text="{Binding LogPath, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
                         </StackPanel>
-                        <CheckBox Margin="0,4,0,8" Content="Restart the service automatically when the program crashes" IsChecked="{Binding RestartOnFailure}" />
+                        <CheckBox Margin="0,4,0,8" Content="{DynamicResource S.RestartTheServiceAutomaticallyWhenThe}" IsChecked="{Binding RestartOnFailure}" />
                         <StackPanel Style="{StaticResource Field}" IsEnabled="{Binding RestartOnFailure}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="Restart delay" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.RestartDelay}" />
                             <TextBox HorizontalAlignment="Left" MinWidth="200" Text="{Binding RestartDelay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </StackPanel>
@@ -246,7 +246,7 @@
                         </StackPanel.Style>
                         <TextBlock Margin="0,0,0,6" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
                         <StackPanel Margin="0,0,0,14" Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,8,0" Text="Will be written to" />
+                            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,8,0" Text="{DynamicResource S.WillBeWrittenTo}" />
                             <TextBlock Style="{StaticResource Mono}" Text="{Binding ConfigPath}" />
                         </StackPanel>
 
@@ -274,7 +274,7 @@
                                 VerticalScrollBarVisibility="Auto" />
                         </Border>
 
-                        <CheckBox Margin="0,16,0,0" Content="Start the service after installing" IsChecked="{Binding StartAfterInstall}" />
+                        <CheckBox Margin="0,16,0,0" Content="{DynamicResource S.StartTheServiceAfterInstalling}" IsChecked="{Binding StartAfterInstall}" />
                     </StackPanel>
                 </Grid>
             </ScrollViewer>
@@ -292,13 +292,13 @@
             <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
 
             <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ResetCommand}" Content="Start over" />
-                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding BackCommand}" Content="Back" />
-                <Button Padding="14,7" Command="{Binding NextCommand}" Content="Next" Visibility="{Binding IsLastStep, Converter={StaticResource InverseBoolToVisibility}}" />
+                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ResetCommand}" Content="{DynamicResource S.StartOver}" />
+                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding BackCommand}" Content="{DynamicResource S.Back}" />
+                <Button Padding="14,7" Command="{Binding NextCommand}" Content="{DynamicResource S.Next}" Visibility="{Binding IsLastStep, Converter={StaticResource InverseBoolToVisibility}}" />
                 <Button Padding="14,7" Background="{StaticResource AccentGradientBrush}" Foreground="White" Command="{Binding InstallCommand}" Visibility="{Binding IsLastStep, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE768;" />
-                        <TextBlock Text="Install" />
+                        <TextBlock Text="{DynamicResource S.Install}" />
                     </StackPanel>
                 </Button>
             </StackPanel>

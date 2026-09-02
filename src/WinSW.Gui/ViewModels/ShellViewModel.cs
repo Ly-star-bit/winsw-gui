@@ -1,28 +1,38 @@
 using System.Collections.ObjectModel;
 using System.Security.Principal;
+using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
 
 namespace WinSW.Gui.ViewModels
 {
     /// <summary>One entry in the navigation rail.</summary>
-    public sealed class NavigationItem
+    public sealed class NavigationItem : ObservableObject
     {
-        public NavigationItem(string glyph, string title, string subtitle, object page)
+        private readonly string titleKey;
+        private readonly string subtitleKey;
+
+        public NavigationItem(string glyph, string titleKey, string subtitleKey, object page)
         {
             this.Glyph = glyph;
-            this.Title = title;
-            this.Subtitle = subtitle;
+            this.titleKey = titleKey;
+            this.subtitleKey = subtitleKey;
             this.Page = page;
         }
 
         /// <summary>A Segoe Fluent / MDL2 glyph.</summary>
         public string Glyph { get; }
 
-        public string Title { get; }
+        public string Title => Localizer.Get(this.titleKey);
 
-        public string Subtitle { get; }
+        public string Subtitle => Localizer.Get(this.subtitleKey);
 
         public object Page { get; }
+
+        public void RefreshLocalized()
+        {
+            this.Raise(nameof(this.Title));
+            this.Raise(nameof(this.Subtitle));
+        }
     }
 
     /// <summary>
@@ -33,6 +43,7 @@ namespace WinSW.Gui.ViewModels
     {
         private NavigationItem? selectedItem;
         private object? currentPage;
+        private Language selectedLanguage = Localizer.Current;
 
         public ShellViewModel()
         {
@@ -43,10 +54,10 @@ namespace WinSW.Gui.ViewModels
 
             this.Items = new ObservableCollection<NavigationItem>
             {
-                new("", "Services", "Status and control", this.Dashboard),
-                new("", "Configuration", "Edit service XML", this.Editor),
-                new("", "Logs", "Live output", this.Logs),
-                new("", "New service", "Guided install", this.Wizard),
+                new("", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
+                new("", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
+                new("", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
+                new("", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
             };
 
             this.Dashboard.OpenConfigRequested += entry =>
@@ -69,6 +80,33 @@ namespace WinSW.Gui.ViewModels
 
             this.IsElevated = DetectElevation();
             this.SelectedItem = this.Items[0];
+
+            this.selectedLanguage = Localizer.Current;
+            Localizer.Changed += () =>
+            {
+                foreach (var item in this.Items)
+                {
+                    item.RefreshLocalized();
+                }
+
+                this.Raise(nameof(this.ElevationLabel));
+                this.Raise(nameof(this.ElevationHint));
+            };
+        }
+
+        public Language[] Languages => Localizer.Languages;
+
+        /// <summary>Changing this re-renders the UI in place and remembers the choice.</summary>
+        public Language SelectedLanguage
+        {
+            get => this.selectedLanguage;
+            set
+            {
+                if (this.Set(ref this.selectedLanguage, value) && value != null)
+                {
+                    Localizer.Apply(value);
+                }
+            }
         }
 
         public DashboardViewModel Dashboard { get; }
@@ -87,11 +125,9 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         public bool IsElevated { get; }
 
-        public string ElevationLabel => this.IsElevated ? "Administrator" : "Standard user";
+        public string ElevationLabel => Localizer.Get(this.IsElevated ? "M.Shell.Admin" : "M.Shell.Standard");
 
-        public string ElevationHint => this.IsElevated
-            ? "Service changes apply without prompts."
-            : "Each service change asks for elevation.";
+        public string ElevationHint => Localizer.Get(this.IsElevated ? "M.Shell.AdminHint" : "M.Shell.StandardHint");
 
         public NavigationItem? SelectedItem
         {

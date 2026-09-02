@@ -111,8 +111,8 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <TextBlock Style="{StaticResource PageTitle}" Text="Services" />
-                <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="Every Windows service on this machine that is hosted by a WinSW wrapper." />
+                <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource S.Services}" />
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="{DynamicResource S.EveryWindowsServiceOnThisMachine}" />
             </StackPanel>
 
             <TextBox
@@ -121,7 +121,7 @@
                 Margin="0,0,10,0"
                 VerticalAlignment="Center"
                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip="Filter by service ID, display name or configuration path" />
+                ToolTip="{DynamicResource S.FilterByServiceIDDisplayName}" />
 
             <Button
                 Grid.Column="2"
@@ -130,7 +130,7 @@
                 Padding="12,7">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
-                    <TextBlock Text="Rescan" />
+                    <TextBlock Text="{DynamicResource S.Rescan}" />
                 </StackPanel>
             </Button>
         </Grid>
@@ -139,25 +139,25 @@
         <StackPanel Grid.Row="1" Margin="0,0,0,18" Orientation="Horizontal">
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="MANAGED" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Managed}" />
                     <TextBlock Style="{StaticResource StatValue}" Text="{Binding TotalCount}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="RUNNING" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Running}" />
                     <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthRunningBrush}" Text="{Binding RunningCount}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="STOPPED" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Stopped}" />
                     <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthStoppedBrush}" Text="{Binding StoppedCount}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="NEEDS ATTENTION" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.NeedsAttention}" />
                     <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthBrokenBrush}" Text="{Binding ProblemCount}" />
                 </StackPanel>
             </Border>
@@ -205,7 +205,7 @@
                             Margin="0,12,0,0"
                             HorizontalAlignment="Center"
                             Style="{StaticResource PageSubtitle}"
-                            Text="Select a service to see its details." />
+                            Text="{DynamicResource S.SelectAServiceToSeeIts}" />
                     </StackPanel>
 
                     <Grid DataContext="{Binding SelectedService}" Visibility="{Binding Converter={StaticResource NullToVisibility}}">
@@ -284,19 +284,19 @@
                                 </Style>
                             </Grid.Resources>
 
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Service ID" />
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource S.ServiceID}" />
                             <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource Mono}" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ServiceName}" />
 
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Wrapper" />
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource S.Wrapper}" />
                             <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding WrapperPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WrapperPath}" />
 
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Configuration" />
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="{DynamicResource S.Configuration}" />
                             <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding ConfigPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigPath}" />
 
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Start mode" />
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource S.StartMode}" />
                             <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding StartMode}" />
 
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Account" />
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource S.Account}" />
                             <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Account}" />
                         </Grid>
 
@@ -305,55 +305,55 @@
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
-                                    <TextBlock Text="Start" />
+                                    <TextBlock Text="{DynamicResource S.Start}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE71A;" />
-                                    <TextBlock Text="Stop" />
+                                    <TextBlock Text="{DynamicResource S.Stop}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
-                                    <TextBlock Text="Restart" />
+                                    <TextBlock Text="{DynamicResource S.Restart}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.EditConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE713;" />
-                                    <TextBlock Text="Edit configuration" />
+                                    <TextBlock Text="{DynamicResource S.EditConfiguration}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ViewLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
-                                    <TextBlock Text="Logs" />
+                                    <TextBlock Text="{DynamicResource S.Logs}" />
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RefreshConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="Re-apply the configuration file to the installed service (winsw refresh)">
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RefreshConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource S.ReApplyTheConfigurationFileTo}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE895;" />
-                                    <TextBlock Text="Apply config" />
+                                    <TextBlock Text="{DynamicResource S.ApplyConfig}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE838;" />
-                                    <TextBlock Text="Reveal" />
+                                    <TextBlock Text="{DynamicResource S.Reveal}" />
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.KillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="Force-terminate the service process tree (winsw dev kill)">
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.KillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource S.ForceTerminateTheServiceProcessTree}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
-                                    <TextBlock Text="Terminate" />
+                                    <TextBlock Text="{DynamicResource S.Terminate}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE74D;" />
-                                    <TextBlock Text="Uninstall" />
+                                    <TextBlock Text="{DynamicResource S.Uninstall}" />
                                 </StackPanel>
                             </Button>
                         </WrapPanel>
@@ -364,7 +364,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" Style="{StaticResource SectionTitle}" Text="PROCESS TREE" />
+                            <TextBlock Grid.Row="0" Style="{StaticResource SectionTitle}" Text="{DynamicResource S.ProcessTree}" />
                             <TreeView
                                 Grid.Row="1"
                                 Background="Transparent"
@@ -379,7 +379,7 @@
                             </TreeView>
                             <TextBlock
                                 Grid.Row="1"
-                                Text="The service is not running, so there is no process to show.">
+                                Text="{DynamicResource S.TheServiceIsNotRunningSo}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource FieldHint}">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -444,7 +444,7 @@
                     <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
                     <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding ConfirmMessage}" />
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="Cancel" />
+                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="{DynamicResource S.Cancel}" />
                         <Button
                             Padding="14,7"
                             Background="{StaticResource HealthBrokenBrush}"

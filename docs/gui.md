@@ -54,6 +54,17 @@ restart, refresh, kill — re-launches the wrapper through ShellExecute with the
 so you see one UAC prompt per action. Start the GUI from an elevated prompt to avoid the
 prompts altogether; the rail shows which mode you are in.
 
+## Language
+
+The interface is available in English and Simplified Chinese. The picker at the bottom of the
+navigation rail switches the whole UI in place, without a restart, and the choice is remembered
+in `%LOCALAPPDATA%\WinSW.Gui\settings.json`. With no saved choice the GUI follows the
+Windows display language.
+
+To add a language, copy `WinSW.Gui/Localization/Strings.en.xaml` to `Strings.<code>.xaml`,
+translate the values (keep the keys and the `{n}` placeholders), and add the code to
+`Localizer.Languages`.
+
 ## Notes for contributors
 
 - The GUI does not reference `WinSW.Core`. `XmlServiceConfig`'s constructor sets process-wide
@@ -62,6 +73,9 @@ prompts altogether; the rail shows which mode you are in.
   parser's element names instead and must be kept in step with it.
 - Log files are discovered by scanning the log directory for `<logname>*.log`, not by
   reproducing each appender's naming, because the naming differs by mode.
+- Every user-visible string is a keyed resource in `Localization/Strings.<code>.xaml`. XAML uses
+  `DynamicResource`; code uses `Localizer.Get`/`Localizer.Format` and re-raises computed
+  properties on `Localizer.Changed`. Hard-coded English in a view or view model is a bug.
 - WPF-UI provides the Fluent styles for standard controls and the Mica window; everything
   else is defined in `WinSW.Gui/Theme/`. The GUI intentionally uses none of the library's
   resource keys, so upgrading it should not change the look.

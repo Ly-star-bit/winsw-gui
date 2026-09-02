@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -46,7 +47,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseWrapperCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFile("Select the WinSW executable", "WinSW executable|*.exe") is { } path)
+                if (Dialogs.PickFile(Localizer.Get("M.Dlg.SelectWrapper"), Localizer.Get("M.Filter.Wrapper")) is { } path)
                 {
                     this.WrapperPath = path;
                 }
@@ -54,7 +55,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseTargetCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFile("Select the program to run as a service", "Programs|*.exe;*.bat;*.cmd;*.jar|All files|*.*") is { } path)
+                if (Dialogs.PickFile(Localizer.Get("M.Dlg.SelectProgram"), Localizer.Get("M.Filter.Programs")) is { } path)
                 {
                     this.TargetPath = path;
                 }
@@ -62,7 +63,7 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseWorkingDirectoryCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFolder("Select the working directory", this.workingDirectory) is { } path)
+                if (Dialogs.PickFolder(Localizer.Get("M.Dlg.SelectWorkingDirectory"), this.workingDirectory) is { } path)
                 {
                     this.WorkingDirectory = path;
                 }
@@ -70,11 +71,20 @@ namespace WinSW.Gui.ViewModels
 
             this.BrowseLogPathCommand = new RelayCommand(() =>
             {
-                if (Dialogs.PickFolder("Select the log directory", this.logPath) is { } path)
+                if (Dialogs.PickFolder(Localizer.Get("M.Dlg.SelectLogDirectory"), this.logPath) is { } path)
                 {
                     this.LogPath = path;
                 }
             });
+
+            Localizer.Changed += () =>
+            {
+                this.Raise(nameof(this.StepTitle));
+                if (this.step == LastStep)
+                {
+                    this.RefreshPreview();
+                }
+            };
         }
 
         /// <summary>Raised after a successful installation so the shell can show the new service.</summary>
@@ -124,13 +134,13 @@ namespace WinSW.Gui.ViewModels
 
         public bool IsLastStep => this.step == LastStep;
 
-        public string StepTitle => this.step switch
+        public string StepTitle => Localizer.Get(this.step switch
         {
-            1 => "Choose the wrapper and the program",
-            2 => "Describe the service",
-            3 => "Logging and recovery",
-            _ => "Review and install",
-        };
+            1 => "M.Wiz.Step1",
+            2 => "M.Wiz.Step2",
+            3 => "M.Wiz.Step3",
+            _ => "M.Wiz.Step4",
+        });
 
         // Step 1 ---------------------------------------------------------------
 
@@ -384,7 +394,7 @@ namespace WinSW.Gui.ViewModels
 
             if (File.Exists(this.ConfigPath))
             {
-                this.Problems.Add($"'{this.ConfigPath}' already exists and will be overwritten.");
+                this.Problems.Add(Localizer.Format("M.Wiz.Exists", this.ConfigPath));
             }
 
             try
@@ -404,7 +414,7 @@ namespace WinSW.Gui.ViewModels
             var model = this.BuildModel();
             if (model.Validate().Count > 0)
             {
-                this.StatusMessage = "Fix the reported problems before installing.";
+                this.StatusMessage = Localizer.Get("M.Wiz.FixProblems");
                 return;
             }
 
@@ -412,7 +422,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 string configPath = this.ConfigPath;
-                this.StatusMessage = $"Writing {configPath}…";
+                this.StatusMessage = Localizer.Format("M.Wiz.Writing", configPath);
 
                 try
                 {
@@ -420,31 +430,31 @@ namespace WinSW.Gui.ViewModels
                 }
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
-                    this.StatusMessage = $"Could not write the configuration: {e.Message}";
+                    this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", e.Message);
                     return;
                 }
 
-                this.StatusMessage = $"Installing '{model.Id}'…";
+                this.StatusMessage = Localizer.Format("M.Wiz.Installing", model.Id);
                 var install = await WinSwCli.InstallAsync(this.wrapperPath, configPath).ConfigureAwait(true);
                 if (!install.Succeeded)
                 {
                     this.StatusMessage = install.Cancelled
-                        ? "Elevation was declined. The configuration was written, but the service was not installed."
-                        : install.Error ?? "Installation failed.";
+                        ? Localizer.Get("M.Wiz.InstallDeclined")
+                        : install.Error ?? Localizer.Get("M.Wiz.InstallFailed");
                     return;
                 }
 
                 if (this.startAfterInstall)
                 {
-                    this.StatusMessage = $"Starting '{model.Id}'…";
+                    this.StatusMessage = Localizer.Format("M.Wiz.Starting", model.Id);
                     var start = await WinSwCli.StartAsync(this.wrapperPath, configPath).ConfigureAwait(true);
                     this.StatusMessage = start.Succeeded
-                        ? $"'{model.Id}' was installed and started."
-                        : $"'{model.Id}' was installed, but starting it failed: {start.Error ?? "elevation was declined"}.";
+                        ? Localizer.Format("M.Wiz.InstalledStarted", model.Id)
+                        : Localizer.Format("M.Wiz.InstalledStartFailed", model.Id, start.Error ?? Localizer.Get("M.Wiz.ElevationDeclinedShort"));
                 }
                 else
                 {
-                    this.StatusMessage = $"'{model.Id}' was installed.";
+                    this.StatusMessage = Localizer.Format("M.Wiz.Installed", model.Id);
                 }
 
                 this.Completed?.Invoke();

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
+using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.Services
 {
@@ -78,7 +79,7 @@ namespace WinSW.Gui.Services
         {
             if (!File.Exists(wrapper))
             {
-                return CommandResult.Failed($"The wrapper executable '{wrapper}' no longer exists.");
+                return CommandResult.Failed(Localizer.Format("M.Cli.WrapperMissing", wrapper));
             }
 
             var startInfo = new ProcessStartInfo(wrapper)
@@ -96,7 +97,7 @@ namespace WinSW.Gui.Services
                 using var process = Process.Start(startInfo);
                 if (process is null)
                 {
-                    return CommandResult.Failed("The wrapper process could not be started.");
+                    return CommandResult.Failed(Localizer.Get("M.Cli.CannotStart"));
                 }
 
                 await process.WaitForExitAsync().ConfigureAwait(false);
@@ -116,11 +117,11 @@ namespace WinSW.Gui.Services
 
         private static string DescribeExitCode(string command, int exitCode) => exitCode switch
         {
-            1056 => "The service is already running.",
-            1060 => "The service is not installed.",
-            1062 => "The service is not running.",
-            1073 => "A service with that ID already exists.",
-            _ => $"'winsw {command}' failed with exit code {exitCode}.",
+            1056 => Localizer.Get("M.Cli.AlreadyRunning"),
+            1060 => Localizer.Get("M.Cli.NotInstalled"),
+            1062 => Localizer.Get("M.Cli.NotRunning"),
+            1073 => Localizer.Get("M.Cli.AlreadyExists"),
+            _ => Localizer.Format("M.Cli.Failed", command, exitCode),
         };
 
         private static string Quote(string value) => $"\"{value}\"";
