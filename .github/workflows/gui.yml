@@ -62,11 +62,14 @@ jobs:
             -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/vnd.github+json" } `
             -Body $payload -ContentType "application/json" | Out-Null
 
+      # Self-contained means the whole .NET runtime plus the WPF/WinForms frameworks ride
+      # along (~155 MB uncompressed); WPF cannot be trimmed, so compression is the lever.
       - name: Publish (x64, self-contained, single file)
         working-directory: ./src
         run: >
           dotnet publish WinSW.Gui -c Release -r win-x64 --self-contained
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
           -o ../artifacts/gui/win-x64
 
       - name: Publish (x64, framework-dependent)
