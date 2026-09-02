@@ -20,12 +20,41 @@ namespace WinSW.Gui.Services
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
         };
 
-        /// <summary>A language code from <see cref="Localizer.Languages"/>, or null to follow the OS.</summary>
+        private static AppSettings? current;
+
+        /// <summary>The one instance every subsystem reads and writes, loaded on first use.</summary>
+        public static AppSettings Current => current ??= Load();
+
+        /// <summary>A language code from <c>Localizer.Languages</c>, or null to follow the OS.</summary>
         public string? Language { get; set; }
 
-        public static AppSettings Load()
+        /// <summary>"system", "light" or "dark"; null follows the OS.</summary>
+        public string? Theme { get; set; }
+
+        public LogEncodingChoice LogEncoding { get; set; } = LogEncodingChoice.Auto;
+
+        /// <summary>Seconds between background rescans of installed services; 0 disables.</summary>
+        public int AutoRescanSeconds { get; set; } = 30;
+
+        public bool MinimizeToTray { get; set; }
+
+        /// <summary>Show a notification when a service stops without the GUI having asked it to.</summary>
+        public bool NotifyOnUnexpectedStop { get; set; } = true;
+
+        public double? WindowLeft { get; set; }
+
+        public double? WindowTop { get; set; }
+
+        public double? WindowWidth { get; set; }
+
+        public double? WindowHeight { get; set; }
+
+        public bool WindowMaximized { get; set; }
+
+        private static AppSettings Load()
         {
             try
             {

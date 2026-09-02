@@ -301,21 +301,19 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            this.Write(this.filePath);
+            await this.WriteAsync(this.filePath).ConfigureAwait(true);
         }
 
-        private Task SaveAsAsync()
+        private async Task SaveAsAsync()
         {
             string suggested = string.IsNullOrWhiteSpace(this.Model.Id) ? "myapp.xml" : this.Model.Id + ".xml";
             if (Dialogs.PickSaveFile(Localizer.Get("M.Dlg.SaveConfig"), Localizer.Get("M.Filter.ConfigSave"), suggested) is { } path)
             {
-                this.Write(path);
+                await this.WriteAsync(path).ConfigureAwait(true);
             }
-
-            return Task.CompletedTask;
         }
 
-        private void Write(string path)
+        private async Task WriteAsync(string path)
         {
             this.Recompute();
             if (this.Problems.Count > 0)
@@ -332,12 +330,51 @@ namespace WinSW.Gui.ViewModels
                 this.StatusMessage = this.installedService is null
                     ? Localizer.Format("M.Editor.Saved", path)
                     : Localizer.Format("M.Editor.SavedApply", path);
+                return;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // The configuration usually sits next to the service binary, under Program
+                // Files or similar, where a standard user has no write access. Fall through
+                // to writing a copy and moving it into place with administrator rights.
+            }
+            catch (IOException e)
+            {
+                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", path, e.Message);
+                return;
+            }
+
+            string staging = Path.Combine(Path.GetTempPath(), "WinSW.Gui", Path.GetFileName(path));
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(staging)!);
+                this.Model.Save(staging);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // The configuration usually sits next to the service binary, where a
-                // standard user has no write access.
-                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", path, e.Message);
+                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", staging, e.Message);
+                return;
+            }
+
+            var result = await WinSwCli.CopyElevatedAsync(staging, path).ConfigureAwait(true);
+
+            if (result.Succeeded)
+            {
+                // Re-read from the real location so the model's FilePath and backing document
+                // point at what is on disk rather than at the staging copy.
+                this.Load(path);
+                if (this.installedService != null)
+                {
+                    this.InstalledService = this.installedService;
+                }
+
+                this.StatusMessage = Localizer.Format("M.Editor.SavedElevated", path);
+            }
+            else
+            {
+                this.StatusMessage = result.Cancelled
+                    ? Localizer.Get("M.Editor.ElevatedSaveDeclined")
+                    : result.Error ?? Localizer.Format("M.Editor.WriteFailed", path, string.Empty);
             }
         }
 
@@ -351,7 +388,7 @@ namespace WinSW.Gui.ViewModels
 
             if (this.IsDirty)
             {
-                this.Write(this.filePath);
+                await this.WriteAsync(this.filePath).ConfigureAwait(true);
                 if (this.IsDirty)
                 {
                     return;

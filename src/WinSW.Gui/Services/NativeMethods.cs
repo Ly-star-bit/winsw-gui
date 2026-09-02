@@ -77,6 +77,10 @@ namespace WinSW.Gui.Services
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool CloseHandle(IntPtr handle);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool DestroyIcon(IntPtr icon);
+
         /// <summary>
         /// Returns the process ID hosting <paramref name="serviceName"/>, or 0 when the
         /// service is not running or cannot be queried.

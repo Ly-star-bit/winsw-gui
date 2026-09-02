@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -7,10 +8,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Threading;
+using WinSW.Gui.Localization;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
-using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -26,7 +27,10 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
-        private readonly DispatcherTimer timer;
+        private readonly DispatcherTimer statusTimer;
+        private readonly DispatcherTimer rescanTimer;
+        private readonly Dictionary<string, ServiceHealth> lastHealth = new(StringComparer.OrdinalIgnoreCase);
+
         private ServiceEntry? selectedService;
         private string searchText = string.Empty;
         private string statusMessage = string.Empty;
@@ -44,10 +48,10 @@ namespace WinSW.Gui.ViewModels
             this.ServicesView = CollectionViewSource.GetDefaultView(this.Services);
             this.ServicesView.Filter = this.MatchesSearch;
 
-            this.ReloadCommand = new AsyncRelayCommand(this.ReloadAsync);
+            this.ReloadCommand = new AsyncRelayCommand(() => this.ReloadAsync(quiet: false));
             this.StartCommand = new AsyncRelayCommand(() => this.RunAsync("start", (w, c) => WinSwCli.StartAsync(w, c)), () => this.selectedService?.CanStart == true);
-            this.StopCommand = new AsyncRelayCommand(() => this.RunAsync("stop", (w, c) => WinSwCli.StopAsync(w, c, force: true)), () => this.selectedService?.CanStop == true);
-            this.RestartCommand = new AsyncRelayCommand(() => this.RunAsync("restart", (w, c) => WinSwCli.RestartAsync(w, c, force: true)), () => this.selectedService != null);
+            this.StopCommand = new AsyncRelayCommand(() => this.StopAsync(force: false), () => this.selectedService?.CanStop == true);
+            this.RestartCommand = new AsyncRelayCommand(() => this.RestartAsync(force: false), () => this.selectedService != null);
             this.RefreshConfigCommand = new AsyncRelayCommand(() => this.RunAsync("refresh", (w, c) => WinSwCli.RefreshAsync(w, c)), () => this.selectedService != null);
 
             this.KillCommand = new RelayCommand(
@@ -55,7 +59,7 @@ namespace WinSW.Gui.ViewModels
                     Localizer.Get("M.Dash.KillTitle"),
                     Localizer.Format("M.Dash.KillBody", this.selectedService?.ServiceName),
                     Localizer.Get("M.Dash.KillAction"),
-                    () => this.RunAsync("dev kill", (w, c) => WinSwCli.KillAsync(w, c))),
+                    this.KillAsync),
                 () => this.selectedService != null);
 
             this.UninstallCommand = new RelayCommand(
@@ -79,8 +83,20 @@ namespace WinSW.Gui.ViewModels
             this.ConfirmCommand = new AsyncRelayCommand(this.ExecuteConfirmedAsync);
             this.CancelConfirmCommand = new RelayCommand(() => this.ConfirmVisible = false);
 
-            this.timer = new DispatcherTimer { Interval = PollInterval };
-            this.timer.Tick += (_, _) => this.RefreshStatuses();
+            this.statusTimer = new DispatcherTimer { Interval = PollInterval };
+            this.statusTimer.Tick += (_, _) => this.RefreshStatuses();
+
+            // Services installed by other tools, or by a second copy of this GUI, appear
+            // without the user having to remember the rescan button.
+            int seconds = AppSettings.Current.AutoRescanSeconds;
+            this.rescanTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds > 0 ? seconds : 30) };
+            this.rescanTimer.Tick += async (_, _) =>
+            {
+                if (seconds > 0 && !this.isScanning && !this.isBusy)
+                {
+                    await this.ReloadAsync(quiet: true).ConfigureAwait(true);
+                }
+            };
 
             Localizer.Changed += () =>
             {
@@ -96,6 +112,9 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Raised when the user asks to tail the selected service's logs.</summary>
         public event Action<ServiceEntry>? OpenLogsRequested;
+
+        /// <summary>Raised when a service goes from running to stopped without this GUI asking it to.</summary>
+        public event Action<ServiceEntry>? UnexpectedStop;
 
         public ObservableCollection<ServiceEntry> Services { get; } = new();
 
@@ -169,7 +188,7 @@ namespace WinSW.Gui.ViewModels
             set => this.Set(ref this.isScanning, value);
         }
 
-        /// <summary>The process tree of the selected service, refreshed with its status.</summary>
+        /// <summary>The process tree of the selected service; only replaced when its shape changes.</summary>
         public ProcessNode? ProcessTree
         {
             get => this.processTree;
@@ -224,45 +243,89 @@ namespace WinSW.Gui.ViewModels
 
         public void Activate()
         {
-            this.timer.Start();
+            this.statusTimer.Start();
+            this.rescanTimer.Start();
             if (this.Services.Count == 0)
             {
                 this.ReloadCommand.Execute(null);
             }
         }
 
-        public void Deactivate() => this.timer.Stop();
+        /// <summary>
+        /// Only the status poll pauses when the page is hidden; the slow rescan and the
+        /// crash detection it feeds keep running so notifications still arrive.
+        /// </summary>
+        public void Deactivate() => this.statusTimer.Stop();
+
+        /// <summary>Called by the shell when the window is in the tray, so watching continues.</summary>
+        public void KeepWatching() => this.statusTimer.Start();
 
         // Operations -----------------------------------------------------------
 
-        public async Task ReloadAsync()
+        public async Task ReloadAsync(bool quiet)
         {
             this.IsScanning = true;
-            this.StatusMessage = Localizer.Get("M.Dash.Scanning");
+            if (!quiet)
+            {
+                this.StatusMessage = Localizer.Get("M.Dash.Scanning");
+            }
 
             try
             {
-                string? previous = this.selectedService?.ServiceName;
-
                 // The registry sweep touches every installed service, so keep it off the UI thread.
                 var found = await Task.Run(ServiceDiscovery.Discover).ConfigureAwait(true);
 
-                this.Services.Clear();
+                int added = 0;
+                int removed = 0;
+                var byName = found.ToDictionary(e => e.ServiceName, StringComparer.OrdinalIgnoreCase);
+
+                // Merge rather than clear-and-refill so the selection, scroll position and
+                // per-row health history survive a background rescan.
+                for (int i = this.Services.Count - 1; i >= 0; i--)
+                {
+                    if (!byName.ContainsKey(this.Services[i].ServiceName))
+                    {
+                        this.lastHealth.Remove(this.Services[i].ServiceName);
+                        this.Services.RemoveAt(i);
+                        removed++;
+                    }
+                }
+
+                var existing = new HashSet<string>(this.Services.Select(s => s.ServiceName), StringComparer.OrdinalIgnoreCase);
                 foreach (var entry in found)
                 {
-                    this.Services.Add(entry);
+                    if (existing.Contains(entry.ServiceName))
+                    {
+                        continue;
+                    }
+
+                    int index = 0;
+                    while (index < this.Services.Count && string.Compare(this.Services[index].ServiceName, entry.ServiceName, StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        index++;
+                    }
+
+                    this.Services.Insert(index, entry);
+                    added++;
                 }
 
                 this.RefreshStatuses();
-                this.RaiseCounts();
 
-                this.SelectedService = previous is null
-                    ? this.Services.FirstOrDefault()
-                    : this.Services.FirstOrDefault(s => s.ServiceName == previous) ?? this.Services.FirstOrDefault();
+                if (this.selectedService is null || !this.Services.Contains(this.selectedService))
+                {
+                    this.SelectedService = this.Services.FirstOrDefault();
+                }
 
-                this.StatusMessage = this.Services.Count == 0
-                    ? Localizer.Get("M.Dash.NoneFound")
-                    : Localizer.Format("M.Dash.Found", this.Services.Count);
+                if (!quiet)
+                {
+                    this.StatusMessage = this.Services.Count == 0
+                        ? Localizer.Get("M.Dash.NoneFound")
+                        : Localizer.Format("M.Dash.Found", this.Services.Count);
+                }
+                else if (added > 0 || removed > 0)
+                {
+                    this.StatusMessage = Localizer.Format("M.Dash.Rescanned", added, removed);
+                }
             }
             catch (Exception e)
             {
@@ -273,6 +336,15 @@ namespace WinSW.Gui.ViewModels
                 this.IsScanning = false;
             }
         }
+
+        private Task StopAsync(bool force) =>
+            this.RunAsync("stop", (w, c) => WinSwCli.StopAsync(w, c, force, this.TimeoutFor(c)));
+
+        private Task RestartAsync(bool force) =>
+            this.RunAsync("restart", (w, c) => WinSwCli.RestartAsync(w, c, force, this.TimeoutFor(c)));
+
+        private Task KillAsync() =>
+            this.RunAsync("dev kill", (w, c) => WinSwCli.KillAsync(w, c));
 
         private async Task RunAsync(string label, Func<string, string, Task<CommandResult>> operation)
         {
@@ -300,11 +372,29 @@ namespace WinSW.Gui.ViewModels
                 // An uninstall removes the entry entirely; anything else only moves its state.
                 if (label == "uninstall" && result.Succeeded)
                 {
-                    await this.ReloadAsync().ConfigureAwait(true);
+                    await this.ReloadAsync(quiet: false).ConfigureAwait(true);
                 }
                 else
                 {
                     this.RefreshStatuses();
+                }
+
+                // The two outcomes that deserve a follow-up question rather than a message.
+                if (result.HasDependents && (label == "stop" || label == "restart"))
+                {
+                    this.Ask(
+                        Localizer.Get("M.Dash.DependentsTitle"),
+                        Localizer.Format("M.Dash.DependentsBody", entry.ServiceName),
+                        Localizer.Get("M.Dash.DependentsAction"),
+                        () => label == "stop" ? this.StopAsync(force: true) : this.RestartAsync(force: true));
+                }
+                else if (result.TimedOut)
+                {
+                    this.Ask(
+                        Localizer.Get("M.Dash.TimeoutTitle"),
+                        Localizer.Format("M.Dash.TimeoutBody", label, entry.ServiceName),
+                        Localizer.Get("M.Dash.TimeoutAction"),
+                        this.KillAsync);
                 }
             }
             finally
@@ -313,11 +403,44 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>
+        /// The wrapper waits <c>stoptimeout</c> before killing the child; give it that plus
+        /// room to spare before deciding it is stuck.
+        /// </summary>
+        private TimeSpan TimeoutFor(string configPath)
+        {
+            try
+            {
+                var model = ServiceConfigModel.Load(configPath);
+                if (!string.IsNullOrWhiteSpace(model.StopTimeout) && ServiceConfigModel.TryParseTime(model.StopTimeout!, out var stopTimeout))
+                {
+                    return stopTimeout + TimeSpan.FromSeconds(45);
+                }
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+            }
+
+            return WinSwCli.DefaultTimeout;
+        }
+
         private void RefreshStatuses()
         {
             foreach (var entry in this.Services)
             {
                 ServiceDiscovery.RefreshStatus(entry);
+
+                var health = entry.Health;
+                if (this.lastHealth.TryGetValue(entry.ServiceName, out var previous)
+                    && previous == ServiceHealth.Running
+                    && health == ServiceHealth.Stopped
+                    && !this.isBusy
+                    && AppSettings.Current.NotifyOnUnexpectedStop)
+                {
+                    this.UnexpectedStop?.Invoke(entry);
+                }
+
+                this.lastHealth[entry.ServiceName] = health;
             }
 
             this.RaiseCounts();
@@ -330,9 +453,11 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            // Rebuilt from a fresh snapshot each tick, so the tree stays honest about
-            // children the service has since spawned or lost.
-            this.ProcessTree = ProcessTreeProvider.Build(selected.ProcessId);
+            var fresh = ProcessTreeProvider.Build(selected.ProcessId);
+            if (!ProcessTreeProvider.SameShape(fresh, this.processTree))
+            {
+                this.ProcessTree = fresh;
+            }
         }
 
         private void RaiseCounts()

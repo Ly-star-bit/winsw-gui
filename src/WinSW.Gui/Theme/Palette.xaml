@@ -15,6 +15,8 @@
     <SolidColorBrush x:Key="CardBorderBrush" Color="#2B2D39" />
     <SolidColorBrush x:Key="RailBrush" Color="#0E0F15" />
     <SolidColorBrush x:Key="InputBrush" Color="#101119" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#2A1B1F" />
+    <SolidColorBrush x:Key="OverlayBrush" Color="#B0090A10" />
 
     <!-- Text -->
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F2F3F8" />
@@ -55,6 +57,12 @@
     -->
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+
+    <!--
+        Segoe UI has no CJK glyphs; naming YaHei explicitly keeps line heights stable
+        when Chinese and Latin text share a line, instead of relying on per-glyph fallback.
+    -->
+    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
 
     <CornerRadius x:Key="CardCornerRadius">10</CornerRadius>
 

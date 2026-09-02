@@ -151,7 +151,13 @@ namespace WinSW.Gui.Services
 
             // No usable configuration. Only claim the service if the image really is a
             // wrapper, and then surface the missing file rather than hiding the service.
-            if (!IsWrapperExecutable(wrapperPath))
+            // A wrapper is registered with no arguments or with just its configuration, so
+            // anything else is ruled out before paying for a version-info read: that check
+            // would otherwise run once per ordinary service on the machine.
+            bool shapedLikeWrapper = tokens.Count == 1
+                || (tokens.Count == 2 && tokens[1].EndsWith(".xml", StringComparison.OrdinalIgnoreCase));
+
+            if (!shapedLikeWrapper || !IsWrapperExecutable(wrapperPath))
             {
                 return false;
             }
@@ -184,7 +190,8 @@ namespace WinSW.Gui.Services
             }
         }
 
-        private static bool IsWrapperExecutable(string path)
+        /// <summary>True when the file's version information identifies it as a WinSW build.</summary>
+        public static bool IsWrapperExecutable(string path)
         {
             try
             {

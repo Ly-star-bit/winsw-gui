@@ -41,8 +41,6 @@ namespace WinSW.Gui.Localization
             new("zh-CN", "中文"),
         };
 
-        private static AppSettings settings = new();
-
         public static event Action? Changed;
 
         public static Language Current { get; private set; } = Languages[0];
@@ -50,9 +48,7 @@ namespace WinSW.Gui.Localization
         /// <summary>Loads the saved preference, falling back to the OS display language.</summary>
         public static void Initialize()
         {
-            settings = AppSettings.Load();
-
-            string code = settings.Language
+            string code = AppSettings.Current.Language
                 ?? (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "zh" ? "zh-CN" : "en");
 
             Apply(Find(code), persist: false);
@@ -87,8 +83,8 @@ namespace WinSW.Gui.Localization
 
             if (persist)
             {
-                settings.Language = language.Code;
-                settings.Save();
+                AppSettings.Current.Language = language.Code;
+                AppSettings.Current.Save();
             }
 
             Changed?.Invoke();

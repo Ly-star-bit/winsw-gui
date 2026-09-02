@@ -44,7 +44,7 @@
                     <TextBlock
                         FontSize="14"
                         FontWeight="SemiBold"
-                        Foreground="{StaticResource TextPrimaryBrush}"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
                         Text="{Binding DisplayName}"
                         TextTrimming="CharacterEllipsis" />
                     <TextBlock
@@ -67,7 +67,7 @@
         <HierarchicalDataTemplate x:Key="ProcessNodeTemplate" DataType="{x:Type services:ProcessNode}" ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE7C4;" />
-                <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Name}" />
+                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Name}" />
                 <TextBlock Margin="8,0,0,0" Style="{StaticResource Mono}" Text="{Binding ProcessId}" />
             </StackPanel>
         </HierarchicalDataTemplate>
@@ -81,7 +81,7 @@
         <Style x:Key="StatValue" TargetType="TextBlock">
             <Setter Property="FontSize" Value="26" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
         </Style>
 
         <Style x:Key="ActionButton" TargetType="Button">
@@ -146,19 +146,19 @@
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Running}" />
-                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthRunningBrush}" Text="{Binding RunningCount}" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthRunningBrush}" Text="{Binding RunningCount}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Stopped}" />
-                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthStoppedBrush}" Text="{Binding StoppedCount}" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthStoppedBrush}" Text="{Binding StoppedCount}" />
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource StatCard}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.NeedsAttention}" />
-                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthBrokenBrush}" Text="{Binding ProblemCount}" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthBrokenBrush}" Text="{Binding ProblemCount}" />
                 </StackPanel>
             </Border>
         </StackPanel>
@@ -227,7 +227,7 @@
                                 <TextBlock
                                     FontSize="20"
                                     FontWeight="SemiBold"
-                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Foreground="{DynamicResource TextPrimaryBrush}"
                                     Text="{Binding DisplayName}"
                                     TextTrimming="CharacterEllipsis" />
                                 <TextBlock
@@ -240,7 +240,7 @@
                                 <Border Style="{StaticResource StatusPill}" Margin="0,0,8,0">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Margin="0,0,7,0" Fill="{Binding Health, Converter={StaticResource HealthToBrush}}" Style="{StaticResource HealthDot}" />
-                                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding StatusText}" />
+                                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StatusText}" />
                                     </StackPanel>
                                 </Border>
                                 <Border Style="{StaticResource StatusPill}">
@@ -254,14 +254,14 @@
                             Grid.Row="1"
                             Margin="0,0,0,14"
                             Padding="12,10"
-                            Background="#2A1B1F"
-                            BorderBrush="{StaticResource HealthBrokenBrush}"
+                            Background="{DynamicResource DangerSoftBrush}"
+                            BorderBrush="{DynamicResource HealthBrokenBrush}"
                             BorderThickness="1"
                             CornerRadius="8"
                             Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Margin="0,0,10,0" Foreground="{StaticResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
-                                <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -285,7 +285,7 @@
                             </Grid.Resources>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="{DynamicResource S.ServiceID}" />
-                            <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource Mono}" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ServiceName}" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource Mono}" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ServiceName}" />
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource S.Wrapper}" />
                             <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding WrapperPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WrapperPath}" />
@@ -304,7 +304,7 @@
                         <WrapPanel Grid.Row="3" Margin="0,0,0,8">
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
+                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
                                     <TextBlock Text="{DynamicResource S.Start}" />
                                 </StackPanel>
                             </Button>
@@ -346,13 +346,13 @@
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.KillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource S.ForceTerminateTheServiceProcessTree}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
                                     <TextBlock Text="{DynamicResource S.Terminate}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE74D;" />
+                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE74D;" />
                                     <TextBlock Text="{DynamicResource S.Uninstall}" />
                                 </StackPanel>
                             </Button>
@@ -432,7 +432,7 @@
             Grid.Row="0"
             Grid.RowSpan="4"
             Margin="-28,-24,-28,-20"
-            Background="#B0090A10"
+            Background="{DynamicResource OverlayBrush}"
             Visibility="{Binding ConfirmVisible, Converter={StaticResource BoolToVisibility}}">
             <Border
                 MaxWidth="460"
@@ -441,13 +441,13 @@
                 Style="{StaticResource Card}"
                 Padding="24">
                 <StackPanel>
-                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
                     <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding ConfirmMessage}" />
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
                         <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="{DynamicResource S.Cancel}" />
                         <Button
                             Padding="14,7"
-                            Background="{StaticResource HealthBrokenBrush}"
+                            Background="{DynamicResource HealthBrokenBrush}"
                             Command="{Binding ConfirmCommand}"
                             Content="{Binding ConfirmActionLabel}"
                             Foreground="White" />

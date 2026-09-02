@@ -4,11 +4,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Threading;
+using WinSW.Gui.Localization;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
-using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -44,8 +45,26 @@ namespace WinSW.Gui.ViewModels
         public override string ToString() => this.Caption;
     }
 
+    /// <summary>A selectable log encoding, labelled for the picker.</summary>
+    public sealed class EncodingOption : ObservableObject
+    {
+        private readonly string key;
+
+        public EncodingOption(LogEncodingChoice choice, string key)
+        {
+            this.Choice = choice;
+            this.key = key;
+        }
+
+        public LogEncodingChoice Choice { get; }
+
+        public string Label => Localizer.Get(this.key);
+
+        public void RefreshLocalized() => this.Raise(nameof(this.Label));
+    }
+
     /// <summary>
-    /// Tails the log files a service produces.
+    /// Tails the log files a service produces and shows the Windows events about it.
     /// </summary>
     /// <remarks>
     /// File names are discovered by scanning the log directory rather than by reproducing
@@ -65,23 +84,28 @@ namespace WinSW.Gui.ViewModels
         private LogTailReader? reader;
         private ServiceEntry? service;
         private LogFileEntry? selectedFile;
+        private EncodingOption selectedEncoding;
         private string logDirectory = string.Empty;
         private string filter = string.Empty;
         private string statusMessage = string.Empty;
+        private string encodingInfo = string.Empty;
+        private string eventsStatus = string.Empty;
         private bool autoScroll = true;
         private bool isPaused;
+        private bool isLoadingEvents;
 
         public LogViewerViewModel()
         {
             this.timer = new DispatcherTimer { Interval = PollInterval };
             this.timer.Tick += (_, _) => this.Pump();
 
-            this.statusMessage = Localizer.Get("M.Log.SelectService");
-            Localizer.Changed += () =>
+            this.Encodings = new[]
             {
-                this.Raise(nameof(this.ServiceName));
-                this.Raise(nameof(this.PauseLabel));
+                new EncodingOption(LogEncodingChoice.Auto, "M.Enc.Auto"),
+                new EncodingOption(LogEncodingChoice.Utf8, "M.Enc.Utf8"),
+                new EncodingOption(LogEncodingChoice.SystemAnsi, "M.Enc.Ansi"),
             };
+            this.selectedEncoding = this.Encodings.FirstOrDefault(e => e.Choice == AppSettings.Current.LogEncoding) ?? this.Encodings[0];
 
             this.RescanCommand = new RelayCommand(this.Rescan, () => this.service != null);
             this.ClearCommand = new RelayCommand(() =>
@@ -93,12 +117,31 @@ namespace WinSW.Gui.ViewModels
             this.TogglePauseCommand = new RelayCommand(() => this.IsPaused = !this.IsPaused);
             this.OpenExternallyCommand = new RelayCommand(this.OpenExternally, () => this.selectedFile != null);
             this.RevealCommand = new RelayCommand(this.Reveal, () => this.selectedFile != null);
+            this.RefreshEventsCommand = new AsyncRelayCommand(this.LoadEventsAsync, () => this.service != null && !this.isLoadingEvents);
+
+            this.statusMessage = Localizer.Get("M.Log.SelectService");
+            Localizer.Changed += () =>
+            {
+                this.Raise(nameof(this.ServiceName));
+                this.Raise(nameof(this.PauseLabel));
+                foreach (var option in this.Encodings)
+                {
+                    option.RefreshLocalized();
+                }
+            };
         }
+
+        /// <summary>Raised after a batch of lines is appended, so the view scrolls once per batch.</summary>
+        public event Action? LinesAppended;
 
         public ObservableCollection<LogFileEntry> Files { get; } = new();
 
         /// <summary>The lines currently shown, after filtering.</summary>
         public ObservableCollection<string> Lines { get; } = new();
+
+        public ObservableCollection<ServiceEvent> Events { get; } = new();
+
+        public EncodingOption[] Encodings { get; }
 
         public RelayCommand RescanCommand { get; }
 
@@ -109,6 +152,8 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand OpenExternallyCommand { get; }
 
         public RelayCommand RevealCommand { get; }
+
+        public AsyncRelayCommand RefreshEventsCommand { get; }
 
         public string ServiceName => this.service?.ServiceName ?? Localizer.Get("M.Log.NoService");
 
@@ -130,6 +175,27 @@ namespace WinSW.Gui.ViewModels
                     this.OpenSelected();
                 }
             }
+        }
+
+        public EncodingOption SelectedEncoding
+        {
+            get => this.selectedEncoding;
+            set
+            {
+                if (value != null && this.Set(ref this.selectedEncoding, value))
+                {
+                    AppSettings.Current.LogEncoding = value.Choice;
+                    AppSettings.Current.Save();
+                    this.OpenSelected();
+                }
+            }
+        }
+
+        /// <summary>What auto-detection settled on for the open file.</summary>
+        public string EncodingInfo
+        {
+            get => this.encodingInfo;
+            private set => this.Set(ref this.encodingInfo, value);
         }
 
         /// <summary>Case-insensitive substring filter applied to the buffered lines.</summary>
@@ -171,6 +237,24 @@ namespace WinSW.Gui.ViewModels
             set => this.Set(ref this.statusMessage, value);
         }
 
+        public string EventsStatus
+        {
+            get => this.eventsStatus;
+            private set => this.Set(ref this.eventsStatus, value);
+        }
+
+        public bool IsLoadingEvents
+        {
+            get => this.isLoadingEvents;
+            private set
+            {
+                if (this.Set(ref this.isLoadingEvents, value))
+                {
+                    this.RefreshEventsCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
         // Lifetime --------------------------------------------------------------
 
         public void Attach(ServiceEntry entry)
@@ -178,7 +262,9 @@ namespace WinSW.Gui.ViewModels
             this.service = entry;
             this.Raise(nameof(this.ServiceName));
             this.RescanCommand.RaiseCanExecuteChanged();
+            this.RefreshEventsCommand.RaiseCanExecuteChanged();
             this.Rescan();
+            this.RefreshEventsCommand.Execute(null);
         }
 
         public void Activate()
@@ -191,7 +277,7 @@ namespace WinSW.Gui.ViewModels
 
         public void Deactivate() => this.timer.Stop();
 
-        // Discovery -------------------------------------------------------------
+        // Files ------------------------------------------------------------------
 
         private void Rescan()
         {
@@ -250,6 +336,7 @@ namespace WinSW.Gui.ViewModels
             this.reader = null;
             this.history.Clear();
             this.Lines.Clear();
+            this.EncodingInfo = string.Empty;
 
             if (this.selectedFile is null)
             {
@@ -257,7 +344,7 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            this.reader = new LogTailReader(this.selectedFile.Path);
+            this.reader = new LogTailReader(this.selectedFile.Path, this.selectedEncoding.Choice);
             this.timer.Start();
             this.Pump();
         }
@@ -281,6 +368,12 @@ namespace WinSW.Gui.ViewModels
             foreach (string line in lines)
             {
                 this.Append(line);
+            }
+
+            if (lines.Count > 0)
+            {
+                this.EncodingInfo = Localizer.Format("M.Log.Detected", this.reader.EncodingName);
+                this.LinesAppended?.Invoke();
             }
         }
 
@@ -316,11 +409,49 @@ namespace WinSW.Gui.ViewModels
                     this.Lines.Add(line);
                 }
             }
+
+            this.LinesAppended?.Invoke();
         }
 
         private bool IsVisible(string line) =>
             string.IsNullOrWhiteSpace(this.filter)
             || line.Contains(this.filter.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        // Events -----------------------------------------------------------------
+
+        private async Task LoadEventsAsync()
+        {
+            var entry = this.service;
+            if (entry is null)
+            {
+                return;
+            }
+
+            this.IsLoadingEvents = true;
+            this.EventsStatus = Localizer.Get("M.Log.EventsLoading");
+
+            try
+            {
+                // Each record is a native read; hundreds of them do not belong on the UI thread.
+                var events = await Task.Run(() => EventLogReader.Read(entry.ServiceName, entry.DisplayName)).ConfigureAwait(true);
+
+                this.Events.Clear();
+                foreach (var item in events)
+                {
+                    this.Events.Add(item);
+                }
+
+                this.EventsStatus = events.Count == 0
+                    ? Localizer.Get("M.Log.NoEvents")
+                    : Localizer.Format("M.Log.EventsLoaded", events.Count);
+            }
+            finally
+            {
+                this.IsLoadingEvents = false;
+            }
+        }
+
+        // Shell ------------------------------------------------------------------
 
         private void OpenExternally()
         {

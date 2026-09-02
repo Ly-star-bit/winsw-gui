@@ -1,7 +1,10 @@
+using System;
 using System.Collections.ObjectModel;
-using System.Security.Principal;
+using System.Linq;
 using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
+using WinSW.Gui.Services;
+using WinSW.Gui.Theme;
 
 namespace WinSW.Gui.ViewModels
 {
@@ -35,6 +38,24 @@ namespace WinSW.Gui.ViewModels
         }
     }
 
+    /// <summary>A theme option, labelled for the picker.</summary>
+    public sealed class ThemeOption : ObservableObject
+    {
+        private readonly string key;
+
+        public ThemeOption(ThemeChoice choice, string key)
+        {
+            this.Choice = choice;
+            this.key = key;
+        }
+
+        public ThemeChoice Choice { get; }
+
+        public string Label => Localizer.Get(this.key);
+
+        public void RefreshLocalized() => this.Raise(nameof(this.Label));
+    }
+
     /// <summary>
     /// Owns the four pages and moves between them. Pages hand off to each other through
     /// events so no page needs a reference to another.
@@ -44,6 +65,7 @@ namespace WinSW.Gui.ViewModels
         private NavigationItem? selectedItem;
         private object? currentPage;
         private Language selectedLanguage = Localizer.Current;
+        private ThemeOption selectedTheme;
 
         public ShellViewModel()
         {
@@ -54,11 +76,21 @@ namespace WinSW.Gui.ViewModels
 
             this.Items = new ObservableCollection<NavigationItem>
             {
-                new("", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
-                new("", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
-                new("", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
-                new("", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
+                new("", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
+                new("", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
+                new("", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
+                new("", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
             };
+
+            this.Themes = new[]
+            {
+                new ThemeOption(ThemeChoice.System, "M.Theme.System"),
+                new ThemeOption(ThemeChoice.Light, "M.Theme.Light"),
+                new ThemeOption(ThemeChoice.Dark, "M.Theme.Dark"),
+            };
+            this.selectedTheme = this.Themes.First(t => t.Choice == ThemeManager.Current);
+
+            this.RestartElevatedCommand = new RelayCommand(() => Elevation.RestartElevated(), () => !this.IsElevated);
 
             this.Dashboard.OpenConfigRequested += entry =>
             {
@@ -78,10 +110,8 @@ namespace WinSW.Gui.ViewModels
                 this.Dashboard.ReloadCommand.Execute(null);
             };
 
-            this.IsElevated = DetectElevation();
             this.SelectedItem = this.Items[0];
 
-            this.selectedLanguage = Localizer.Current;
             Localizer.Changed += () =>
             {
                 foreach (var item in this.Items)
@@ -89,24 +119,14 @@ namespace WinSW.Gui.ViewModels
                     item.RefreshLocalized();
                 }
 
+                foreach (var theme in this.Themes)
+                {
+                    theme.RefreshLocalized();
+                }
+
                 this.Raise(nameof(this.ElevationLabel));
                 this.Raise(nameof(this.ElevationHint));
             };
-        }
-
-        public Language[] Languages => Localizer.Languages;
-
-        /// <summary>Changing this re-renders the UI in place and remembers the choice.</summary>
-        public Language SelectedLanguage
-        {
-            get => this.selectedLanguage;
-            set
-            {
-                if (this.Set(ref this.selectedLanguage, value) && value != null)
-                {
-                    Localizer.Apply(value);
-                }
-            }
         }
 
         public DashboardViewModel Dashboard { get; }
@@ -119,15 +139,74 @@ namespace WinSW.Gui.ViewModels
 
         public ObservableCollection<NavigationItem> Items { get; }
 
+        public RelayCommand RestartElevatedCommand { get; }
+
         /// <summary>
         /// Shown in the rail so the user knows what to expect: elevated sessions get no
         /// UAC prompts, standard ones get one per change.
         /// </summary>
-        public bool IsElevated { get; }
+        public bool IsElevated => Elevation.IsElevated;
 
         public string ElevationLabel => Localizer.Get(this.IsElevated ? "M.Shell.Admin" : "M.Shell.Standard");
 
         public string ElevationHint => Localizer.Get(this.IsElevated ? "M.Shell.AdminHint" : "M.Shell.StandardHint");
+
+        public Language[] Languages => Localizer.Languages;
+
+        /// <summary>Changing this re-renders the UI in place and remembers the choice.</summary>
+        public Language SelectedLanguage
+        {
+            get => this.selectedLanguage;
+            set
+            {
+                if (value != null && this.Set(ref this.selectedLanguage, value))
+                {
+                    Localizer.Apply(value);
+                }
+            }
+        }
+
+        public ThemeOption[] Themes { get; }
+
+        public ThemeOption SelectedTheme
+        {
+            get => this.selectedTheme;
+            set
+            {
+                if (value != null && this.Set(ref this.selectedTheme, value))
+                {
+                    ThemeManager.Apply(value.Choice);
+                }
+            }
+        }
+
+        public bool MinimizeToTray
+        {
+            get => AppSettings.Current.MinimizeToTray;
+            set
+            {
+                if (AppSettings.Current.MinimizeToTray != value)
+                {
+                    AppSettings.Current.MinimizeToTray = value;
+                    AppSettings.Current.Save();
+                    this.Raise();
+                }
+            }
+        }
+
+        public bool NotifyOnUnexpectedStop
+        {
+            get => AppSettings.Current.NotifyOnUnexpectedStop;
+            set
+            {
+                if (AppSettings.Current.NotifyOnUnexpectedStop != value)
+                {
+                    AppSettings.Current.NotifyOnUnexpectedStop = value;
+                    AppSettings.Current.Save();
+                    this.Raise();
+                }
+            }
+        }
 
         public NavigationItem? SelectedItem
         {
@@ -185,12 +264,6 @@ namespace WinSW.Gui.ViewModels
                     return;
                 }
             }
-        }
-
-        private static bool DetectElevation()
-        {
-            using var identity = WindowsIdentity.GetCurrent();
-            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
         }
     }
 }

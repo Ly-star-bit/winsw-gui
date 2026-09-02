@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using WinSW.Gui.ViewModels;
@@ -19,21 +18,23 @@ namespace WinSW.Gui.Views
         {
             if (this.attached != null)
             {
-                this.attached.Lines.CollectionChanged -= this.OnLinesChanged;
+                this.attached.LinesAppended -= this.ScrollToEnd;
             }
 
             this.attached = e.NewValue as LogViewerViewModel;
 
             if (this.attached != null)
             {
-                this.attached.Lines.CollectionChanged += this.OnLinesChanged;
+                this.attached.LinesAppended += this.ScrollToEnd;
             }
         }
 
         // Following the tail is a view concern: the view model only knows whether it is on.
-        private void OnLinesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        // It fires once per batch of lines, not once per line, so a burst of output does
+        // not turn into thousands of layout passes.
+        private void ScrollToEnd()
         {
-            if (this.attached?.AutoScroll != true || e.Action != NotifyCollectionChangedAction.Add)
+            if (this.attached?.AutoScroll != true)
             {
                 return;
             }

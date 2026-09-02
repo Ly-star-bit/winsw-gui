@@ -71,7 +71,11 @@
                     Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"
                     ToolTip="{DynamicResource S.ShowOnlyLinesContainingThisText}" />
 
-                <CheckBox Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center" Content="{DynamicResource S.Follow}" IsChecked="{Binding AutoScroll}" />
+                <StackPanel Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center" Orientation="Horizontal">
+                    <ComboBox MinWidth="150" DisplayMemberPath="Label" ItemsSource="{Binding Encodings}" SelectedItem="{Binding SelectedEncoding}" ToolTip="{DynamicResource M.Log.Encoding}" />
+                    <TextBlock Margin="10,0,12,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding EncodingInfo}" />
+                    <CheckBox VerticalAlignment="Center" Content="{DynamicResource S.Follow}" IsChecked="{Binding AutoScroll}" />
+                </StackPanel>
 
                 <Button Grid.Column="3" Margin="0,0,8,0" Padding="12,6" Command="{Binding TogglePauseCommand}" Content="{Binding PauseLabel}" />
                 <Button Grid.Column="4" Margin="0,0,8,0" Padding="12,6" Command="{Binding ClearCommand}" Content="{DynamicResource S.Clear}" />
@@ -80,36 +84,102 @@
             </Grid>
         </Border>
 
-        <!-- Output -->
-        <Border Grid.Row="2" Padding="0" Background="{StaticResource InputBrush}" Style="{StaticResource Card}">
-            <ListBox
-                x:Name="Output"
-                Background="Transparent"
-                BorderThickness="0"
-                FontFamily="{StaticResource MonoFont}"
-                FontSize="12"
-                ItemsSource="{Binding Lines}"
-                ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                VirtualizingPanel.IsVirtualizing="True"
-                VirtualizingPanel.VirtualizationMode="Recycling">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Padding" Value="12,1" />
-                        <Setter Property="Margin" Value="0" />
-                        <Setter Property="MinHeight" Value="0" />
-                        <Setter Property="Focusable" Value="False" />
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock
-                            Foreground="{Binding Converter={StaticResource LogSeverityToBrush}}"
-                            Text="{Binding}"
-                            TextWrapping="NoWrap" />
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </Border>
+        <!-- Output and events -->
+        <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0">
+            <TabItem Header="{DynamicResource M.Log.OutputTab}">
+                <Border Margin="0,8,0,0" Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
+                    <ListBox
+                        x:Name="Output"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontFamily="{DynamicResource MonoFont}"
+                        FontSize="12"
+                        ItemsSource="{Binding Lines}"
+                        ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                        VirtualizingPanel.IsVirtualizing="True"
+                        VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="12,1" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="MinHeight" Value="0" />
+                                <Setter Property="Focusable" Value="False" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    Foreground="{Binding Converter={StaticResource LogSeverityToBrush}}"
+                                    Text="{Binding}"
+                                    TextWrapping="NoWrap" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </TabItem>
+
+            <TabItem Header="{DynamicResource M.Log.EventsTab}">
+                <Grid Margin="0,8,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding EventsStatus}" />
+                        <Button Grid.Column="1" Padding="12,6" Command="{Binding RefreshEventsCommand}" Content="{DynamicResource M.Log.RefreshEvents}" />
+                    </Grid>
+
+                    <Border Grid.Row="1" Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
+                        <ListBox
+                            Background="Transparent"
+                            BorderThickness="0"
+                            ItemsSource="{Binding Events}"
+                            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                            VirtualizingPanel.IsVirtualizing="True">
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="12,6" />
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ToolTip="{Binding Message}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Grid.Column="0" Margin="0,0,10,0">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse" BasedOn="{StaticResource HealthDot}">
+                                                    <Setter Property="Fill" Value="{DynamicResource HealthRunningBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource HealthPendingBrush}" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource HealthBrokenBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <TextBlock Grid.Column="1" Margin="0,0,14,0" Style="{StaticResource Mono}" Text="{Binding TimeText}" />
+                                        <TextBlock Grid.Column="2" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Headline}" TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <TextBlock Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
     </Grid>

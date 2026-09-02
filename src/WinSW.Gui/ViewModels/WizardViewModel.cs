@@ -397,6 +397,11 @@ namespace WinSW.Gui.ViewModels
                 this.Problems.Add(Localizer.Format("M.Wiz.Exists", this.ConfigPath));
             }
 
+            if (File.Exists(this.wrapperPath) && !ServiceDiscovery.IsWrapperExecutable(this.wrapperPath))
+            {
+                this.Problems.Add(Localizer.Format("M.Wiz.NotWrapper", this.wrapperPath));
+            }
+
             try
             {
                 this.ConfigPreview = model.ToXmlString();
@@ -424,45 +429,77 @@ namespace WinSW.Gui.ViewModels
                 string configPath = this.ConfigPath;
                 this.StatusMessage = Localizer.Format("M.Wiz.Writing", configPath);
 
-                try
+                if (!await this.WriteConfigurationAsync(model, configPath).ConfigureAwait(true))
                 {
-                    model.Save(configPath);
-                }
-                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-                {
-                    this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", e.Message);
                     return;
                 }
 
-                this.StatusMessage = Localizer.Format("M.Wiz.Installing", model.Id);
-                var install = await WinSwCli.InstallAsync(this.wrapperPath, configPath).ConfigureAwait(true);
-                if (!install.Succeeded)
+                // Install and start ride on one elevation prompt; a separate start would
+                // mean a second UAC dialog for what the user sees as one action.
+                this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstallingStarting" : "M.Wiz.Installing", model.Id);
+                var result = this.startAfterInstall
+                    ? await WinSwCli.InstallAndStartAsync(this.wrapperPath, configPath).ConfigureAwait(true)
+                    : await WinSwCli.InstallAsync(this.wrapperPath, configPath).ConfigureAwait(true);
+
+                if (!result.Succeeded)
                 {
-                    this.StatusMessage = install.Cancelled
+                    this.StatusMessage = result.Cancelled
                         ? Localizer.Get("M.Wiz.InstallDeclined")
-                        : install.Error ?? Localizer.Get("M.Wiz.InstallFailed");
+                        : result.Error ?? Localizer.Get("M.Wiz.InstallFailed");
                     return;
                 }
 
-                if (this.startAfterInstall)
-                {
-                    this.StatusMessage = Localizer.Format("M.Wiz.Starting", model.Id);
-                    var start = await WinSwCli.StartAsync(this.wrapperPath, configPath).ConfigureAwait(true);
-                    this.StatusMessage = start.Succeeded
-                        ? Localizer.Format("M.Wiz.InstalledStarted", model.Id)
-                        : Localizer.Format("M.Wiz.InstalledStartFailed", model.Id, start.Error ?? Localizer.Get("M.Wiz.ElevationDeclinedShort"));
-                }
-                else
-                {
-                    this.StatusMessage = Localizer.Format("M.Wiz.Installed", model.Id);
-                }
-
+                this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstalledStarted" : "M.Wiz.Installed", model.Id);
                 this.Completed?.Invoke();
             }
             finally
             {
                 this.IsBusy = false;
             }
+        }
+
+        /// <summary>
+        /// Writes next to the wrapper, which is often under Program Files; when that is not
+        /// writable for a standard user the file is staged and copied with elevation.
+        /// </summary>
+        private async Task<bool> WriteConfigurationAsync(ServiceConfigModel model, string configPath)
+        {
+            try
+            {
+                model.Save(configPath);
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+            catch (IOException e)
+            {
+                this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", e.Message);
+                return false;
+            }
+
+            string staging = Path.Combine(Path.GetTempPath(), "WinSW.Gui", Path.GetFileName(configPath));
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(staging)!);
+                model.Save(staging);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", e.Message);
+                return false;
+            }
+
+            var copy = await WinSwCli.CopyElevatedAsync(staging, configPath).ConfigureAwait(true);
+            if (copy.Succeeded)
+            {
+                return true;
+            }
+
+            this.StatusMessage = copy.Cancelled
+                ? Localizer.Get("M.Editor.ElevatedSaveDeclined")
+                : Localizer.Format("M.Wiz.WriteFailed", copy.Error ?? string.Empty);
+            return false;
         }
 
         private void Reset()

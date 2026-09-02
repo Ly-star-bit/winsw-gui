@@ -33,6 +33,35 @@ namespace WinSW.Gui.Services
     /// </remarks>
     public static class ProcessTreeProvider
     {
+        /// <summary>
+        /// True when two trees have the same processes in the same places. The dashboard
+        /// rebuilds the tree from a fresh snapshot every poll and only pushes it to the view
+        /// when this says something changed; replacing the TreeView's source each tick would
+        /// flicker and drop the user's selection.
+        /// </summary>
+        public static bool SameShape(ProcessNode? a, ProcessNode? b)
+        {
+            if (a is null || b is null)
+            {
+                return a is null && b is null;
+            }
+
+            if (a.ProcessId != b.ProcessId || a.Name != b.Name || a.Children.Count != b.Children.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < a.Children.Count; i++)
+            {
+                if (!SameShape(a.Children[i], b.Children[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public static ProcessNode? Build(int rootProcessId)
         {
             if (rootProcessId <= 0)

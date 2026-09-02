@@ -58,10 +58,10 @@
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource S.Configuration}" />
                     <Border Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource HealthPendingBrush}" Text="{DynamicResource S.Unsaved}" />
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HealthPendingBrush}" Text="{DynamicResource S.Unsaved}" />
                     </Border>
                     <Border Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource HealthRunningBrush}" Text="{DynamicResource S.Installed}" />
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HealthRunningBrush}" Text="{DynamicResource S.Installed}" />
                     </Border>
                 </StackPanel>
                 <TextBlock Margin="0,4,0,0" Style="{StaticResource Mono}" Text="{Binding FileLabel}" />
@@ -72,7 +72,7 @@
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding OpenCommand}" Content="{DynamicResource S.Open}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ReloadCommand}" Content="{DynamicResource S.Reload}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding SaveAsCommand}" Content="{DynamicResource S.SaveAs}" />
-                <Button Margin="0,0,8,0" Padding="12,7" Background="{StaticResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}">
+                <Button Margin="0,0,8,0" Padding="12,7" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE74E;" />
                         <TextBlock Text="{DynamicResource S.Save}" />
@@ -200,7 +200,7 @@
 
                                 <StackPanel Style="{StaticResource Field}">
                                     <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.SecurityDescriptorSDDL}" />
-                                    <TextBox Style="{StaticResource Input}" FontFamily="{StaticResource MonoFont}" Text="{Binding SecurityDescriptor, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource Input}" FontFamily="{DynamicResource MonoFont}" Text="{Binding SecurityDescriptor, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <TextBlock Margin="0,8,0,0" Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Dependencies}" />
@@ -416,7 +416,7 @@
                 Width="420"
                 Margin="16,0,0,0"
                 Padding="0"
-                Background="{StaticResource InputBrush}"
+                Background="{DynamicResource InputBrush}"
                 Style="{StaticResource Card}"
                 Visibility="{Binding ShowPreview, Converter={StaticResource BoolToVisibility}}">
                 <Grid>
@@ -431,7 +431,7 @@
                         Margin="6,0"
                         Background="Transparent"
                         BorderThickness="0"
-                        FontFamily="{StaticResource MonoFont}"
+                        FontFamily="{DynamicResource MonoFont}"
                         FontSize="12"
                         HorizontalScrollBarVisibility="Auto"
                         IsReadOnly="True"
@@ -442,15 +442,15 @@
                         Grid.Row="2"
                         Margin="10"
                         Padding="12,10"
-                        Background="#2A1B1F"
-                        BorderBrush="{StaticResource HealthBrokenBrush}"
+                        Background="{DynamicResource DangerSoftBrush}"
+                        BorderBrush="{DynamicResource HealthBrokenBrush}"
                         BorderThickness="1"
                         CornerRadius="8"
                         Visibility="{Binding Problems.Count, Converter={StaticResource CountToVisibility}}">
                         <ItemsControl ItemsSource="{Binding Problems}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <TextBlock Margin="0,0,0,4" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

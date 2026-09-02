@@ -818,20 +818,44 @@ namespace WinSW.Gui.Model
         }
 
         /// <summary>Mirrors <c>XmlServiceConfig.ParseTimeSpan</c>.</summary>
-        public static bool TryParseTime(string value)
+        public static bool TryParseTime(string value) => TryParseTime(value, out _);
+
+        /// <summary>Mirrors <c>XmlServiceConfig.ParseTimeSpan</c>, including its suffix table.</summary>
+        public static bool TryParseTime(string value, out TimeSpan result)
         {
+            result = TimeSpan.Zero;
             value = value.Trim();
-            foreach (string suffix in TimeSuffixes)
+
+            foreach (var (suffix, milliseconds) in SuffixMilliseconds)
             {
                 if (value.EndsWith(suffix, StringComparison.Ordinal))
                 {
                     string number = value.Substring(0, value.Length - suffix.Length).Trim();
-                    return int.TryParse(number, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+                    if (!int.TryParse(number, NumberStyles.Integer, CultureInfo.InvariantCulture, out int count))
+                    {
+                        return false;
+                    }
+
+                    result = TimeSpan.FromMilliseconds(count * milliseconds);
+                    return true;
                 }
             }
 
-            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+            if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int plain))
+            {
+                return false;
+            }
+
+            result = TimeSpan.FromMilliseconds(plain);
+            return true;
         }
+
+        private static readonly (string Suffix, long Milliseconds)[] SuffixMilliseconds =
+        {
+            ("ms", 1L), ("secs", 1000L), ("sec", 1000L), ("mins", 60_000L), ("min", 60_000L),
+            ("hours", 3_600_000L), ("hour", 3_600_000L), ("hrs", 3_600_000L), ("hr", 3_600_000L),
+            ("days", 86_400_000L), ("day", 86_400_000L),
+        };
 
         /// <summary>Renders the configuration as it would be written, for the live preview.</summary>
         public string ToXmlString()

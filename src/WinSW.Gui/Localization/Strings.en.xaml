@@ -234,11 +234,8 @@
     <sys:String x:Key="M.Wiz.Installing">Installing '{0}'…</sys:String>
     <sys:String x:Key="M.Wiz.InstallDeclined">Elevation was declined. The configuration was written, but the service was not installed.</sys:String>
     <sys:String x:Key="M.Wiz.InstallFailed">Installation failed.</sys:String>
-    <sys:String x:Key="M.Wiz.Starting">Starting '{0}'…</sys:String>
     <sys:String x:Key="M.Wiz.InstalledStarted">'{0}' was installed and started.</sys:String>
-    <sys:String x:Key="M.Wiz.InstalledStartFailed">'{0}' was installed, but starting it failed: {1}.</sys:String>
     <sys:String x:Key="M.Wiz.Installed">'{0}' was installed.</sys:String>
-    <sys:String x:Key="M.Wiz.ElevationDeclinedShort">elevation was declined</sys:String>
     <sys:String x:Key="M.Nav.Services">Services</sys:String>
     <sys:String x:Key="M.Nav.ServicesSub">Status and control</sys:String>
     <sys:String x:Key="M.Nav.Config">Configuration</sys:String>
@@ -270,5 +267,41 @@
     <sys:String x:Key="M.Val.KeepFiles">Files to keep</sys:String>
     <sys:String x:Key="M.Val.SizeThreshold">Size threshold</sys:String>
     <sys:String x:Key="M.Val.ZipDays">Zip older than (days)</sys:String>
+
+    <sys:String x:Key="M.Cli.TimedOut">'winsw {0}' did not finish within {1} seconds. The service may be stuck.</sys:String>
+    <sys:String x:Key="M.Cli.HasDependents">Other services depend on this one.</sys:String>
+    <sys:String x:Key="M.Tray.Open">Open WinSW</sys:String>
+    <sys:String x:Key="M.Tray.Exit">Exit</sys:String>
+    <sys:String x:Key="M.Dash.DependentsTitle">Stop dependent services too?</sys:String>
+    <sys:String x:Key="M.Dash.DependentsBody">Other services depend on '{0}'. Stopping it will stop them as well.</sys:String>
+    <sys:String x:Key="M.Dash.DependentsAction">Stop all</sys:String>
+    <sys:String x:Key="M.Dash.TimeoutTitle">The service is not responding</sys:String>
+    <sys:String x:Key="M.Dash.TimeoutBody">'winsw {0}' for '{1}' did not finish. Terminate the service process tree now?</sys:String>
+    <sys:String x:Key="M.Dash.TimeoutAction">Terminate</sys:String>
+    <sys:String x:Key="M.Dash.UnexpectedStopTitle">Service stopped unexpectedly</sys:String>
+    <sys:String x:Key="M.Dash.UnexpectedStopBody">'{0}' is no longer running.</sys:String>
+    <sys:String x:Key="M.Dash.Rescanned">Service list updated: {0} added, {1} removed.</sys:String>
+    <sys:String x:Key="M.Shell.RestartElevated">Restart as administrator</sys:String>
+    <sys:String x:Key="M.Shell.Theme">Theme</sys:String>
+    <sys:String x:Key="M.Theme.System">System</sys:String>
+    <sys:String x:Key="M.Theme.Light">Light</sys:String>
+    <sys:String x:Key="M.Theme.Dark">Dark</sys:String>
+    <sys:String x:Key="M.Shell.MinimizeToTray">Minimize to the tray</sys:String>
+    <sys:String x:Key="M.Shell.NotifyOnStop">Notify when a service stops unexpectedly</sys:String>
+    <sys:String x:Key="M.Log.Encoding">Encoding</sys:String>
+    <sys:String x:Key="M.Enc.Auto">Auto</sys:String>
+    <sys:String x:Key="M.Enc.Utf8">UTF-8</sys:String>
+    <sys:String x:Key="M.Enc.Ansi">System (GBK / ANSI)</sys:String>
+    <sys:String x:Key="M.Log.OutputTab">Output</sys:String>
+    <sys:String x:Key="M.Log.EventsTab">Windows events</sys:String>
+    <sys:String x:Key="M.Log.RefreshEvents">Refresh events</sys:String>
+    <sys:String x:Key="M.Log.NoEvents">No events for this service in the Application or System log.</sys:String>
+    <sys:String x:Key="M.Log.EventsLoaded">{0} events.</sys:String>
+    <sys:String x:Key="M.Log.EventsLoading">Reading the event log…</sys:String>
+    <sys:String x:Key="M.Log.Detected">Detected: {0}</sys:String>
+    <sys:String x:Key="M.Editor.SavedElevated">Saved to {0} with administrator rights.</sys:String>
+    <sys:String x:Key="M.Editor.ElevatedSaveDeclined">Elevation was declined, so the file was not written.</sys:String>
+    <sys:String x:Key="M.Wiz.NotWrapper">'{0}' does not look like a WinSW executable: its product name is not 'Windows Service Wrapper'.</sys:String>
+    <sys:String x:Key="M.Wiz.InstallingStarting">Installing and starting '{0}'…</sys:String>
 
 </ResourceDictionary>

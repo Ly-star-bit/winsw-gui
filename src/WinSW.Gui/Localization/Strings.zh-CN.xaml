@@ -234,11 +234,8 @@
     <sys:String x:Key="M.Wiz.Installing">正在安装“{0}”…</sys:String>
     <sys:String x:Key="M.Wiz.InstallDeclined">已拒绝提权。配置已写入，但服务未安装。</sys:String>
     <sys:String x:Key="M.Wiz.InstallFailed">安装失败。</sys:String>
-    <sys:String x:Key="M.Wiz.Starting">正在启动“{0}”…</sys:String>
     <sys:String x:Key="M.Wiz.InstalledStarted">“{0}”已安装并启动。</sys:String>
-    <sys:String x:Key="M.Wiz.InstalledStartFailed">“{0}”已安装，但启动失败：{1}。</sys:String>
     <sys:String x:Key="M.Wiz.Installed">“{0}”已安装。</sys:String>
-    <sys:String x:Key="M.Wiz.ElevationDeclinedShort">已拒绝提权</sys:String>
     <sys:String x:Key="M.Nav.Services">服务</sys:String>
     <sys:String x:Key="M.Nav.ServicesSub">状态与控制</sys:String>
     <sys:String x:Key="M.Nav.Config">配置</sys:String>
@@ -270,5 +267,41 @@
     <sys:String x:Key="M.Val.KeepFiles">保留文件数</sys:String>
     <sys:String x:Key="M.Val.SizeThreshold">大小阈值</sys:String>
     <sys:String x:Key="M.Val.ZipDays">压缩多少天前的日志</sys:String>
+
+    <sys:String x:Key="M.Cli.TimedOut">winsw {0} 在 {1} 秒内未完成，服务可能已卡住。</sys:String>
+    <sys:String x:Key="M.Cli.HasDependents">有其它服务依赖此服务。</sys:String>
+    <sys:String x:Key="M.Tray.Open">打开 WinSW</sys:String>
+    <sys:String x:Key="M.Tray.Exit">退出</sys:String>
+    <sys:String x:Key="M.Dash.DependentsTitle">连同依赖服务一起停止？</sys:String>
+    <sys:String x:Key="M.Dash.DependentsBody">有其它服务依赖“{0}”。停止它会一并停止那些服务。</sys:String>
+    <sys:String x:Key="M.Dash.DependentsAction">全部停止</sys:String>
+    <sys:String x:Key="M.Dash.TimeoutTitle">服务无响应</sys:String>
+    <sys:String x:Key="M.Dash.TimeoutBody">对“{1}”执行的 winsw {0} 未能完成。现在强制结束服务进程树？</sys:String>
+    <sys:String x:Key="M.Dash.TimeoutAction">强制结束</sys:String>
+    <sys:String x:Key="M.Dash.UnexpectedStopTitle">服务意外停止</sys:String>
+    <sys:String x:Key="M.Dash.UnexpectedStopBody">“{0}”已停止运行。</sys:String>
+    <sys:String x:Key="M.Dash.Rescanned">服务列表已更新：新增 {0}，移除 {1}。</sys:String>
+    <sys:String x:Key="M.Shell.RestartElevated">以管理员身份重新启动</sys:String>
+    <sys:String x:Key="M.Shell.Theme">主题</sys:String>
+    <sys:String x:Key="M.Theme.System">跟随系统</sys:String>
+    <sys:String x:Key="M.Theme.Light">浅色</sys:String>
+    <sys:String x:Key="M.Theme.Dark">深色</sys:String>
+    <sys:String x:Key="M.Shell.MinimizeToTray">最小化到托盘</sys:String>
+    <sys:String x:Key="M.Shell.NotifyOnStop">服务意外停止时通知</sys:String>
+    <sys:String x:Key="M.Log.Encoding">编码</sys:String>
+    <sys:String x:Key="M.Enc.Auto">自动</sys:String>
+    <sys:String x:Key="M.Enc.Utf8">UTF-8</sys:String>
+    <sys:String x:Key="M.Enc.Ansi">系统（GBK / ANSI）</sys:String>
+    <sys:String x:Key="M.Log.OutputTab">输出</sys:String>
+    <sys:String x:Key="M.Log.EventsTab">Windows 事件</sys:String>
+    <sys:String x:Key="M.Log.RefreshEvents">刷新事件</sys:String>
+    <sys:String x:Key="M.Log.NoEvents">应用程序/系统日志中没有此服务的事件。</sys:String>
+    <sys:String x:Key="M.Log.EventsLoaded">{0} 条事件。</sys:String>
+    <sys:String x:Key="M.Log.EventsLoading">正在读取事件日志…</sys:String>
+    <sys:String x:Key="M.Log.Detected">检测到：{0}</sys:String>
+    <sys:String x:Key="M.Editor.SavedElevated">已以管理员权限保存到 {0}。</sys:String>
+    <sys:String x:Key="M.Editor.ElevatedSaveDeclined">已拒绝提权，文件未写入。</sys:String>
+    <sys:String x:Key="M.Wiz.NotWrapper">“{0}”看起来不是 WinSW 可执行文件：产品名不是 Windows Service Wrapper。</sys:String>
+    <sys:String x:Key="M.Wiz.InstallingStarting">正在安装并启动“{0}”…</sys:String>
 
 </ResourceDictionary>

@@ -1,6 +1,8 @@
+using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 using WinSW.Gui.Localization;
+using WinSW.Gui.Theme;
 
 namespace WinSW.Gui
 {
@@ -12,8 +14,13 @@ namespace WinSW.Gui
             // which is what an unhandled exception on the dispatcher otherwise produces.
             this.DispatcherUnhandledException += OnDispatcherUnhandledException;
 
+            // GBK and the other legacy code pages are not in .NET's default encoding set;
+            // the log viewer needs them for output from console programs.
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
             // Before base.OnStartup, which creates the main window from StartupUri.
             Localizer.Initialize();
+            ThemeManager.Initialize();
 
             base.OnStartup(e);
         }

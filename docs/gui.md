@@ -13,9 +13,35 @@ It is a separate program. The wrapper binary is unchanged and does not depend on
 | **Services** | Lists WinSW-managed services with live status and process ID, the process tree of the running service, and Start / Stop / Restart / Apply config / Terminate / Uninstall. |
 | **Configuration** | A form over the XML configuration file with live validation and a preview of exactly what will be written. Comments and formatting in an existing file are preserved. Can push the change to an installed service with `winsw refresh`. |
 | **Logs** | Tails the service's log files (including rolled files) with filtering, follow mode and pause. |
-| **New service** | A four-step wizard: pick the wrapper and the program, describe the service, choose logging and recovery, then write the configuration and install it. |
+| **New service** | A four-step wizard: pick the wrapper and the program, describe the service, choose logging and recovery, then write the configuration and install it — one elevation prompt covers both install and start. |
+
+Across the pages:
+
+- **Encoding-aware logs.** Console programs on Windows write the system code page (GBK on
+  Chinese systems) unless they opt into UTF-8, and the wrapper stores their bytes verbatim.
+  The viewer detects UTF-8 versus the ANSI page per file and lets you force either.
+- **Windows events.** The Logs page has a tab with the Application and System log records
+  about the service, which is where "why did it not start" is usually answered.
+- **Careful stops.** `stop` and `restart` do not pass `--force`; if other services depend on
+  the one being stopped, the GUI asks before stopping them too. A service that does not
+  finish within its `stoptimeout` plus a margin is reported as stuck, with Terminate offered.
+- **Background rescan** every 30 seconds picks up services installed by other tools.
+- **Notifications** when a service stops without the GUI having asked it to, optionally
+  with the window minimised to the tray.
+- **Light, dark or system theme**, remembered window placement, F5 / Ctrl+S / Esc.
+- **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
+  file is staged and copied into place with one elevation prompt. There is also a
+  "Restart as administrator" button in the rail for prompt-free sessions.
 
 ## Building
+
+Tests live in `WinSW.Gui.Tests` (configuration round-trip, command-line splitting, log
+tailing and encoding detection) and run on the Windows CI runner:
+
+```powershell
+cd src
+dotnet test WinSW.Gui.Tests
+```
 
 The project targets `net7.0-windows`, the same SDK the repository's CI uses, and lives in
 the main solution.
@@ -32,7 +58,7 @@ To produce one self-contained executable:
 dotnet publish WinSW.Gui -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
-The result lands under `artifacts\bin\WinSW.Gui\Release\net7.0-windows\win-x64\publish\`.
+The result lands under `artifacts\bin\WinSW.Gui\Release\net7.0-windows\win-x64\publish\`. CI also publishes a `win-arm64` build.
 
 ## How it finds services
 

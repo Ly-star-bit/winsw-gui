@@ -8,6 +8,7 @@ on:
     tags: [ "gui-v*" ]
     paths:
       - "src/WinSW.Gui/**"
+      - "src/WinSW.Gui.Tests/**"
       - "src/WinSW.sln"
       - "Directory.Build.props"
       - ".github/workflows/gui.yml"
@@ -35,7 +36,7 @@ jobs:
 
       - name: Restore
         working-directory: ./src
-        run: dotnet restore WinSW.Gui
+        run: dotnet restore WinSW.Gui.Tests
 
       - name: Build
         working-directory: ./src
@@ -64,6 +65,10 @@ jobs:
 
       # Self-contained means the whole .NET runtime plus the WPF/WinForms frameworks ride
       # along (~155 MB uncompressed); WPF cannot be trimmed, so compression is the lever.
+      - name: Test
+        working-directory: ./src
+        run: dotnet test WinSW.Gui.Tests -c Release --no-restore --logger "console;verbosity=normal"
+
       - name: Publish (x64, self-contained, single file)
         working-directory: ./src
         run: >
@@ -79,11 +84,26 @@ jobs:
           -p:PublishSingleFile=true
           -o ../artifacts/gui/win-x64-fdd
 
+      - name: Publish (arm64, self-contained, single file)
+        working-directory: ./src
+        run: >
+          dotnet publish WinSW.Gui -c Release -r win-arm64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o ../artifacts/gui/win-arm64
+
       - name: Upload self-contained build
         uses: actions/upload-artifact@v4
         with:
           name: WinSW.Gui-win-x64
           path: artifacts/gui/win-x64/WinSW.Gui.exe
+          if-no-files-found: error
+
+      - name: Upload arm64 build
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinSW.Gui-win-arm64
+          path: artifacts/gui/win-arm64/WinSW.Gui.exe
           if-no-files-found: error
 
       - name: Upload framework-dependent build
@@ -101,6 +121,7 @@ jobs:
           New-Item -ItemType Directory -Force release | Out-Null
           Copy-Item artifacts/gui/win-x64/WinSW.Gui.exe release/WinSW.Gui-win-x64.exe
           Copy-Item artifacts/gui/win-x64-fdd/WinSW.Gui.exe release/WinSW.Gui-win-x64-framework-dependent.exe
+          Copy-Item artifacts/gui/win-arm64/WinSW.Gui.exe release/WinSW.Gui-win-arm64.exe
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/gui-v')
