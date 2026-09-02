@@ -35,6 +35,9 @@
             <DataTemplate DataType="{x:Type vm:WizardViewModel}">
                 <views:WizardView />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:RemoteViewModel}">
+                <views:RemoteView />
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

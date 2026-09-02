@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
@@ -37,6 +39,9 @@ namespace WinSW.Gui.ViewModels
         private string statusMessage = string.Empty;
         private bool isBusy;
         private string configPreview = string.Empty;
+        private bool brandWrapper;
+        private string manufacturer = string.Empty;
+        private ServiceEntry? cloneSource;
 
         public WizardViewModel()
         {
@@ -110,6 +115,51 @@ namespace WinSW.Gui.ViewModels
 
         public string[] StartModes => ServiceConfigModel.StartModes;
 
+        /// <summary>Installed services the wizard can start from; supplied by the shell.</summary>
+        public IEnumerable<ServiceEntry> Sources { get; set; } = Array.Empty<ServiceEntry>();
+
+        /// <summary>Picking one copies its program, arguments and settings into the wizard.</summary>
+        public ServiceEntry? CloneSource
+        {
+            get => this.cloneSource;
+            set
+            {
+                if (this.Set(ref this.cloneSource, value) && value != null)
+                {
+                    this.PrefillFrom(value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Copy the wrapper as <c>&lt;service id&gt;.exe</c> with the given company name in its
+        /// version information, so the service shows up under its own name in Task Manager.
+        /// </summary>
+        public bool BrandWrapper
+        {
+            get => this.brandWrapper;
+            set
+            {
+                if (this.Set(ref this.brandWrapper, value))
+                {
+                    this.Raise(nameof(this.ConfigPath));
+                    this.Raise(nameof(this.EffectiveWrapperPath));
+                }
+            }
+        }
+
+        public string Manufacturer
+        {
+            get => this.manufacturer;
+            set => this.Set(ref this.manufacturer, value);
+        }
+
+        /// <summary>The wrapper that will actually be registered: the branded copy, or the original.</summary>
+        public string EffectiveWrapperPath =>
+            this.brandWrapper && !string.IsNullOrWhiteSpace(this.serviceId) && !string.IsNullOrWhiteSpace(this.wrapperPath)
+                ? Path.Combine(Path.GetDirectoryName(this.wrapperPath) ?? string.Empty, this.serviceId + ".exe")
+                : this.wrapperPath;
+
         public string[] LogModes { get; } = { "append", "reset", "roll-by-size", "roll-by-time", "none" };
 
         public int Step
@@ -152,6 +202,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.wrapperPath, value))
                 {
+                    this.Raise(nameof(this.EffectiveWrapperPath));
                     this.RefreshCommands();
                 }
             }
@@ -192,6 +243,7 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.serviceId, value))
                 {
                     this.Raise(nameof(this.ConfigPath));
+                    this.Raise(nameof(this.EffectiveWrapperPath));
                     this.RefreshCommands();
                 }
             }
@@ -427,6 +479,23 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 string configPath = this.ConfigPath;
+                string wrapper = this.wrapperPath;
+
+                if (this.brandWrapper)
+                {
+                    string branded = this.EffectiveWrapperPath;
+                    this.StatusMessage = Localizer.Format("M.Wiz.Branding", branded);
+
+                    var customized = await WinSwCli.CustomizeAsync(this.wrapperPath, branded, string.IsNullOrWhiteSpace(this.manufacturer) ? model.DisplayName ?? model.Id : this.manufacturer.Trim()).ConfigureAwait(true);
+                    if (!customized.Succeeded)
+                    {
+                        this.StatusMessage = Localizer.Format("M.Wiz.BrandFailed", customized.Error ?? string.Empty);
+                        return;
+                    }
+
+                    wrapper = branded;
+                }
+
                 this.StatusMessage = Localizer.Format("M.Wiz.Writing", configPath);
 
                 if (!await this.WriteConfigurationAsync(model, configPath).ConfigureAwait(true))
@@ -438,8 +507,8 @@ namespace WinSW.Gui.ViewModels
                 // mean a second UAC dialog for what the user sees as one action.
                 this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstallingStarting" : "M.Wiz.Installing", model.Id);
                 var result = this.startAfterInstall
-                    ? await WinSwCli.InstallAndStartAsync(this.wrapperPath, configPath).ConfigureAwait(true)
-                    : await WinSwCli.InstallAsync(this.wrapperPath, configPath).ConfigureAwait(true);
+                    ? await WinSwCli.InstallAndStartAsync(wrapper, configPath).ConfigureAwait(true)
+                    : await WinSwCli.InstallAsync(wrapper, configPath).ConfigureAwait(true);
 
                 if (!result.Succeeded)
                 {
@@ -502,8 +571,47 @@ namespace WinSW.Gui.ViewModels
             return false;
         }
 
+        private void PrefillFrom(ServiceEntry entry)
+        {
+            if (entry.ConfigPath is null)
+            {
+                return;
+            }
+
+            ServiceConfigModel model;
+            try
+            {
+                model = ServiceConfigModel.Load(entry.ConfigPath);
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
+            {
+                this.StatusMessage = Localizer.Format("M.Wiz.CloneFailed", e.Message);
+                return;
+            }
+
+            this.WrapperPath = entry.WrapperPath;
+            this.TargetPath = model.Executable;
+            this.Arguments = model.Arguments ?? string.Empty;
+            this.WorkingDirectory = model.WorkingDirectory ?? string.Empty;
+            this.ServiceId = model.Id + "-2";
+            this.DisplayName = string.IsNullOrWhiteSpace(model.DisplayName) ? model.Id + " (2)" : model.DisplayName + " (2)";
+            this.Description = model.Description ?? string.Empty;
+            this.StartMode = model.StartMode;
+            this.DelayedAutoStart = model.DelayedAutoStart;
+            this.LogMode = Array.IndexOf(this.LogModes, model.LogMode) >= 0 ? model.LogMode : "roll-by-size";
+            this.LogPath = model.LogPath ?? string.Empty;
+            this.SizeThresholdKb = model.SizeThreshold ?? "10240";
+            this.KeepFiles = model.KeepFiles ?? "8";
+            this.RestartOnFailure = model.FailureActions.Count > 0;
+            this.RestartDelay = model.FailureActions.FirstOrDefault()?.Delay ?? "10 sec";
+            this.StatusMessage = Localizer.Format("M.Wiz.Cloned", entry.ServiceName);
+        }
+
         private void Reset()
         {
+            this.CloneSource = null;
+            this.BrandWrapper = false;
+            this.Manufacturer = string.Empty;
             this.Step = 1;
             this.WrapperPath = string.Empty;
             this.TargetPath = string.Empty;

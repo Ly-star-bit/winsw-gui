@@ -1,0 +1,54 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Used while Windows high-contrast mode is on. Pure black on white with strong
+        borders and no translucency; hue is kept only where it carries meaning.
+    -->
+
+    <SolidColorBrush x:Key="SurfaceBrush" Color="#000000" />
+    <SolidColorBrush x:Key="CardBrush" Color="#000000" />
+    <SolidColorBrush x:Key="CardHoverBrush" Color="#1A1A1A" />
+    <SolidColorBrush x:Key="CardBorderBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="RailBrush" Color="#000000" />
+    <SolidColorBrush x:Key="InputBrush" Color="#000000" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#3A0000" />
+    <SolidColorBrush x:Key="OverlayBrush" Color="#E0000000" />
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#E0E0E0" />
+
+    <Color x:Key="AccentColorStart">#FFFF00</Color>
+    <Color x:Key="AccentColorEnd">#FFFF00</Color>
+    <SolidColorBrush x:Key="AccentBrush" Color="#FFFF00" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#333300" />
+
+    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Offset="0" Color="{StaticResource AccentColorStart}" />
+        <GradientStop Offset="1" Color="{StaticResource AccentColorEnd}" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="HeroGradientBrush" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Offset="0" Color="#000000" />
+        <GradientStop Offset="1" Color="#000000" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="HealthRunningBrush" Color="#00FF00" />
+    <SolidColorBrush x:Key="HealthStoppedBrush" Color="#C0C0C0" />
+    <SolidColorBrush x:Key="HealthPendingBrush" Color="#FFFF00" />
+    <SolidColorBrush x:Key="HealthBrokenBrush" Color="#FF4040" />
+    <SolidColorBrush x:Key="HealthUnknownBrush" Color="#808080" />
+
+    <SolidColorBrush x:Key="LogErrorBrush" Color="#FF6060" />
+    <SolidColorBrush x:Key="LogWarnBrush" Color="#FFFF00" />
+    <SolidColorBrush x:Key="LogInfoBrush" Color="#FFFFFF" />
+
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+
+    <CornerRadius x:Key="CardCornerRadius">4</CornerRadius>
+
+</ResourceDictionary>

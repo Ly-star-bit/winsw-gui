@@ -118,4 +118,71 @@ namespace WinSW.Gui.Model
             set => this.Set(ref this.serviceName, value);
         }
     }
+
+    /// <summary>
+    /// One of the <c>prestart / poststart / prestop / poststop</c> hooks: a program the wrapper
+    /// runs around the service's own lifecycle, with optional output capture.
+    /// </summary>
+    public sealed class ProcessCommandModel : ObservableObject
+    {
+        private string? executable;
+        private string? arguments;
+        private string? stdoutPath;
+        private string? stderrPath;
+
+        public string? Executable
+        {
+            get => this.executable;
+            set => this.Set(ref this.executable, value);
+        }
+
+        public string? Arguments
+        {
+            get => this.arguments;
+            set => this.Set(ref this.arguments, value);
+        }
+
+        public string? StdoutPath
+        {
+            get => this.stdoutPath;
+            set => this.Set(ref this.stdoutPath, value);
+        }
+
+        public string? StderrPath
+        {
+            get => this.stderrPath;
+            set => this.Set(ref this.stderrPath, value);
+        }
+
+        /// <summary>An empty hook is omitted from the file entirely.</summary>
+        public bool IsEmpty => string.IsNullOrWhiteSpace(this.executable);
+
+        public void Clear()
+        {
+            this.Executable = null;
+            this.Arguments = null;
+            this.StdoutPath = null;
+            this.StderrPath = null;
+        }
+    }
+
+    /// <summary>A <c>&lt;sharedDirectoryMapping&gt;&lt;map label="" uncpath="" /&gt;</c> entry.</summary>
+    public sealed class DriveMapping : ObservableObject
+    {
+        private string label = "N:";
+        private string uncPath = string.Empty;
+
+        /// <summary>The drive letter with colon, e.g. <c>N:</c>.</summary>
+        public string Label
+        {
+            get => this.label;
+            set => this.Set(ref this.label, value);
+        }
+
+        public string UncPath
+        {
+            get => this.uncPath;
+            set => this.Set(ref this.uncPath, value);
+        }
+    }
 }

@@ -32,6 +32,33 @@ Across the pages:
 - **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
   file is staged and copied into place with one elevation prompt. There is also a
   "Restart as administrator" button in the rail for prompt-free sessions.
+- **Try run**: the Configuration page can launch the program with the configured arguments,
+  working directory and environment as the current user, without installing anything, and
+  show its output — the fastest way to find a bad path or argument.
+- **Full configuration coverage**: lifecycle hooks (`prestart` … `poststop`), network drive
+  mappings, and the `<extensions>` element as raw XML. The preview pane can also be switched
+  to a raw XML editor and applied back to the form.
+- **Runtime metrics** in the detail panel: uptime, CPU, memory, handles, last exit code and a
+  CPU sparkline, plus what the service depends on and what depends on it.
+- **Batch operations**: Ctrl/Shift-select several services and start, stop or restart them
+  under one elevation prompt.
+- **Clone**: the wizard can start from an existing service; it can also brand the wrapper
+  (`winsw customize`) so the service appears under its own name in Task Manager.
+- **Export**: copies the wrapper, the configuration and a generated `install.ps1` to a folder
+  for a machine without the GUI.
+- **Diagnostics bundle**: one zip with the configuration, log tails, Windows events and
+  versions, for bug reports.
+- **Wrapper upgrades**: the detail panel shows the installed wrapper version against the
+  latest WinSW release and can download and swap it in (stop → replace → start, one prompt).
+- **Remote**: read-only status of services on another computer, through the SCM's RPC
+  interface, with your current credentials.
+- **Command line and Explorer**: `WinSW.Gui.exe myapp.xml` opens that service (or the file in
+  the editor if it is not installed); an optional "Open in WinSW" verb on .xml files is
+  registered per user from the rail.
+- **Accessibility**: high-contrast mode is honoured automatically; controls carry automation
+  names for screen readers.
+- **Updates**: the rail shows when a newer GUI release exists. Each release also carries
+  winget manifests (`winget-manifests.zip`) ready for submission to winget-pkgs.
 
 ## Building
 
@@ -82,7 +109,7 @@ prompts altogether; the rail shows which mode you are in.
 
 ## Language
 
-The interface is available in English and Simplified Chinese. The picker at the bottom of the
+The interface is available in English, Simplified Chinese, Traditional Chinese and Japanese. The picker at the bottom of the
 navigation rail switches the whole UI in place, without a restart, and the choice is remembered
 in `%LOCALAPPDATA%\WinSW.Gui\settings.json`. With no saved choice the GUI follows the
 Windows display language.

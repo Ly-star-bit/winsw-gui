@@ -86,14 +86,11 @@ namespace WinSW.Gui
             string text = value as string ?? string.Empty;
 
             string key =
-                Contains(text, "error") || Contains(text, "exception") || Contains(text, "fatal") ? "LogErrorBrush" :
-                Contains(text, "warn") ? "LogWarnBrush" :
+                Services.LogSeverity.IsError(text) ? "LogErrorBrush" :
+                Services.LogSeverity.IsWarning(text) ? "LogWarnBrush" :
                 "LogInfoBrush";
 
             return Application.Current.TryFindResource(key) as Brush ?? Brushes.Gainsboro;
-
-            static bool Contains(string haystack, string needle) =>
-                haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
         }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
@@ -105,6 +102,46 @@ namespace WinSW.Gui
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             Equals(value?.ToString(), parameter?.ToString());
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Turns a list of samples (0–100) into the points of a sparkline. The parameter is
+    /// "width,height"; defaults suit the detail panel's metric card.
+    /// </summary>
+    public sealed class SparklineConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            double width = 140;
+            double height = 32;
+            if (parameter is string spec)
+            {
+                var parts = spec.Split(',');
+                if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double w) && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double h))
+                {
+                    width = w;
+                    height = h;
+                }
+            }
+
+            var points = new PointCollection();
+            if (value is not System.Collections.Generic.IReadOnlyList<double> samples || samples.Count < 2)
+            {
+                return points;
+            }
+
+            double step = width / (samples.Count - 1);
+            for (int i = 0; i < samples.Count; i++)
+            {
+                double y = height - (Math.Clamp(samples[i], 0, 100) / 100.0 * (height - 2)) - 1;
+                points.Add(new Point(i * step, y));
+            }
+
+            return points;
+        }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             throw new NotSupportedException();

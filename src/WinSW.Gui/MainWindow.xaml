@@ -56,12 +56,16 @@
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="WinSW" />
-                            <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{DynamicResource S.ServiceWrapper}" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{DynamicResource S.ServiceWrapper}" />
+                                <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding GuiVersion}" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
                     <ListBox
                         Grid.Row="1"
+                        AutomationProperties.Name="Navigation"
                         ItemContainerStyle="{StaticResource NavItem}"
                         ItemsSource="{Binding Items}"
                         SelectedItem="{Binding SelectedItem}"
@@ -109,7 +113,16 @@
                         </Grid>
 
                         <CheckBox Margin="0,0,0,4" FontSize="12" Content="{DynamicResource M.Shell.MinimizeToTray}" IsChecked="{Binding MinimizeToTray}" />
-                        <CheckBox Margin="0,0,0,10" FontSize="12" Content="{DynamicResource M.Shell.NotifyOnStop}" IsChecked="{Binding NotifyOnUnexpectedStop}" />
+                        <CheckBox Margin="0,0,0,4" FontSize="12" Content="{DynamicResource M.Shell.NotifyOnStop}" IsChecked="{Binding NotifyOnUnexpectedStop}" />
+                        <CheckBox Margin="0,0,0,10" FontSize="12" Content="{DynamicResource M.Shell.ContextMenu}" IsChecked="{Binding ContextMenuRegistered}" ToolTip="{DynamicResource M.Shell.ContextMenuTip}" />
+
+                        <!-- Newer GUI release available -->
+                        <Border Margin="0,0,0,8" Padding="12,8" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8" Visibility="{Binding HasGuiUpdate, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding GuiUpdateText}" TextWrapping="Wrap" />
+                                <Button Margin="0,6,0,0" HorizontalAlignment="Left" Padding="10,4" Command="{Binding OpenGuiUpdateCommand}" Content="{DynamicResource M.Shell.OpenRelease}" />
+                            </StackPanel>
+                        </Border>
 
                         <Border Padding="12,10" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8">
                             <StackPanel>

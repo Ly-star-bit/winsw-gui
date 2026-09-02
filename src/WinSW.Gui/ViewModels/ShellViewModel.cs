@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
@@ -66,13 +67,16 @@ namespace WinSW.Gui.ViewModels
         private object? currentPage;
         private Language selectedLanguage = Localizer.Current;
         private ThemeOption selectedTheme;
+        private ReleaseInfo? guiUpdate;
+        private bool contextMenuRegistered = ShellIntegration.IsRegistered;
 
         public ShellViewModel()
         {
             this.Dashboard = new DashboardViewModel();
             this.Editor = new ConfigEditorViewModel();
             this.Logs = new LogViewerViewModel();
-            this.Wizard = new WizardViewModel();
+            this.Wizard = new WizardViewModel { Sources = this.Dashboard.Services };
+            this.Remote = new RemoteViewModel();
 
             this.Items = new ObservableCollection<NavigationItem>
             {
@@ -80,6 +84,7 @@ namespace WinSW.Gui.ViewModels
                 new("", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
                 new("", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
                 new("", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
+                new("", "M.Nav.Remote", "M.Nav.RemoteSub", this.Remote),
             };
 
             this.Themes = new[]
@@ -91,6 +96,21 @@ namespace WinSW.Gui.ViewModels
             this.selectedTheme = this.Themes.First(t => t.Choice == ThemeManager.Current);
 
             this.RestartElevatedCommand = new RelayCommand(() => Elevation.RestartElevated(), () => !this.IsElevated);
+            this.OpenGuiUpdateCommand = new RelayCommand(() =>
+            {
+                if (this.guiUpdate != null)
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(this.guiUpdate.Url) { UseShellExecute = true });
+                }
+            });
+
+            this.Dashboard.OpenUninstalledConfigRequested += path =>
+            {
+                this.Editor.Load(path);
+                this.Navigate(this.Editor);
+            };
+
+            _ = this.CheckGuiUpdateAsync();
 
             this.Dashboard.OpenConfigRequested += entry =>
             {
@@ -126,6 +146,7 @@ namespace WinSW.Gui.ViewModels
 
                 this.Raise(nameof(this.ElevationLabel));
                 this.Raise(nameof(this.ElevationHint));
+                this.Raise(nameof(this.GuiUpdateText));
             };
         }
 
@@ -136,6 +157,79 @@ namespace WinSW.Gui.ViewModels
         public LogViewerViewModel Logs { get; }
 
         public WizardViewModel Wizard { get; }
+
+        public RemoteViewModel Remote { get; }
+
+        public RelayCommand OpenGuiUpdateCommand { get; }
+
+        public string GuiVersion => "v" + UpdateChecker.CurrentGuiVersion;
+
+        /// <summary>A newer GUI release, when one exists and the network allowed asking.</summary>
+        public ReleaseInfo? GuiUpdate
+        {
+            get => this.guiUpdate;
+            private set
+            {
+                if (this.Set(ref this.guiUpdate, value))
+                {
+                    this.Raise(nameof(this.HasGuiUpdate));
+                    this.Raise(nameof(this.GuiUpdateText));
+                }
+            }
+        }
+
+        public bool HasGuiUpdate => this.guiUpdate != null;
+
+        public string GuiUpdateText => this.guiUpdate is null ? string.Empty : Localizer.Format("M.Shell.GuiUpdate", this.guiUpdate.Version);
+
+        /// <summary>"Open in WinSW" on the right-click menu of .xml files, for this user.</summary>
+        public bool ContextMenuRegistered
+        {
+            get => this.contextMenuRegistered;
+            set
+            {
+                if (this.contextMenuRegistered == value)
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (value)
+                    {
+                        ShellIntegration.Register(Localizer.Get("M.Shell.OpenInWinSW"));
+                    }
+                    else
+                    {
+                        ShellIntegration.Unregister();
+                    }
+
+                    this.contextMenuRegistered = value;
+                }
+                catch (Exception e) when (e is System.Security.SecurityException or System.IO.IOException or UnauthorizedAccessException)
+                {
+                    // HKCU is normally writable; if not, the checkbox simply snaps back.
+                }
+
+                this.Raise();
+            }
+        }
+
+        /// <summary>Handles a configuration path passed on the command line or from the shell verb.</summary>
+        public void OpenStartupPath(string path)
+        {
+            this.Dashboard.OpenConfigPathWhenReady(path);
+            this.Navigate(this.Dashboard);
+        }
+
+        private async Task CheckGuiUpdateAsync()
+        {
+            var latest = await UpdateChecker.LatestGuiAsync().ConfigureAwait(true);
+            if (latest != null && UpdateChecker.IsNewer(latest.Version, UpdateChecker.CurrentGuiVersion))
+            {
+                this.GuiUpdate = latest;
+            }
+        }
 
         public ObservableCollection<NavigationItem> Items { get; }
 
@@ -240,6 +334,9 @@ namespace WinSW.Gui.ViewModels
                     case LogViewerViewModel logs:
                         logs.Deactivate();
                         break;
+                    case RemoteViewModel remote:
+                        remote.Deactivate();
+                        break;
                 }
 
                 switch (value)
@@ -249,6 +346,9 @@ namespace WinSW.Gui.ViewModels
                         break;
                     case LogViewerViewModel logs:
                         logs.Activate();
+                        break;
+                    case RemoteViewModel remote:
+                        remote.Activate();
                         break;
                 }
             }

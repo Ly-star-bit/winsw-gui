@@ -36,6 +36,11 @@ namespace WinSW.Gui
 
             this.RestoreWindowPlacement();
             this.StateChanged += this.OnStateChanged;
+
+            if (App.StartupConfigPath is { } startupPath)
+            {
+                this.shell.OpenStartupPath(startupPath);
+            }
         }
 
         // Window placement -------------------------------------------------------

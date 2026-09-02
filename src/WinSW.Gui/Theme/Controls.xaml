@@ -16,6 +16,7 @@
     <local:CountToVisibilityConverter x:Key="CountToVisibility" />
     <local:LogSeverityToBrushConverter x:Key="LogSeverityToBrush" />
     <local:EqualityToBooleanConverter x:Key="EqualityToBoolean" />
+    <local:SparklineConverter x:Key="Sparkline" />
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
     <!-- Typography -->

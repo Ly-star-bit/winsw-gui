@@ -34,6 +34,18 @@ jobs:
         with:
           dotnet-version: 7.0.x
 
+      # The version comes from the tag (gui-v1.2.3 → 1.2.3); other builds are 0.0.0-ci.<run>.
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $ref = $env:GITHUB_REF_NAME
+          $version = if ($ref -match '^gui-v(\d+\.\d+\.\d+)$') { $Matches[1] } else { '0.0.0' }
+          $suffix = if ($ref -match '^gui-v') { '' } else { '-ci.' + $env:GITHUB_RUN_NUMBER }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "full=$version$suffix" >> $env:GITHUB_OUTPUT
+          Write-Host "Version: $version$suffix"
+
       - name: Restore
         working-directory: ./src
         run: dotnet restore WinSW.Gui.Tests
@@ -42,14 +54,14 @@ jobs:
         working-directory: ./src
         shell: pwsh
         run: |
-          dotnet build WinSW.Gui -c Release --no-restore 2>&1 | Tee-Object -FilePath ../build.log
+          dotnet build WinSW.Gui -c Release --no-restore -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }} 2>&1 | Tee-Object -FilePath ../build.log
           exit $LASTEXITCODE
 
       - name: Test
         working-directory: ./src
         shell: pwsh
         run: |
-          dotnet test WinSW.Gui.Tests -c Release --no-restore --logger "console;verbosity=normal" 2>&1 | Tee-Object -FilePath ../test.log
+          dotnet test WinSW.Gui.Tests -c Release --no-restore -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }} --logger "console;verbosity=normal" 2>&1 | Tee-Object -FilePath ../test.log
           exit $LASTEXITCODE
 
       # Self-contained means the whole .NET runtime plus the WPF/WinForms frameworks ride
@@ -60,6 +72,7 @@ jobs:
           dotnet publish WinSW.Gui -c Release -r win-x64 --self-contained
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64
 
       - name: Publish (x64, framework-dependent)
@@ -67,6 +80,7 @@ jobs:
         run: >
           dotnet publish WinSW.Gui -c Release -r win-x64 --no-self-contained
           -p:PublishSingleFile=true
+          -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64-fdd
 
       - name: Publish (arm64, self-contained, single file)
@@ -75,6 +89,7 @@ jobs:
           dotnet publish WinSW.Gui -c Release -r win-arm64 --self-contained
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
+          -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-arm64
 
       - name: Upload self-contained build
@@ -108,13 +123,32 @@ jobs:
           Copy-Item artifacts/gui/win-x64-fdd/WinSW.Gui.exe release/WinSW.Gui-win-x64-framework-dependent.exe
           Copy-Item artifacts/gui/win-arm64/WinSW.Gui.exe release/WinSW.Gui-win-arm64.exe
 
+      # winget manifests with the real hashes, attached to the release for submission to winget-pkgs.
+      - name: Stage winget manifests
+        if: startsWith(github.ref, 'refs/tags/gui-v')
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.version }}'
+          $x64 = (Get-FileHash release/WinSW.Gui-win-x64.exe -Algorithm SHA256).Hash
+          $arm = (Get-FileHash release/WinSW.Gui-win-arm64.exe -Algorithm SHA256).Hash
+          $out = "release/winget/manifests/l/Ly-star-bit/WinSWGui/$version"
+          New-Item -ItemType Directory -Force $out | Out-Null
+          Get-ChildItem packaging/winget/*.yaml | ForEach-Object {
+            (Get-Content $_.FullName -Raw).Replace('__VERSION__', $version).Replace('__SHA256_X64__', $x64).Replace('__SHA256_ARM64__', $arm) |
+              Set-Content (Join-Path $out $_.Name) -NoNewline
+          }
+          Compress-Archive -Path release/winget/manifests -DestinationPath release/winget-manifests.zip
+          Remove-Item release/winget -Recurse
+
       - name: Release
         if: startsWith(github.ref, 'refs/tags/gui-v')
         uses: softprops/action-gh-release@v2
         with:
           name: WinSW GUI ${{ github.ref_name }}
           generate_release_notes: true
-          files: release/*
+          files: |
+            release/*.exe
+            release/winget-manifests.zip
 
       # Job logs are only readable when signed in. On any failure, file the compiler and test
       # errors as an issue so they can be read (and fixed) without an authenticated session.

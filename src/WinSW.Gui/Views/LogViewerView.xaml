@@ -63,13 +63,30 @@
                     ItemsSource="{Binding Files}"
                     SelectedItem="{Binding SelectedFile}" />
 
-                <TextBox
-                    Grid.Column="1"
-                    Width="220"
-                    Margin="12,0"
-                    VerticalAlignment="Center"
-                    Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"
-                    ToolTip="{DynamicResource S.ShowOnlyLinesContainingThisText}" />
+                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Orientation="Horizontal">
+                    <TextBox
+                        Width="200"
+                        AutomationProperties.Name="{DynamicResource S.ShowOnlyLinesContainingThisText}"
+                        Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="{DynamicResource S.ShowOnlyLinesContainingThisText}">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding FilterInvalid}" Value="True">
+                                        <Setter Property="BorderBrush" Value="{DynamicResource HealthBrokenBrush}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                    <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Log.Regex}" IsChecked="{Binding UseRegex}" />
+                    <Button Margin="10,0,0,0" Padding="10,4" Command="{Binding NextErrorCommand}" ToolTip="{DynamicResource M.Log.NextErrorTip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                            <TextBlock Text="{Binding ErrorCount}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
 
                 <StackPanel Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center" Orientation="Horizontal">
                     <ComboBox MinWidth="150" DisplayMemberPath="Label" ItemsSource="{Binding Encodings}" SelectedItem="{Binding SelectedEncoding}" ToolTip="{DynamicResource M.Log.Encoding}" />

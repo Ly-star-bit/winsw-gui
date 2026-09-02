@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Threading;
@@ -42,6 +43,10 @@ namespace WinSW.Gui.ViewModels
         private string confirmMessage = string.Empty;
         private string confirmActionLabel = "Confirm";
         private Func<Task>? pendingAction;
+        private IReadOnlyList<ServiceEntry> selectedEntries = Array.Empty<ServiceEntry>();
+        private ReleaseInfo? latestWrapper;
+        private bool checkedForWrapperUpdate;
+        private string? pendingConfigPath;
 
         public DashboardViewModel()
         {
@@ -83,6 +88,14 @@ namespace WinSW.Gui.ViewModels
             this.ConfirmCommand = new AsyncRelayCommand(this.ExecuteConfirmedAsync);
             this.CancelConfirmCommand = new RelayCommand(() => this.ConfirmVisible = false);
 
+            this.StartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("start"), () => this.HasMultipleSelected);
+            this.StopSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("stop"), () => this.HasMultipleSelected);
+            this.RestartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("restart"), () => this.HasMultipleSelected);
+
+            this.ExportScriptCommand = new RelayCommand(this.ExportScript, () => this.selectedService?.ConfigPath != null);
+            this.DiagnosticsCommand = new AsyncRelayCommand(this.CreateDiagnosticsAsync, () => this.selectedService != null);
+            this.UpgradeWrapperCommand = new AsyncRelayCommand(this.UpgradeWrapperAsync, () => this.WrapperUpdateAvailable);
+
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
             this.statusTimer.Tick += (_, _) => this.RefreshStatuses();
 
@@ -104,6 +117,9 @@ namespace WinSW.Gui.ViewModels
                 {
                     entry.RefreshLocalized();
                 }
+
+                this.RaiseWrapperUpdate();
+                this.Raise(nameof(this.SelectedCountText));
             };
         }
 
@@ -144,6 +160,67 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand CancelConfirmCommand { get; }
 
+        public AsyncRelayCommand StartSelectedCommand { get; }
+
+        public AsyncRelayCommand StopSelectedCommand { get; }
+
+        public AsyncRelayCommand RestartSelectedCommand { get; }
+
+        public RelayCommand ExportScriptCommand { get; }
+
+        public AsyncRelayCommand DiagnosticsCommand { get; }
+
+        public AsyncRelayCommand UpgradeWrapperCommand { get; }
+
+        /// <summary>Every highlighted row; the view keeps this in step with the list's multi-selection.</summary>
+        public IReadOnlyList<ServiceEntry> SelectedEntries
+        {
+            get => this.selectedEntries;
+            set
+            {
+                this.selectedEntries = value ?? Array.Empty<ServiceEntry>();
+                this.Raise();
+                this.Raise(nameof(this.HasMultipleSelected));
+                this.Raise(nameof(this.SelectedCountText));
+                this.StartSelectedCommand.RaiseCanExecuteChanged();
+                this.StopSelectedCommand.RaiseCanExecuteChanged();
+                this.RestartSelectedCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool HasMultipleSelected => this.selectedEntries.Count > 1;
+
+        public string SelectedCountText => Localizer.Format("M.Dash.SelectedCount", this.selectedEntries.Count);
+
+        // Wrapper updates ------------------------------------------------------
+
+        /// <summary>The newest wrapper release, fetched once per session; null when offline.</summary>
+        public ReleaseInfo? LatestWrapper
+        {
+            get => this.latestWrapper;
+            private set
+            {
+                if (this.Set(ref this.latestWrapper, value))
+                {
+                    this.RaiseWrapperUpdate();
+                }
+            }
+        }
+
+        public bool WrapperUpdateAvailable =>
+            this.latestWrapper != null
+            && this.selectedService != null
+            && !string.IsNullOrEmpty(this.selectedService.WrapperVersion)
+            && UpdateChecker.IsNewer(this.latestWrapper.Version, this.selectedService.WrapperVersion)
+            && WrapperKind.ReleaseAssetFor(this.selectedService.WrapperPath) is { } asset
+            && this.latestWrapper.Assets.ContainsKey(asset);
+
+        public string WrapperUpdateText => this.latestWrapper is null
+            ? string.Empty
+            : this.WrapperUpdateAvailable
+                ? Localizer.Format("M.Dash.WrapperUpdate", this.latestWrapper.Version)
+                : Localizer.Format("M.Dash.WrapperCurrent", this.latestWrapper.Version);
+
         public ServiceEntry? SelectedService
         {
             get => this.selectedService;
@@ -154,9 +231,18 @@ namespace WinSW.Gui.ViewModels
                     this.ProcessTree = null;
                     this.RefreshCommandStates();
                     this.RefreshStatuses();
+                    this.RaiseWrapperUpdate();
                 }
             }
         }
+
+        /// <summary>
+        /// A configuration path given on the command line. Applied after the first scan:
+        /// selects the matching installed service, or is handed to the editor if none.
+        /// </summary>
+        public event Action<string>? OpenUninstalledConfigRequested;
+
+        public void OpenConfigPathWhenReady(string path) => this.pendingConfigPath = path;
 
         public string SearchText
         {
@@ -249,6 +335,18 @@ namespace WinSW.Gui.ViewModels
             {
                 this.ReloadCommand.Execute(null);
             }
+
+            if (!this.checkedForWrapperUpdate)
+            {
+                this.checkedForWrapperUpdate = true;
+                _ = this.CheckWrapperUpdateAsync();
+            }
+        }
+
+        private async Task CheckWrapperUpdateAsync()
+        {
+            var latest = await UpdateChecker.LatestWrapperAsync().ConfigureAwait(true);
+            this.LatestWrapper = latest;
         }
 
         /// <summary>
@@ -310,6 +408,20 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 this.RefreshStatuses();
+
+                if (this.pendingConfigPath is { } pending)
+                {
+                    this.pendingConfigPath = null;
+                    var match = this.Services.FirstOrDefault(s => string.Equals(s.ConfigPath, Path.GetFullPath(pending), StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                    {
+                        this.SelectedService = match;
+                    }
+                    else
+                    {
+                        this.OpenUninstalledConfigRequested?.Invoke(pending);
+                    }
+                }
 
                 if (this.selectedService is null || !this.Services.Contains(this.selectedService))
                 {
@@ -458,6 +570,133 @@ namespace WinSW.Gui.ViewModels
             {
                 this.ProcessTree = fresh;
             }
+        }
+
+        private void RaiseWrapperUpdate()
+        {
+            this.Raise(nameof(this.WrapperUpdateAvailable));
+            this.Raise(nameof(this.WrapperUpdateText));
+            this.UpgradeWrapperCommand.RaiseCanExecuteChanged();
+        }
+
+        private async Task RunOnSelectedAsync(string command)
+        {
+            var targets = this.selectedEntries.Where(e => e.ConfigPath != null).Select(e => (e.WrapperPath, e.ConfigPath!)).ToList();
+            if (targets.Count == 0)
+            {
+                return;
+            }
+
+            this.IsBusy = true;
+            this.StatusMessage = Localizer.Format("M.Dash.RunningMany", command, targets.Count);
+            try
+            {
+                var result = await WinSwCli.RunOnManyAsync(command, targets).ConfigureAwait(true);
+                this.StatusMessage = result.Cancelled
+                    ? Localizer.Get("M.Common.ElevationDeclined")
+                    : Localizer.Format("M.Dash.RanMany", command, targets.Count);
+                this.RefreshStatuses();
+            }
+            finally
+            {
+                this.IsBusy = false;
+            }
+        }
+
+        private void ExportScript()
+        {
+            var entry = this.selectedService;
+            if (entry?.ConfigPath is null)
+            {
+                return;
+            }
+
+            if (Dialogs.PickFolder(Localizer.Get("M.Dlg.ExportFolder")) is not { } folder)
+            {
+                return;
+            }
+
+            try
+            {
+                string script = InstallScriptExporter.Export(entry, folder);
+                this.StatusMessage = Localizer.Format("M.Dash.Exported", script);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                this.StatusMessage = Localizer.Format("M.Dash.ExportFailed", e.Message);
+            }
+        }
+
+        private async Task CreateDiagnosticsAsync()
+        {
+            var entry = this.selectedService;
+            if (entry is null)
+            {
+                return;
+            }
+
+            string suggested = $"{entry.ServiceName}-diagnostics-{DateTime.Now:yyyyMMdd-HHmm}.zip";
+            if (Dialogs.PickSaveFile(Localizer.Get("M.Dlg.SaveDiagnostics"), "Zip|*.zip", suggested) is not { } path)
+            {
+                return;
+            }
+
+            this.IsBusy = true;
+            this.StatusMessage = Localizer.Get("M.Dash.Collecting");
+            try
+            {
+                await Task.Run(() => DiagnosticsBundle.Create(entry, path)).ConfigureAwait(true);
+                this.StatusMessage = Localizer.Format("M.Dash.Collected", path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                this.StatusMessage = Localizer.Format("M.Dash.CollectFailed", e.Message);
+            }
+            finally
+            {
+                this.IsBusy = false;
+            }
+        }
+
+        private async Task UpgradeWrapperAsync()
+        {
+            var entry = this.selectedService;
+            var latest = this.latestWrapper;
+            if (entry?.ConfigPath is null || latest is null || WrapperKind.ReleaseAssetFor(entry.WrapperPath) is not { } asset || !latest.Assets.TryGetValue(asset, out string? url))
+            {
+                return;
+            }
+
+            this.IsBusy = true;
+            this.StatusMessage = Localizer.Format("M.Dash.Downloading", asset, latest.Version);
+            string? downloaded;
+            try
+            {
+                downloaded = await UpdateChecker.DownloadAsync(url, Path.Combine(Path.GetTempPath(), "WinSW.Gui", "wrapper-" + latest.Version)).ConfigureAwait(true);
+            }
+            finally
+            {
+                this.IsBusy = false;
+            }
+
+            if (downloaded is null)
+            {
+                this.StatusMessage = Localizer.Get("M.Dash.DownloadFailed");
+                return;
+            }
+
+            if (!ServiceDiscovery.IsWrapperExecutable(downloaded))
+            {
+                this.StatusMessage = Localizer.Get("M.Dash.DownloadNotWrapper");
+                return;
+            }
+
+            bool wasRunning = entry.Status == ServiceControllerStatus.Running;
+            this.Ask(
+                Localizer.Get("M.Dash.UpgradeTitle"),
+                Localizer.Format("M.Dash.UpgradeBody", entry.ServiceName, entry.WrapperVersion, latest.Version),
+                Localizer.Get("M.Dash.UpgradeAction"),
+                () => this.RunAsync("upgrade", (w, c) => WinSwCli.UpgradeWrapperAsync(w, c, downloaded, wasRunning)));
         }
 
         private void RaiseCounts()

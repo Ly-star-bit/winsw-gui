@@ -34,6 +34,12 @@ namespace WinSW.Gui.ViewModels
         private string statusMessage = string.Empty;
         private bool isDirty;
         private bool showPreview = true;
+        private bool isXmlEditing;
+        private string xmlEditorText = string.Empty;
+        private int recomputeGeneration;
+        private readonly TrialRunner trial = new();
+        private bool isTrialRunning;
+        private string trialStatus = string.Empty;
 
         public ConfigEditorViewModel()
         {
@@ -102,6 +108,35 @@ namespace WinSW.Gui.ViewModels
             this.RemoveDependencyCommand = new RelayCommand(
                 p => Remove(this.Model.Dependencies, p as DependencyItem));
 
+            this.AddMappingCommand = new RelayCommand(() =>
+                this.Model.SharedDirectories.Add(new DriveMapping()));
+            this.RemoveMappingCommand = new RelayCommand(
+                p => Remove(this.Model.SharedDirectories, p as DriveMapping));
+            this.ClearHookCommand = new RelayCommand(p => (p as ProcessCommandModel)?.Clear());
+
+            this.EnterXmlEditCommand = new RelayCommand(() =>
+            {
+                this.Recompute();
+                this.XmlEditorText = this.XmlPreview;
+                this.IsXmlEditing = true;
+            });
+            this.ApplyXmlCommand = new RelayCommand(this.ApplyXml);
+            this.CancelXmlEditCommand = new RelayCommand(() => this.IsXmlEditing = false);
+
+            this.StartTrialCommand = new RelayCommand(this.StartTrial, () => !this.isTrialRunning);
+            this.StopTrialCommand = new RelayCommand(() => this.trial.Stop(), () => this.isTrialRunning);
+            this.ClearTrialCommand = new RelayCommand(() => this.TrialOutput.Clear());
+
+            this.trial.Output += (line, isError) =>
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => this.AppendTrial(isError ? "[stderr] " + line : line));
+            this.trial.Exited += code =>
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    this.AppendTrial(Localizer.Format("M.Trial.Exited", code));
+                    this.TrialStatus = Localizer.Format("M.Trial.Exited", code);
+                    this.IsTrialRunning = false;
+                });
+
             this.Attach(this.model);
 
             Localizer.Changed += () =>
@@ -160,6 +195,67 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand AddDependencyCommand { get; }
 
         public RelayCommand RemoveDependencyCommand { get; }
+
+        public RelayCommand AddMappingCommand { get; }
+
+        public RelayCommand RemoveMappingCommand { get; }
+
+        public RelayCommand ClearHookCommand { get; }
+
+        public RelayCommand EnterXmlEditCommand { get; }
+
+        public RelayCommand ApplyXmlCommand { get; }
+
+        public RelayCommand CancelXmlEditCommand { get; }
+
+        public RelayCommand StartTrialCommand { get; }
+
+        public RelayCommand StopTrialCommand { get; }
+
+        public RelayCommand ClearTrialCommand { get; }
+
+        /// <summary>Machine-specific findings from <see cref="ServiceConfigModel.ValidateEnvironment"/>; never block saving.</summary>
+        public ObservableCollection<string> Warnings { get; } = new();
+
+        public bool HasWarnings => this.Warnings.Count > 0;
+
+        public ObservableCollection<string> TrialOutput { get; } = new();
+
+        // Raw XML mode ---------------------------------------------------------
+
+        /// <summary>True while the preview pane is an editor instead of a read-only rendering.</summary>
+        public bool IsXmlEditing
+        {
+            get => this.isXmlEditing;
+            private set => this.Set(ref this.isXmlEditing, value);
+        }
+
+        public string XmlEditorText
+        {
+            get => this.xmlEditorText;
+            set => this.Set(ref this.xmlEditorText, value);
+        }
+
+        // Trial run --------------------------------------------------------------
+
+        public bool IsTrialRunning
+        {
+            get => this.isTrialRunning;
+            private set
+            {
+                if (this.Set(ref this.isTrialRunning, value))
+                {
+                    this.StartTrialCommand.RaiseCanExecuteChanged();
+                    this.StopTrialCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string TrialStatus
+        {
+            get => this.trialStatus;
+            private set => this.Set(ref this.trialStatus, value);
+        }
 
         public string[] StartModes => ServiceConfigModel.StartModes;
 
@@ -416,6 +512,12 @@ namespace WinSW.Gui.ViewModels
             Watch(target.Downloads);
             Watch(target.FailureActions);
             Watch(target.Dependencies);
+            Watch(target.SharedDirectories);
+
+            target.Prestart.PropertyChanged += this.OnModelChanged;
+            target.Poststart.PropertyChanged += this.OnModelChanged;
+            target.Prestop.PropertyChanged += this.OnModelChanged;
+            target.Poststop.PropertyChanged += this.OnModelChanged;
 
             void Watch<T>(ObservableCollection<T> collection)
                 where T : ObservableObject
@@ -474,6 +576,77 @@ namespace WinSW.Gui.ViewModels
             catch (Exception e)
             {
                 this.XmlPreview = Localizer.Format("M.Editor.RenderFailed", e.Message);
+            }
+
+            // Account lookups can stall on an unreachable domain; keep them off the UI thread
+            // and discard results that a later edit has made stale.
+            int generation = ++this.recomputeGeneration;
+            var model = this.Model;
+            _ = Task.Run(() => model.ValidateEnvironment()).ContinueWith(
+                task =>
+                {
+                    if (generation != this.recomputeGeneration || task.IsFaulted)
+                    {
+                        return;
+                    }
+
+                    this.Warnings.Clear();
+                    foreach (string warning in task.Result)
+                    {
+                        this.Warnings.Add(warning);
+                    }
+
+                    this.Raise(nameof(this.HasWarnings));
+                },
+                System.Threading.CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        private void ApplyXml()
+        {
+            try
+            {
+                var replacement = ServiceConfigModel.FromXml(this.xmlEditorText, this.filePath);
+                this.Attach(replacement);
+                this.Model = replacement;
+                this.IsDirty = true;
+                this.IsXmlEditing = false;
+                this.StatusMessage = Localizer.Get("M.Editor.XmlApplied");
+                this.Recompute();
+            }
+            catch (InvalidDataException e)
+            {
+                this.StatusMessage = Localizer.Format("M.Editor.XmlInvalid", e.Message);
+            }
+        }
+
+        private void StartTrial()
+        {
+            this.Recompute();
+            try
+            {
+                this.TrialOutput.Clear();
+                this.trial.Start(this.Model, this.filePath);
+                this.IsTrialRunning = true;
+                this.TrialStatus = Localizer.Format("M.Trial.Running", this.trial.ProcessId);
+                this.AppendTrial(Localizer.Format("M.Trial.Started", this.Model.Executable, this.Model.StartArguments ?? this.Model.Arguments ?? string.Empty));
+            }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or IOException)
+            {
+                this.TrialStatus = Localizer.Format("M.Trial.Failed", e.Message);
+                this.AppendTrial(this.TrialStatus);
+                this.IsTrialRunning = false;
+            }
+        }
+
+        private void AppendTrial(string line)
+        {
+            const int maxLines = 3000;
+            this.TrialOutput.Add(line);
+            if (this.TrialOutput.Count > maxLines)
+            {
+                this.TrialOutput.RemoveAt(0);
             }
         }
     }

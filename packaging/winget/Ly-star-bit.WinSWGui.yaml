@@ -1,0 +1,6 @@
+# Version manifest. CI substitutes __VERSION__ and publishes the filled set with each release.
+PackageIdentifier: Ly-star-bit.WinSWGui
+PackageVersion: __VERSION__
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

@@ -94,6 +94,7 @@ namespace WinSW.Gui.Model
         private string? autoRollAtTime;
         private string? zipOlderThanNumDays;
         private string? zipDateFormat;
+        private string? extensionsXml;
 
         public string? FilePath
         {
@@ -392,6 +393,30 @@ namespace WinSW.Gui.Model
 
         public ObservableCollection<DownloadItem> Downloads { get; } = new();
 
+        public ObservableCollection<DriveMapping> SharedDirectories { get; } = new();
+
+        // Lifecycle hooks ----------------------------------------------------
+
+        public ProcessCommandModel Prestart { get; } = new();
+
+        public ProcessCommandModel Poststart { get; } = new();
+
+        public ProcessCommandModel Prestop { get; } = new();
+
+        public ProcessCommandModel Poststop { get; } = new();
+
+        // Extensions ---------------------------------------------------------
+
+        /// <summary>
+        /// The <c>&lt;extensions&gt;</c> element verbatim, or null. The GUI has no form for
+        /// extension configuration; it is edited as XML and written back unchanged.
+        /// </summary>
+        public string? ExtensionsXml
+        {
+            get => this.extensionsXml;
+            set => this.Set(ref this.extensionsXml, value);
+        }
+
         // Loading ------------------------------------------------------------
 
         public static ServiceConfigModel CreateNew() => new();
@@ -424,6 +449,29 @@ namespace WinSW.Gui.Model
             };
 
             model.ReadFrom(root);
+            return model;
+        }
+
+        /// <summary>Builds a model from XML text, e.g. from the editor's raw-XML mode.</summary>
+        /// <exception cref="InvalidDataException">The text is not a WinSW configuration.</exception>
+        public static ServiceConfigModel FromXml(string xml, string? filePath)
+        {
+            var document = new XmlDocument { XmlResolver = null };
+            try
+            {
+                document.LoadXml(xml);
+            }
+            catch (XmlException e)
+            {
+                throw new InvalidDataException(e.Message, e);
+            }
+
+            var root = document.SelectSingleNode("service") as XmlElement
+                ?? throw new InvalidDataException("<service> is missing in configuration XML.");
+
+            var model = new ServiceConfigModel { source = document };
+            model.ReadFrom(root);
+            model.FilePath = filePath;
             return model;
         }
 
@@ -522,6 +570,36 @@ namespace WinSW.Gui.Model
                     Action = NullIfEmpty(element.GetAttribute("action")) ?? "restart",
                     Delay = NullIfEmpty(element.GetAttribute("delay")),
                 });
+            }
+
+            foreach (XmlElement element in root.SelectNodes("sharedDirectoryMapping/map")!.OfType<XmlElement>())
+            {
+                this.SharedDirectories.Add(new DriveMapping
+                {
+                    Label = element.GetAttribute("label"),
+                    UncPath = element.GetAttribute("uncpath"),
+                });
+            }
+
+            ReadHook(root, "prestart", this.Prestart);
+            ReadHook(root, "poststart", this.Poststart);
+            ReadHook(root, "prestop", this.Prestop);
+            ReadHook(root, "poststop", this.Poststop);
+
+            this.extensionsXml = (root.SelectSingleNode("extensions") as XmlElement)?.OuterXml;
+
+            static void ReadHook(XmlElement parent, string name, ProcessCommandModel hook)
+            {
+                if (parent.SelectSingleNode(name) is not XmlElement element)
+                {
+                    return;
+                }
+
+                // Same child names the wrapper's SettingNames uses for ProcessCommand.
+                hook.Executable = Text(element, "executable");
+                hook.Arguments = Text(element, "arguments");
+                hook.StdoutPath = Text(element, "stdoutPath");
+                hook.StderrPath = Text(element, "stderrPath");
             }
 
             static string? Text(XmlElement parent, string name) =>
@@ -653,6 +731,13 @@ namespace WinSW.Gui.Model
                 SetAttribute(element, "delay", item.Delay);
             });
 
+            this.SaveSharedDirectories(document, root);
+            SaveHook(document, root, "prestart", this.Prestart);
+            SaveHook(document, root, "poststart", this.Poststart);
+            SaveHook(document, root, "prestop", this.Prestop);
+            SaveHook(document, root, "poststop", this.Poststop);
+            this.SaveExtensions(document, root);
+
             this.source = document;
             return document;
         }
@@ -689,6 +774,78 @@ namespace WinSW.Gui.Model
                     child.InnerText = value!.Trim();
                     parent.AppendChild(child);
                 }
+            }
+        }
+
+        private void SaveSharedDirectories(XmlDocument document, XmlElement root)
+        {
+            if (this.SharedDirectories.Count == 0)
+            {
+                RemoveAll(root, "sharedDirectoryMapping");
+                return;
+            }
+
+            var container = root.SelectSingleNode("sharedDirectoryMapping") as XmlElement;
+            if (container is null)
+            {
+                container = document.CreateElement("sharedDirectoryMapping");
+                root.AppendChild(container);
+            }
+
+            ReplaceAll(document, container, "map", this.SharedDirectories, static (element, item) =>
+            {
+                element.SetAttribute("label", item.Label);
+                element.SetAttribute("uncpath", item.UncPath);
+            });
+        }
+
+        private static void SaveHook(XmlDocument document, XmlElement root, string name, ProcessCommandModel hook)
+        {
+            if (hook.IsEmpty)
+            {
+                RemoveAll(root, name);
+                return;
+            }
+
+            var element = root.SelectSingleNode(name) as XmlElement;
+            if (element is null)
+            {
+                element = document.CreateElement(name);
+                root.AppendChild(element);
+            }
+
+            SetText(element, "executable", hook.Executable);
+            SetText(element, "arguments", hook.Arguments);
+            SetText(element, "stdoutPath", hook.StdoutPath);
+            SetText(element, "stderrPath", hook.StderrPath);
+        }
+
+        private void SaveExtensions(XmlDocument document, XmlElement root)
+        {
+            var existing = root.SelectSingleNode("extensions");
+
+            if (string.IsNullOrWhiteSpace(this.extensionsXml))
+            {
+                if (existing != null)
+                {
+                    root.RemoveChild(existing);
+                }
+
+                return;
+            }
+
+            // Validate() has already confirmed this parses; a stale value cannot get here.
+            var fragment = document.CreateDocumentFragment();
+            fragment.InnerXml = this.extensionsXml!;
+            var replacement = fragment.SelectSingleNode("extensions") ?? fragment.FirstChild!;
+
+            if (existing != null)
+            {
+                root.ReplaceChild(replacement, existing);
+            }
+            else
+            {
+                root.AppendChild(replacement);
             }
         }
 
@@ -792,6 +949,36 @@ namespace WinSW.Gui.Model
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(this.extensionsXml))
+            {
+                try
+                {
+                    var probe = new XmlDocument { XmlResolver = null };
+                    probe.LoadXml(this.extensionsXml!);
+                    if (probe.DocumentElement?.Name != "extensions")
+                    {
+                        problems.Add(Localizer.Get("M.Val.ExtensionsRoot"));
+                    }
+                }
+                catch (XmlException e)
+                {
+                    problems.Add(Localizer.Format("M.Val.ExtensionsXml", e.Message));
+                }
+            }
+
+            foreach (var mapping in this.SharedDirectories)
+            {
+                if (mapping.Label.Length != 2 || mapping.Label[1] != ':' || !char.IsLetter(mapping.Label[0]))
+                {
+                    problems.Add(Localizer.Format("M.Val.MappingLabel", mapping.Label));
+                }
+
+                if (!mapping.UncPath.StartsWith(@"\\", StringComparison.Ordinal))
+                {
+                    problems.Add(Localizer.Format("M.Val.MappingPath", mapping.UncPath));
+                }
+            }
+
             return problems;
 
             void CheckTime(string? value, string label)
@@ -815,6 +1002,89 @@ namespace WinSW.Gui.Model
                     problems.Add(Localizer.Format("M.Val.BadInt", label, value));
                 }
             }
+        }
+
+        /// <summary>
+        /// Checks the configuration against the machine: things the wrapper would accept
+        /// syntactically but that will fail at start. Warnings, not errors; the file can be
+        /// saved for another machine where the paths exist.
+        /// </summary>
+        public IReadOnlyList<string> ValidateEnvironment()
+        {
+            var warnings = new List<string>();
+            string? basePath = this.FilePath;
+
+            string? Expand(string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return null;
+                }
+
+                // Without a file location %BASE% is unknowable; skip rather than guess.
+                if (basePath is null && value!.Contains("%BASE%", StringComparison.OrdinalIgnoreCase))
+                {
+                    return null;
+                }
+
+                return basePath is null
+                    ? Environment.ExpandEnvironmentVariables(value!)
+                    : Services.ConfigPaths.Expand(value!, basePath);
+            }
+
+            if (Expand(this.executable) is { } exe && Path.IsPathRooted(exe) && !File.Exists(exe))
+            {
+                warnings.Add(Localizer.Format("M.Warn.ExecutableMissing", exe));
+            }
+
+            if (Expand(this.stopExecutable) is { } stopExe && Path.IsPathRooted(stopExe) && !File.Exists(stopExe))
+            {
+                warnings.Add(Localizer.Format("M.Warn.StopExecutableMissing", stopExe));
+            }
+
+            if (Expand(this.workingDirectory) is { } workDir && !Directory.Exists(workDir))
+            {
+                warnings.Add(Localizer.Format("M.Warn.WorkingDirectoryMissing", workDir));
+            }
+
+            if (Expand(this.logPath) is { } logDir && !Directory.Exists(logDir))
+            {
+                warnings.Add(Localizer.Format("M.Warn.LogDirectoryMissing", logDir));
+            }
+
+            foreach (var hook in new[] { this.Prestart, this.Poststart, this.Prestop, this.Poststop })
+            {
+                if (Expand(hook.Executable) is { } hookExe && Path.IsPathRooted(hookExe) && !File.Exists(hookExe))
+                {
+                    warnings.Add(Localizer.Format("M.Warn.ExecutableMissing", hookExe));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(this.serviceAccountUser))
+            {
+                string user = this.serviceAccountUser!.Trim();
+                bool builtIn = user.StartsWith("NT AUTHORITY\\", StringComparison.OrdinalIgnoreCase)
+                    || user.StartsWith("NT SERVICE\\", StringComparison.OrdinalIgnoreCase)
+                    || user.Equals("LocalSystem", StringComparison.OrdinalIgnoreCase);
+
+                if (!builtIn)
+                {
+                    try
+                    {
+                        new System.Security.Principal.NTAccount(user).Translate(typeof(System.Security.Principal.SecurityIdentifier));
+                    }
+                    catch (System.Security.Principal.IdentityNotMappedException)
+                    {
+                        warnings.Add(Localizer.Format("M.Warn.AccountUnknown", user));
+                    }
+                    catch (SystemException)
+                    {
+                        // Domain unreachable: cannot tell either way.
+                    }
+                }
+            }
+
+            return warnings;
         }
 
         /// <summary>Mirrors <c>XmlServiceConfig.ParseTimeSpan</c>.</summary>

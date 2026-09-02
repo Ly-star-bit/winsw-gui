@@ -93,6 +93,11 @@ namespace WinSW.Gui.ViewModels
         private bool autoScroll = true;
         private bool isPaused;
         private bool isLoadingEvents;
+        private bool useRegex;
+        private System.Text.RegularExpressions.Regex? filterRegex;
+        private bool filterInvalid;
+        private int errorCount;
+        private int lastJumpIndex = -1;
 
         public LogViewerViewModel()
         {
@@ -112,12 +117,15 @@ namespace WinSW.Gui.ViewModels
             {
                 this.history.Clear();
                 this.Lines.Clear();
+                this.ErrorCount = 0;
+                this.lastJumpIndex = -1;
             });
 
             this.TogglePauseCommand = new RelayCommand(() => this.IsPaused = !this.IsPaused);
             this.OpenExternallyCommand = new RelayCommand(this.OpenExternally, () => this.selectedFile != null);
             this.RevealCommand = new RelayCommand(this.Reveal, () => this.selectedFile != null);
             this.RefreshEventsCommand = new AsyncRelayCommand(this.LoadEventsAsync, () => this.service != null && !this.isLoadingEvents);
+            this.NextErrorCommand = new RelayCommand(this.JumpToNextError, () => this.errorCount > 0);
 
             this.statusMessage = Localizer.Get("M.Log.SelectService");
             Localizer.Changed += () =>
@@ -154,6 +162,45 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand RevealCommand { get; }
 
         public AsyncRelayCommand RefreshEventsCommand { get; }
+
+        public RelayCommand NextErrorCommand { get; }
+
+        /// <summary>Raised with the index of a line the view should bring into view and highlight.</summary>
+        public event Action<int>? ScrollToRequested;
+
+        /// <summary>Interpret <see cref="Filter"/> as a .NET regular expression instead of plain text.</summary>
+        public bool UseRegex
+        {
+            get => this.useRegex;
+            set
+            {
+                if (this.Set(ref this.useRegex, value))
+                {
+                    this.CompileFilter();
+                    this.RebuildVisibleLines();
+                }
+            }
+        }
+
+        /// <summary>True when the regex does not compile; the filter then matches nothing.</summary>
+        public bool FilterInvalid
+        {
+            get => this.filterInvalid;
+            private set => this.Set(ref this.filterInvalid, value);
+        }
+
+        /// <summary>Error-looking lines among those visible.</summary>
+        public int ErrorCount
+        {
+            get => this.errorCount;
+            private set
+            {
+                if (this.Set(ref this.errorCount, value))
+                {
+                    this.NextErrorCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
 
         public string ServiceName => this.service?.ServiceName ?? Localizer.Get("M.Log.NoService");
 
@@ -206,6 +253,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.filter, value))
                 {
+                    this.CompileFilter();
                     this.RebuildVisibleLines();
                 }
             }
@@ -336,6 +384,8 @@ namespace WinSW.Gui.ViewModels
             this.reader = null;
             this.history.Clear();
             this.Lines.Clear();
+            this.ErrorCount = 0;
+            this.lastJumpIndex = -1;
             this.EncodingInfo = string.Empty;
 
             if (this.selectedFile is null)
@@ -396,26 +446,99 @@ namespace WinSW.Gui.ViewModels
             if (this.IsVisible(line))
             {
                 this.Lines.Add(line);
+                if (LogSeverity.IsError(line))
+                {
+                    this.ErrorCount++;
+                }
             }
         }
 
         private void RebuildVisibleLines()
         {
             this.Lines.Clear();
+            int errors = 0;
             foreach (string line in this.history)
             {
                 if (this.IsVisible(line))
                 {
                     this.Lines.Add(line);
+                    if (LogSeverity.IsError(line))
+                    {
+                        errors++;
+                    }
                 }
             }
 
+            this.ErrorCount = errors;
+            this.lastJumpIndex = -1;
             this.LinesAppended?.Invoke();
         }
 
-        private bool IsVisible(string line) =>
-            string.IsNullOrWhiteSpace(this.filter)
-            || line.Contains(this.filter.Trim(), StringComparison.OrdinalIgnoreCase);
+        private void CompileFilter()
+        {
+            this.filterRegex = null;
+            this.FilterInvalid = false;
+
+            if (!this.useRegex || string.IsNullOrWhiteSpace(this.filter))
+            {
+                return;
+            }
+
+            try
+            {
+                this.filterRegex = new System.Text.RegularExpressions.Regex(
+                    this.filter,
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant,
+                    TimeSpan.FromMilliseconds(200));
+            }
+            catch (ArgumentException)
+            {
+                this.FilterInvalid = true;
+            }
+        }
+
+        private bool IsVisible(string line)
+        {
+            if (string.IsNullOrWhiteSpace(this.filter))
+            {
+                return true;
+            }
+
+            if (this.useRegex)
+            {
+                if (this.filterRegex is null)
+                {
+                    return false;
+                }
+
+                try
+                {
+                    return this.filterRegex.IsMatch(line);
+                }
+                catch (System.Text.RegularExpressions.RegexMatchTimeoutException)
+                {
+                    return false;
+                }
+            }
+
+            return line.Contains(this.filter.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void JumpToNextError()
+        {
+            int count = this.Lines.Count;
+            for (int step = 1; step <= count; step++)
+            {
+                int index = (this.lastJumpIndex + step) % count;
+                if (LogSeverity.IsError(this.Lines[index]))
+                {
+                    this.lastJumpIndex = index;
+                    this.AutoScroll = false;
+                    this.ScrollToRequested?.Invoke(index);
+                    return;
+                }
+            }
+        }
 
         // Events -----------------------------------------------------------------
 

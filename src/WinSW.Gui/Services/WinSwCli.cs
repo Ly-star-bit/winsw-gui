@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -96,6 +97,84 @@ namespace WinSW.Gui.Services
         /// <summary>Installs and starts under one elevation prompt.</summary>
         public static Task<CommandResult> InstallAndStartAsync(string wrapper, string configPath) =>
             RunBatchAsync(DefaultTimeout, (wrapper, Line("install", configPath)), (wrapper, Line("start", configPath)));
+
+        /// <summary>
+        /// Runs one command on each of several services under a single prompt. Unlike
+        /// <see cref="InstallAndStartAsync"/> the chain continues past failures — the user
+        /// asked for all of them, and the status refresh afterwards shows which ones took.
+        /// </summary>
+        public static Task<CommandResult> RunOnManyAsync(string command, IEnumerable<(string Wrapper, string ConfigPath)> services)
+        {
+            var steps = services.Select(s => $"{Quote(s.Wrapper)} {command} {Quote(s.ConfigPath)} --no-elevate").ToList();
+            if (steps.Count == 0)
+            {
+                return Task.FromResult(CommandResult.Ok());
+            }
+
+            string script = string.Join(" & ", steps);
+            return RunElevatedAsync("cmd.exe", $"/d /c \"{script}\"", null, DefaultTimeout, command);
+        }
+
+        /// <summary>
+        /// Replaces a wrapper executable with a newer build under one prompt: stop (failure
+        /// tolerated: it may not be running), copy over, start.
+        /// </summary>
+        public static Task<CommandResult> UpgradeWrapperAsync(string wrapper, string configPath, string newExecutable, bool startAfter)
+        {
+            string stop = $"{Quote(wrapper)} stop {Quote(configPath)} --no-elevate";
+            string copy = $"copy /y {Quote(newExecutable)} {Quote(wrapper)}";
+            string start = $"{Quote(wrapper)} start {Quote(configPath)} --no-elevate";
+
+            // cmd evaluates left to right: (stop & copy) && start, so start only runs if the copy succeeded.
+            string script = startAfter ? $"{stop} & {copy} && {start}" : $"{stop} & {copy}";
+            return RunElevatedAsync("cmd.exe", $"/d /c \"{script}\"", Path.GetDirectoryName(wrapper), DefaultTimeout, "upgrade");
+        }
+
+        /// <summary>
+        /// <c>winsw customize</c>: writes a copy of the wrapper with a different company name in
+        /// its version information. Runs unelevated with output captured; no service is touched.
+        /// </summary>
+        public static async Task<CommandResult> CustomizeAsync(string wrapper, string output, string manufacturer)
+        {
+            if (!File.Exists(wrapper))
+            {
+                return CommandResult.Failed(Localizer.Format("M.Cli.WrapperMissing", wrapper));
+            }
+
+            var startInfo = new ProcessStartInfo(wrapper)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(wrapper) ?? Environment.CurrentDirectory,
+            };
+            startInfo.ArgumentList.Add("customize");
+            startInfo.ArgumentList.Add("-o");
+            startInfo.ArgumentList.Add(output);
+            startInfo.ArgumentList.Add("--manufacturer");
+            startInfo.ArgumentList.Add(manufacturer);
+
+            try
+            {
+                using var process = Process.Start(startInfo);
+                if (process is null)
+                {
+                    return CommandResult.Failed(Localizer.Get("M.Cli.CannotStart"));
+                }
+
+                string error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                await process.WaitForExitAsync().ConfigureAwait(false);
+
+                return process.ExitCode == 0
+                    ? CommandResult.Ok()
+                    : new CommandResult(process.ExitCode, false, false, string.IsNullOrWhiteSpace(error) ? DescribeExitCode("customize", process.ExitCode) : error.Trim());
+            }
+            catch (Exception e) when (e is Win32Exception or InvalidOperationException or IOException)
+            {
+                return CommandResult.Failed(e.Message);
+            }
+        }
 
         /// <summary>
         /// Copies a file with administrator rights, for configurations that live in a directory

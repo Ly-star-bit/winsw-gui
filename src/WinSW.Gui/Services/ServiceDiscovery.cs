@@ -71,6 +71,9 @@ namespace WinSW.Gui.Services
                         StartMode = DescribeStartMode(key),
                         Account = key.GetValue("ObjectName") as string ?? "LocalSystem",
                         Problem = problem,
+                        WrapperVersion = ReadVersion(wrapperPath),
+                        DependsOn = Names(() => controller.ServicesDependedOn),
+                        DependedBy = Names(() => controller.DependentServices),
                     };
 
                     results.Add(entry);
@@ -89,23 +92,84 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// Refreshes the volatile parts of an entry: its state and hosting process.
+        /// Refreshes the volatile parts of an entry: state, hosting process, exit code and
+        /// the process metrics shown in the detail panel.
         /// </summary>
         public static void RefreshStatus(ServiceEntry entry)
         {
-            try
-            {
-                using var controller = new ServiceController(entry.ServiceName);
-                entry.Status = controller.Status;
-                entry.ProcessId = entry.Status == ServiceControllerStatus.Running
-                    ? NativeMethods.GetServiceProcessId(entry.ServiceName)
-                    : 0;
-            }
-            catch (InvalidOperationException)
+            if (!NativeMethods.TryQueryServiceStatus(entry.ServiceName, out var status))
             {
                 // The service was uninstalled between the scan and this refresh.
                 entry.Status = null;
                 entry.ProcessId = 0;
+                entry.ClearSample();
+                return;
+            }
+
+            entry.Status = (ServiceControllerStatus)status.CurrentState;
+            entry.ProcessId = entry.Status == ServiceControllerStatus.Running ? status.ProcessId : 0;
+            entry.LastExitCode = status.Win32ExitCode == NativeMethods.ERROR_SERVICE_SPECIFIC_ERROR
+                ? status.ServiceSpecificExitCode
+                : status.Win32ExitCode;
+
+            if (entry.ProcessId <= 0)
+            {
+                entry.ClearSample();
+                return;
+            }
+
+            try
+            {
+                using var process = Process.GetProcessById(entry.ProcessId);
+                DateTime? started;
+                try
+                {
+                    started = process.StartTime;
+                }
+                catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+                {
+                    // Start time needs a right a standard user may lack for a LocalSystem process.
+                    started = null;
+                }
+
+                entry.Sample(process.TotalProcessorTime, process.WorkingSet64, process.HandleCount, started);
+            }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                entry.ClearSample();
+            }
+        }
+
+        private static string ReadVersion(string path)
+        {
+            try
+            {
+                return File.Exists(path) ? FileVersionInfo.GetVersionInfo(path).FileVersion ?? string.Empty : string.Empty;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string[] Names(Func<ServiceController[]> query)
+        {
+            try
+            {
+                var related = query();
+                var names = new string[related.Length];
+                for (int i = 0; i < related.Length; i++)
+                {
+                    names[i] = related[i].ServiceName;
+                    related[i].Dispose();
+                }
+
+                Array.Sort(names, StringComparer.OrdinalIgnoreCase);
+                return names;
+            }
+            catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+            {
+                return Array.Empty<string>();
             }
         }
 

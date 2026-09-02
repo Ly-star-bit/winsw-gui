@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.ServiceProcess;
+using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Localization;
 
@@ -20,9 +22,19 @@ namespace WinSW.Gui.Model
     /// </summary>
     public sealed class ServiceEntry : ObservableObject
     {
+        private const int HistoryLength = 40;
+
         private ServiceControllerStatus? status;
         private int processId;
         private string? problem;
+        private int? lastExitCode;
+        private DateTime? startedAt;
+        private double cpuPercent;
+        private long workingSetBytes;
+        private int handleCount;
+        private TimeSpan lastCpuTime;
+        private DateTime lastSampleAt;
+        private readonly List<double> cpuHistory = new();
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -51,6 +63,155 @@ namespace WinSW.Gui.Model
 
         public string Account { get; init; } = string.Empty;
 
+        /// <summary>File version of the wrapper executable, e.g. 3.0.0.</summary>
+        public string WrapperVersion { get; init; } = string.Empty;
+
+        /// <summary>Services that must be running before this one starts.</summary>
+        public IReadOnlyList<string> DependsOn { get; init; } = Array.Empty<string>();
+
+        /// <summary>Services that will be stopped if this one stops.</summary>
+        public IReadOnlyList<string> DependedBy { get; init; } = Array.Empty<string>();
+
+        public string DependsOnText => this.DependsOn.Count == 0 ? "—" : string.Join(", ", this.DependsOn);
+
+        public string DependedByText => this.DependedBy.Count == 0 ? "—" : string.Join(", ", this.DependedBy);
+
+        // Live metrics --------------------------------------------------------
+
+        /// <summary>The Win32 or service-specific exit code from the last stop, if any.</summary>
+        public int? LastExitCode
+        {
+            get => this.lastExitCode;
+            set
+            {
+                if (this.Set(ref this.lastExitCode, value))
+                {
+                    this.Raise(nameof(this.LastExitCodeText));
+                }
+            }
+        }
+
+        public string LastExitCodeText => this.lastExitCode is int code && code != 0 ? code.ToString() : "0";
+
+        public DateTime? StartedAt
+        {
+            get => this.startedAt;
+            set
+            {
+                if (this.Set(ref this.startedAt, value))
+                {
+                    this.Raise(nameof(this.UptimeText));
+                }
+            }
+        }
+
+        public string UptimeText
+        {
+            get
+            {
+                if (this.startedAt is not DateTime started)
+                {
+                    return "—";
+                }
+
+                var span = DateTime.Now - started;
+                return span.TotalDays >= 1
+                    ? Localizer.Format("M.Metric.UptimeDays", (int)span.TotalDays, span.Hours, span.Minutes)
+                    : $"{(int)span.TotalHours:00}:{span.Minutes:00}:{span.Seconds:00}";
+            }
+        }
+
+        public double CpuPercent
+        {
+            get => this.cpuPercent;
+            private set
+            {
+                if (this.Set(ref this.cpuPercent, value))
+                {
+                    this.Raise(nameof(this.CpuText));
+                }
+            }
+        }
+
+        public string CpuText => this.processId > 0 ? $"{this.cpuPercent:0.0}%" : "—";
+
+        public long WorkingSetBytes
+        {
+            get => this.workingSetBytes;
+            private set
+            {
+                if (this.Set(ref this.workingSetBytes, value))
+                {
+                    this.Raise(nameof(this.MemoryText));
+                }
+            }
+        }
+
+        public string MemoryText => this.processId > 0 ? $"{this.workingSetBytes / (1024.0 * 1024.0):0.#} MB" : "—";
+
+        public int HandleCount
+        {
+            get => this.handleCount;
+            private set
+            {
+                if (this.Set(ref this.handleCount, value))
+                {
+                    this.Raise(nameof(this.HandleText));
+                }
+            }
+        }
+
+        public string HandleText => this.processId > 0 ? this.handleCount.ToString() : "—";
+
+        /// <summary>Recent CPU samples, oldest first, for the sparkline.</summary>
+        public IReadOnlyList<double> CpuHistory => this.cpuHistory;
+
+        /// <summary>
+        /// Feeds one process sample. CPU is the processor time consumed since the previous
+        /// sample, spread over the wall-clock interval and the machine's cores.
+        /// </summary>
+        public void Sample(TimeSpan totalProcessorTime, long workingSet, int handles, DateTime? started)
+        {
+            var now = DateTime.UtcNow;
+            if (this.lastSampleAt != default && now > this.lastSampleAt)
+            {
+                double elapsed = (now - this.lastSampleAt).TotalMilliseconds;
+                double used = (totalProcessorTime - this.lastCpuTime).TotalMilliseconds;
+                double percent = Math.Clamp(used / elapsed / Environment.ProcessorCount * 100.0, 0, 100);
+                this.CpuPercent = percent;
+
+                this.cpuHistory.Add(percent);
+                if (this.cpuHistory.Count > HistoryLength)
+                {
+                    this.cpuHistory.RemoveAt(0);
+                }
+
+                this.Raise(nameof(this.CpuHistory));
+            }
+
+            this.lastSampleAt = now;
+            this.lastCpuTime = totalProcessorTime;
+            this.WorkingSetBytes = workingSet;
+            this.HandleCount = handles;
+            this.StartedAt = started;
+            this.Raise(nameof(this.UptimeText));
+        }
+
+        public void ClearSample()
+        {
+            this.lastSampleAt = default;
+            this.lastCpuTime = TimeSpan.Zero;
+            this.CpuPercent = 0;
+            this.WorkingSetBytes = 0;
+            this.HandleCount = 0;
+            this.StartedAt = null;
+            if (this.cpuHistory.Count > 0)
+            {
+                this.cpuHistory.Clear();
+                this.Raise(nameof(this.CpuHistory));
+            }
+        }
+
         public ServiceControllerStatus? Status
         {
             get => this.status;
@@ -74,6 +235,9 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.processId, value))
                 {
                     this.Raise(nameof(this.ProcessIdText));
+                    this.Raise(nameof(this.CpuText));
+                    this.Raise(nameof(this.MemoryText));
+                    this.Raise(nameof(this.HandleText));
                 }
             }
         }
@@ -117,7 +281,11 @@ namespace WinSW.Gui.Model
         });
 
         /// <summary>Re-evaluates the localized text after a language change.</summary>
-        public void RefreshLocalized() => this.Raise(nameof(this.StatusText));
+        public void RefreshLocalized()
+        {
+            this.Raise(nameof(this.StatusText));
+            this.Raise(nameof(this.UptimeText));
+        }
 
         public bool CanStart => this.status == ServiceControllerStatus.Stopped;
 

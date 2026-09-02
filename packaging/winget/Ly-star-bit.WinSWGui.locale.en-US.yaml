@@ -1,0 +1,19 @@
+PackageIdentifier: Ly-star-bit.WinSWGui
+PackageVersion: __VERSION__
+PackageLocale: en-US
+Publisher: Ly-star-bit
+PublisherUrl: https://github.com/Ly-star-bit
+PublisherSupportUrl: https://github.com/Ly-star-bit/winsw-gui/issues
+PackageName: WinSW GUI
+PackageUrl: https://github.com/Ly-star-bit/winsw-gui
+License: MIT
+LicenseUrl: https://github.com/Ly-star-bit/winsw-gui/blob/main/LICENSE.txt
+ShortDescription: Graphical console for services wrapped by WinSW.
+Description: Discovers WinSW-hosted Windows services, shows their state, tails their logs, edits their configuration and installs new ones.
+Tags:
+  - winsw
+  - windows-service
+  - service-wrapper
+ReleaseNotesUrl: https://github.com/Ly-star-bit/winsw-gui/releases/tag/gui-v__VERSION__
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

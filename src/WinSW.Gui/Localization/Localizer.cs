@@ -38,7 +38,9 @@ namespace WinSW.Gui.Localization
         public static readonly Language[] Languages =
         {
             new("en", "English"),
-            new("zh-CN", "中文"),
+            new("zh-CN", "简体中文"),
+            new("zh-TW", "繁體中文"),
+            new("ja", "日本語"),
         };
 
         public static event Action? Changed;
@@ -48,8 +50,7 @@ namespace WinSW.Gui.Localization
         /// <summary>Loads the saved preference, falling back to the OS display language.</summary>
         public static void Initialize()
         {
-            string code = AppSettings.Current.Language
-                ?? (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "zh" ? "zh-CN" : "en");
+            string code = AppSettings.Current.Language ?? DefaultFor(CultureInfo.CurrentUICulture);
 
             Apply(Find(code), persist: false);
         }
@@ -96,6 +97,23 @@ namespace WinSW.Gui.Localization
 
         public static string Format(string key, params object?[] args) =>
             string.Format(CultureInfo.CurrentCulture, Get(key), args);
+
+        /// <summary>Maps the OS display language onto a shipped dictionary.</summary>
+        private static string DefaultFor(CultureInfo culture)
+        {
+            string name = culture.Name;
+            if (name.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+            {
+                // Traditional-script regions: Taiwan, Hong Kong, Macao; everything else Simplified.
+                return name.EndsWith("TW", StringComparison.OrdinalIgnoreCase)
+                    || name.EndsWith("HK", StringComparison.OrdinalIgnoreCase)
+                    || name.EndsWith("MO", StringComparison.OrdinalIgnoreCase)
+                    || name.Contains("Hant", StringComparison.OrdinalIgnoreCase)
+                    ? "zh-TW" : "zh-CN";
+            }
+
+            return culture.TwoLetterISOLanguageName == "ja" ? "ja" : "en";
+        }
 
         private static Language Find(string code) =>
             Languages.FirstOrDefault(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase)) ?? Languages[0];

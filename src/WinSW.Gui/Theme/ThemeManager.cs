@@ -26,6 +26,9 @@ namespace WinSW.Gui.Theme
         /// <summary>The theme actually on screen after resolving <see cref="ThemeChoice.System"/>.</summary>
         public static bool IsDark { get; private set; } = true;
 
+        /// <summary>True when Windows' high-contrast mode is on and the palette follows it.</summary>
+        public static bool IsHighContrast { get; private set; }
+
         public static void Initialize()
         {
             var choice = Enum.TryParse(AppSettings.Current.Theme, true, out ThemeChoice saved) ? saved : ThemeChoice.System;
@@ -34,9 +37,9 @@ namespace WinSW.Gui.Theme
             // Follow the OS while "system" is selected.
             SystemEvents.UserPreferenceChanged += (_, e) =>
             {
-                if (e.Category == UserPreferenceCategory.General && Current == ThemeChoice.System)
+                if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Accessibility or UserPreferenceCategory.Color)
                 {
-                    Application.Current?.Dispatcher.BeginInvoke(() => Apply(ThemeChoice.System, persist: false));
+                    Application.Current?.Dispatcher.BeginInvoke(() => Apply(Current, persist: false));
                 }
             };
         }
@@ -52,10 +55,19 @@ namespace WinSW.Gui.Theme
                 _ => SystemPrefersDark(),
             };
 
+            // High contrast is an accessibility setting, not a taste: it overrides the
+            // light/dark choice while it is on.
+            bool highContrast = SystemParameters.HighContrast;
+            string file = highContrast ? "Palette.HighContrast.xaml" : dark ? "Palette.xaml" : "Palette.Light.xaml";
+            if (highContrast)
+            {
+                dark = true;
+            }
+
             var dictionaries = Application.Current.Resources.MergedDictionaries;
             var palette = new ResourceDictionary
             {
-                Source = new Uri($"/WinSW.Gui;component/Theme/{(dark ? "Palette.xaml" : "Palette.Light.xaml")}", UriKind.Relative),
+                Source = new Uri($"/WinSW.Gui;component/Theme/{file}", UriKind.Relative),
             };
 
             var existing = dictionaries.FirstOrDefault(d => d.Source?.OriginalString.Contains("/Theme/Palette", StringComparison.OrdinalIgnoreCase) == true);
@@ -75,6 +87,7 @@ namespace WinSW.Gui.Theme
 
             Current = choice;
             IsDark = dark;
+            IsHighContrast = highContrast;
 
             if (persist)
             {

@@ -1,0 +1,14 @@
+PackageIdentifier: Ly-star-bit.WinSWGui
+PackageVersion: __VERSION__
+InstallerType: portable
+Commands:
+  - winsw-gui
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Ly-star-bit/winsw-gui/releases/download/gui-v__VERSION__/WinSW.Gui-win-x64.exe
+    InstallerSha256: __SHA256_X64__
+  - Architecture: arm64
+    InstallerUrl: https://github.com/Ly-star-bit/winsw-gui/releases/download/gui-v__VERSION__/WinSW.Gui-win-arm64.exe
+    InstallerSha256: __SHA256_ARM64__
+ManifestType: installer
+ManifestVersion: 1.6.0

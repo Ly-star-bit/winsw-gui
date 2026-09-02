@@ -85,12 +85,21 @@ namespace WinSW.Gui.Services
         /// Returns the process ID hosting <paramref name="serviceName"/>, or 0 when the
         /// service is not running or cannot be queried.
         /// </summary>
-        internal static int GetServiceProcessId(string serviceName)
+        internal static int GetServiceProcessId(string serviceName) =>
+            TryQueryServiceStatus(serviceName, out var status) ? status.ProcessId : 0;
+
+        /// <summary>
+        /// Reads the full SERVICE_STATUS_PROCESS: state, hosting process and the exit codes
+        /// the service left behind the last time it stopped.
+        /// </summary>
+        internal static bool TryQueryServiceStatus(string serviceName, out SERVICE_STATUS_PROCESS status)
         {
+            status = default;
+
             IntPtr manager = OpenSCManagerW(null, null, SC_MANAGER_CONNECT);
             if (manager == IntPtr.Zero)
             {
-                return 0;
+                return false;
             }
 
             try
@@ -98,7 +107,7 @@ namespace WinSW.Gui.Services
                 IntPtr service = OpenServiceW(manager, serviceName, SERVICE_QUERY_STATUS);
                 if (service == IntPtr.Zero)
                 {
-                    return 0;
+                    return false;
                 }
 
                 try
@@ -109,10 +118,11 @@ namespace WinSW.Gui.Services
                     {
                         if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, buffer, size, out _))
                         {
-                            return 0;
+                            return false;
                         }
 
-                        return Marshal.PtrToStructure<SERVICE_STATUS_PROCESS>(buffer).ProcessId;
+                        status = Marshal.PtrToStructure<SERVICE_STATUS_PROCESS>(buffer);
+                        return true;
                     }
                     finally
                     {
@@ -129,5 +139,8 @@ namespace WinSW.Gui.Services
                 CloseServiceHandle(manager);
             }
         }
+
+        /// <summary>ERROR_SERVICE_SPECIFIC_ERROR: the real code is in ServiceSpecificExitCode.</summary>
+        internal const int ERROR_SERVICE_SPECIFIC_ERROR = 1066;
     }
 }

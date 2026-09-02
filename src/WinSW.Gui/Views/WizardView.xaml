@@ -127,6 +127,11 @@
                         </StackPanel.Style>
                         <TextBlock Margin="0,0,0,16" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
                         <StackPanel Style="{StaticResource Field}">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.CloneFrom}" />
+                            <ComboBox HorizontalAlignment="Left" MinWidth="320" DisplayMemberPath="DisplayName" ItemsSource="{Binding Sources}" SelectedItem="{Binding CloneSource}" />
+                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Wiz.CloneHint}" />
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WinSWExecutable}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWrapperCommand}" />
@@ -151,6 +156,15 @@
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWorkingDirectoryCommand}" />
                                 <TextBox Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
+                        </StackPanel>
+                        <CheckBox Margin="0,4,0,6" Content="{DynamicResource M.Wiz.Brand}" IsChecked="{Binding BrandWrapper}" />
+                        <StackPanel Style="{StaticResource Field}" Visibility="{Binding BrandWrapper, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.Manufacturer}" />
+                            <TextBox HorizontalAlignment="Left" MinWidth="320" Text="{Binding Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                <TextBlock Style="{StaticResource FieldHint}" Margin="0" Text="{DynamicResource M.Wiz.BrandHint}" />
+                                <TextBlock Style="{StaticResource Mono}" Margin="6,0,0,0" Text="{Binding EffectiveWrapperPath}" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
 

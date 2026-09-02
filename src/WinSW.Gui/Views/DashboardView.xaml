@@ -171,15 +171,36 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <ListBox
-                Grid.Column="0"
-                Background="Transparent"
-                BorderThickness="0"
-                ItemContainerStyle="{StaticResource ServiceItem}"
-                ItemTemplate="{StaticResource ServiceRow}"
-                ItemsSource="{Binding ServicesView}"
-                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                SelectedItem="{Binding SelectedService}" />
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Batch toolbar: shown only while several rows are highlighted (Ctrl/Shift+click). -->
+                <Border Grid.Row="0" Margin="0,0,0,8" Padding="10,8" Style="{StaticResource Card}" Visibility="{Binding HasMultipleSelected, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding SelectedCountText}" />
+                        <Button Margin="0,0,6,0" Padding="10,5" Command="{Binding StartSelectedCommand}" Content="{DynamicResource S.Start}" />
+                        <Button Margin="0,0,6,0" Padding="10,5" Command="{Binding StopSelectedCommand}" Content="{DynamicResource S.Stop}" />
+                        <Button Padding="10,5" Command="{Binding RestartSelectedCommand}" Content="{DynamicResource S.Restart}" />
+                    </StackPanel>
+                </Border>
+
+                <ListBox
+                    x:Name="ServiceList"
+                    Grid.Row="1"
+                    AutomationProperties.Name="{DynamicResource S.Services}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ItemContainerStyle="{StaticResource ServiceItem}"
+                    ItemTemplate="{StaticResource ServiceRow}"
+                    ItemsSource="{Binding ServicesView}"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                    SelectedItem="{Binding SelectedService}"
+                    SelectionChanged="OnServiceSelectionChanged"
+                    SelectionMode="Extended" />
+            </Grid>
 
             <!-- Detail panel -->
             <Border Grid.Column="2" Style="{StaticResource Card}">
@@ -210,6 +231,7 @@
 
                     <Grid DataContext="{Binding SelectedService}" Visibility="{Binding Converter={StaticResource NullToVisibility}}">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -277,6 +299,9 @@
                                 <RowDefinition />
                                 <RowDefinition />
                                 <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
                             </Grid.RowDefinitions>
                             <Grid.Resources>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
@@ -298,10 +323,83 @@
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource S.Account}" />
                             <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Account}" />
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource M.Dash.DependsOn}" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding DependsOnText}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="{DynamicResource M.Dash.DependedBy}" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding DependedByText}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="{DynamicResource M.Dash.WrapperVersion}" />
+                            <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Mono}" Text="{Binding WrapperVersion}" />
+                                <TextBlock Margin="10,0,0,0" Style="{StaticResource FieldHint}" Text="{Binding DataContext.WrapperUpdateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button
+                                    Margin="10,0,0,0"
+                                    Padding="8,2"
+                                    Command="{Binding DataContext.UpgradeWrapperCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Content="{DynamicResource M.Dash.Upgrade}"
+                                    Visibility="{Binding DataContext.WrapperUpdateAvailable, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
                         </Grid>
 
+                        <!-- Live metrics -->
+                        <Border Grid.Row="3" Margin="0,0,0,16" Padding="12,10" VerticalAlignment="Bottom" Style="{StaticResource RowCard}" Visibility="{Binding CanStop, Converter={StaticResource BoolToVisibility}}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.Resources>
+                                    <Style x:Key="MetricLabel" TargetType="TextBlock" BasedOn="{StaticResource SectionTitle}">
+                                        <Setter Property="Margin" Value="0,0,0,2" />
+                                    </Style>
+                                    <Style x:Key="MetricValue" TargetType="TextBlock" BasedOn="{StaticResource Mono}">
+                                        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                        <Setter Property="FontSize" Value="14" />
+                                    </Style>
+                                </Grid.Resources>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,22,0">
+                                    <TextBlock Style="{StaticResource MetricLabel}" Text="{DynamicResource M.Metric.Uptime}" />
+                                    <TextBlock Style="{StaticResource MetricValue}" Text="{Binding UptimeText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="0,0,22,0">
+                                    <TextBlock Style="{StaticResource MetricLabel}" Text="CPU" />
+                                    <TextBlock Style="{StaticResource MetricValue}" Text="{Binding CpuText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Margin="0,0,22,0">
+                                    <TextBlock Style="{StaticResource MetricLabel}" Text="{DynamicResource M.Metric.Memory}" />
+                                    <TextBlock Style="{StaticResource MetricValue}" Text="{Binding MemoryText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="3" Margin="0,0,22,0">
+                                    <TextBlock Style="{StaticResource MetricLabel}" Text="{DynamicResource M.Metric.Handles}" />
+                                    <TextBlock Style="{StaticResource MetricValue}" Text="{Binding HandleText}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" Margin="0,0,22,0">
+                                    <TextBlock Style="{StaticResource MetricLabel}" Text="{DynamicResource M.Metric.ExitCode}" />
+                                    <TextBlock Style="{StaticResource MetricValue}" Text="{Binding LastExitCodeText}" />
+                                </StackPanel>
+                                <Polyline
+                                    Grid.Column="5"
+                                    Width="140"
+                                    Height="32"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom"
+                                    Points="{Binding CpuHistory, Converter={StaticResource Sparkline}, ConverterParameter=140,32}"
+                                    Stroke="{DynamicResource AccentBrush}"
+                                    StrokeLineJoin="Round"
+                                    StrokeThickness="1.5"
+                                    ToolTip="CPU" />
+                            </Grid>
+                        </Border>
+
                         <!-- Actions (commands live on the page VM, hence the RelativeSource) -->
-                        <WrapPanel Grid.Row="3" Margin="0,0,0,8">
+                        <WrapPanel Grid.Row="4" Margin="0,0,0,8">
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
@@ -350,6 +448,18 @@
                                     <TextBlock Text="{DynamicResource S.Terminate}" />
                                 </StackPanel>
                             </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ExportScriptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource M.Dash.ExportTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8C8;" />
+                                    <TextBlock Text="{DynamicResource M.Dash.Export}" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.DiagnosticsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource M.Dash.DiagnosticsTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE9D9;" />
+                                    <TextBlock Text="{DynamicResource M.Dash.Diagnostics}" />
+                                </StackPanel>
+                            </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE74D;" />
@@ -359,7 +469,7 @@
                         </WrapPanel>
 
                         <!-- Process tree -->
-                        <Grid Grid.Row="4">
+                        <Grid Grid.Row="5">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />

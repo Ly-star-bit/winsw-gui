@@ -30,6 +30,41 @@
             <Setter Property="Margin" Value="8,0,0,0" />
         </Style>
 
+        <!-- One lifecycle hook: executable, arguments, output capture. -->
+        <DataTemplate x:Key="HookEditor">
+            <Border Style="{StaticResource RowCard}" Padding="12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,0,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Executable}" />
+                        <TextBox Text="{Binding Executable, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,0,8">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Arguments}" />
+                        <TextBox Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="0">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Hook.Stdout}" />
+                        <TextBox Text="{Binding StdoutPath, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="2">
+                        <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Hook.Stderr}" />
+                        <TextBox Text="{Binding StderrPath, UpdateSourceTrigger=PropertyChanged}" />
+                    </StackPanel>
+                    <Button Grid.Row="0" Grid.Column="3" Style="{StaticResource RemoveButton}" Content="{DynamicResource M.Hook.Clear}" Command="{Binding DataContext.ClearHookCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
         <Style x:Key="TabBody" TargetType="ScrollViewer">
             <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
             <Setter Property="Padding" Value="4,14,12,0" />
@@ -343,7 +378,47 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <Button HorizontalAlignment="Left" Padding="12,6" Content="{DynamicResource S.AddDownload}" Command="{Binding DataContext.AddDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <Button HorizontalAlignment="Left" Margin="0,0,0,24" Padding="12,6" Content="{DynamicResource S.AddDownload}" Command="{Binding DataContext.AddDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Map.Title}" />
+                                <TextBlock Margin="0,0,0,10" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Map.Hint}" />
+                                <ItemsControl ItemsSource="{Binding SharedDirectories}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource RowCard}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="70" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource M.Map.Drive}" />
+                                                    <TextBox Grid.Column="2" Text="{Binding UncPath, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource M.Map.Path}" />
+                                                    <Button Grid.Column="3" Style="{StaticResource RemoveButton}" Content="{DynamicResource S.Remove}" Command="{Binding DataContext.RemoveMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Padding="12,6" Content="{DynamicResource M.Map.Add}" Command="{Binding DataContext.AddMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Hooks -->
+                    <TabItem Header="{DynamicResource M.Hook.Tab}">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="820" HorizontalAlignment="Left">
+                                <TextBlock Margin="0,0,0,14" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Hook.Hint}" />
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Hook.Prestart}" />
+                                <ContentControl Content="{Binding Prestart}" ContentTemplate="{StaticResource HookEditor}" />
+                                <TextBlock Margin="0,10,0,10" Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Hook.Poststart}" />
+                                <ContentControl Content="{Binding Poststart}" ContentTemplate="{StaticResource HookEditor}" />
+                                <TextBlock Margin="0,10,0,10" Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Hook.Prestop}" />
+                                <ContentControl Content="{Binding Prestop}" ContentTemplate="{StaticResource HookEditor}" />
+                                <TextBlock Margin="0,10,0,10" Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Hook.Poststop}" />
+                                <ContentControl Content="{Binding Poststop}" ContentTemplate="{StaticResource HookEditor}" />
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
@@ -407,6 +482,73 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
+
+                    <!-- Advanced: extensions as raw XML -->
+                    <TabItem Header="{DynamicResource M.Adv.Tab}">
+                        <Grid Margin="4,14,12,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Margin="0,0,0,10" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Adv.Hint}" />
+                            <TextBox
+                                Grid.Row="1"
+                                AcceptsReturn="True"
+                                AcceptsTab="True"
+                                FontFamily="{DynamicResource MonoFont}"
+                                FontSize="12"
+                                HorizontalScrollBarVisibility="Auto"
+                                Text="{Binding ExtensionsXml, UpdateSourceTrigger=PropertyChanged}"
+                                VerticalScrollBarVisibility="Auto" />
+                        </Grid>
+                    </TabItem>
+
+                    <!-- Try run: the program, as configured, without a service -->
+                    <TabItem Header="{DynamicResource M.Trial.Tab}">
+                        <Grid Margin="4,14,12,0" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Margin="0,0,0,10" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Trial.Hint}" />
+                            <StackPanel Grid.Row="1" Margin="0,0,0,10" Orientation="Horizontal">
+                                <Button Margin="0,0,8,0" Padding="12,6" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding StartTrialCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE768;" />
+                                        <TextBlock Text="{DynamicResource M.Trial.Start}" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StopTrialCommand}" Content="{DynamicResource S.Stop}" />
+                                <Button Margin="0,0,14,0" Padding="12,6" Command="{Binding ClearTrialCommand}" Content="{DynamicResource S.Clear}" />
+                                <TextBlock VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding TrialStatus}" />
+                            </StackPanel>
+                            <Border Grid.Row="2" Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
+                                <ListBox
+                                    x:Name="TrialOutputList"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    FontFamily="{DynamicResource MonoFont}"
+                                    FontSize="12"
+                                    ItemsSource="{Binding TrialOutput}"
+                                    ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                    VirtualizingPanel.IsVirtualizing="True">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="12,1" />
+                                            <Setter Property="MinHeight" Value="0" />
+                                            <Setter Property="Focusable" Value="False" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Foreground="{Binding Converter={StaticResource LogSeverityToBrush}}" Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Grid>
+                    </TabItem>
                 </TabControl>
             </Border>
 
@@ -424,11 +566,24 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Margin="14,12,14,0" Style="{StaticResource SectionTitle}" Text="{DynamicResource S.WhatWillBeWritten}" />
+                    <Grid Grid.Row="0" Margin="14,10,10,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource SectionTitle}" Margin="0" Text="{DynamicResource S.WhatWillBeWritten}" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Padding="8,3" Command="{Binding EnterXmlEditCommand}" Content="{DynamicResource M.Editor.EditXml}" Visibility="{Binding IsXmlEditing, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <Button Margin="0,0,6,0" Padding="8,3" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding ApplyXmlCommand}" Content="{DynamicResource M.Editor.ApplyXml}" Visibility="{Binding IsXmlEditing, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Padding="8,3" Command="{Binding CancelXmlEditCommand}" Content="{DynamicResource S.Cancel}" Visibility="{Binding IsXmlEditing, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Grid>
+
                     <TextBox
                         Grid.Row="1"
-                        Margin="6,0"
+                        Margin="6,4,6,0"
                         Background="Transparent"
                         BorderThickness="0"
                         FontFamily="{DynamicResource MonoFont}"
@@ -436,10 +591,41 @@
                         HorizontalScrollBarVisibility="Auto"
                         IsReadOnly="True"
                         Text="{Binding XmlPreview, Mode=OneWay}"
-                        VerticalScrollBarVisibility="Auto" />
+                        VerticalScrollBarVisibility="Auto"
+                        Visibility="{Binding IsXmlEditing, Converter={StaticResource InverseBoolToVisibility}}" />
+
+                    <TextBox
+                        Grid.Row="1"
+                        Margin="6,4,6,0"
+                        AcceptsReturn="True"
+                        AcceptsTab="True"
+                        FontFamily="{DynamicResource MonoFont}"
+                        FontSize="12"
+                        HorizontalScrollBarVisibility="Auto"
+                        Text="{Binding XmlEditorText, UpdateSourceTrigger=PropertyChanged}"
+                        VerticalScrollBarVisibility="Auto"
+                        Visibility="{Binding IsXmlEditing, Converter={StaticResource BoolToVisibility}}" />
 
                     <Border
                         Grid.Row="2"
+                        Margin="10,10,10,0"
+                        Padding="12,10"
+                        Background="{DynamicResource InputBrush}"
+                        BorderBrush="{DynamicResource HealthPendingBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Visibility="{Binding Warnings.Count, Converter={StaticResource CountToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Warnings}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+
+                    <Border
+                        Grid.Row="3"
                         Margin="10"
                         Padding="12,10"
                         Background="{DynamicResource DangerSoftBrush}"
