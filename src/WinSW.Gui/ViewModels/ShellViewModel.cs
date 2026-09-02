@@ -69,6 +69,11 @@ namespace WinSW.Gui.ViewModels
         private ThemeOption selectedTheme;
         private ReleaseInfo? guiUpdate;
         private bool contextMenuRegistered = ShellIntegration.IsRegistered;
+        private bool isRailCollapsed = AppSettings.Current.RailCollapsed;
+        private string toastText = string.Empty;
+        private bool toastVisible;
+        private bool toastIsError;
+        private readonly System.Windows.Threading.DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
 
         public ShellViewModel()
         {
@@ -77,7 +82,9 @@ namespace WinSW.Gui.ViewModels
             this.Logs = new LogViewerViewModel();
             this.Wizard = new WizardViewModel { Sources = this.Dashboard.Services };
             this.Remote = new RemoteViewModel();
+            this.Logs.Services = this.Dashboard.Services;
 
+            // The settings page binds to this shell itself; its DataTemplate maps ShellViewModel → SettingsView.
             this.Items = new ObservableCollection<NavigationItem>
             {
                 new("", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
@@ -85,6 +92,23 @@ namespace WinSW.Gui.ViewModels
                 new("", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
                 new("", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
                 new("", "M.Nav.Remote", "M.Nav.RemoteSub", this.Remote),
+                new("", "M.Nav.Settings", "M.Nav.SettingsSub", this),
+            };
+
+            this.ToggleRailCommand = new RelayCommand(() => this.IsRailCollapsed = !this.IsRailCollapsed);
+            this.toastTimer.Tick += (_, _) =>
+            {
+                this.toastTimer.Stop();
+                this.ToastVisible = false;
+            };
+
+            this.Dashboard.Toast += this.ShowToast;
+            this.Editor.Toast += this.ShowToast;
+            this.Dashboard.CreateServiceRequested += () => this.Navigate(this.Wizard);
+            this.Dashboard.OpenConfigFileRequested += () =>
+            {
+                this.Editor.Open();
+                this.Navigate(this.Editor);
             };
 
             this.Themes = new[]
@@ -124,10 +148,12 @@ namespace WinSW.Gui.ViewModels
                 this.Navigate(this.Logs);
             };
 
-            this.Wizard.Completed += () =>
+            this.Wizard.Completed += serviceId =>
             {
+                this.Dashboard.SelectServiceWhenReady(serviceId);
                 this.Navigate(this.Dashboard);
                 this.Dashboard.ReloadCommand.Execute(null);
+                this.ShowToast(Localizer.Format("M.Wiz.Installed", serviceId), false);
             };
 
             this.SelectedItem = this.Items[0];
@@ -161,6 +187,59 @@ namespace WinSW.Gui.ViewModels
         public RemoteViewModel Remote { get; }
 
         public RelayCommand OpenGuiUpdateCommand { get; }
+
+        public RelayCommand ToggleRailCommand { get; }
+
+        /// <summary>Icon-only rail; remembered across sessions.</summary>
+        public bool IsRailCollapsed
+        {
+            get => this.isRailCollapsed;
+            set
+            {
+                if (this.Set(ref this.isRailCollapsed, value))
+                {
+                    AppSettings.Current.RailCollapsed = value;
+                    AppSettings.Current.Save();
+                }
+            }
+        }
+
+        // Toast ------------------------------------------------------------------
+
+        public string ToastText
+        {
+            get => this.toastText;
+            private set => this.Set(ref this.toastText, value);
+        }
+
+        public bool ToastVisible
+        {
+            get => this.toastVisible;
+            private set => this.Set(ref this.toastVisible, value);
+        }
+
+        public bool ToastIsError
+        {
+            get => this.toastIsError;
+            private set => this.Set(ref this.toastIsError, value);
+        }
+
+        /// <summary>A short notice near the top of the content; replaces the previous one.</summary>
+        public void ShowToast(string text, bool isError)
+        {
+            this.ToastText = text;
+            this.ToastIsError = isError;
+            this.ToastVisible = true;
+            this.toastTimer.Stop();
+            this.toastTimer.Start();
+        }
+
+        /// <summary>Brings a service into view, e.g. from a tray notification.</summary>
+        public void ShowService(string serviceName)
+        {
+            this.Navigate(this.Dashboard);
+            this.Dashboard.SelectByName(serviceName);
+        }
 
         public string GuiVersion => "v" + UpdateChecker.CurrentGuiVersion;
 

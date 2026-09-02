@@ -146,4 +146,14 @@ namespace WinSW.Gui
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             throw new NotSupportedException();
     }
+
+    /// <summary>True when the bound value is non-null; used to light up fields that have a validation message.</summary>
+    public sealed class NotNullToBooleanConverter : IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            value is string text ? text.Length > 0 : value != null;
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
 }

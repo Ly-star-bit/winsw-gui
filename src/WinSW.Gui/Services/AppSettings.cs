@@ -54,6 +54,15 @@ namespace WinSW.Gui.Services
 
         public bool WindowMaximized { get; set; }
 
+        /// <summary>Icon-only navigation rail.</summary>
+        public bool RailCollapsed { get; set; }
+
+        public bool LogWrapLines { get; set; }
+
+        public double LogFontSize { get; set; } = 12;
+
+        public bool SortServicesByStatus { get; set; }
+
         private static AppSettings Load()
         {
             try

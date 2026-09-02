@@ -17,6 +17,7 @@
     <local:LogSeverityToBrushConverter x:Key="LogSeverityToBrush" />
     <local:EqualityToBooleanConverter x:Key="EqualityToBoolean" />
     <local:SparklineConverter x:Key="Sparkline" />
+    <local:NotNullToBooleanConverter x:Key="NotNullToBool" />
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
     <!-- Typography -->
@@ -64,6 +65,27 @@
         <Setter Property="FontFamily" Value="{DynamicResource MonoFont}" />
         <Setter Property="FontSize" Value="12" />
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    </Style>
+
+    <!-- Validation: a field lights up when the model has a message for it (bound through Tag) -->
+
+    <Style x:Key="ValidatedTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Path=Tag, RelativeSource={RelativeSource Self}, Converter={StaticResource NotNullToBool}}" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource HealthBrokenBrush}" />
+                <Setter Property="BorderThickness" Value="1.5" />
+                <Setter Property="ToolTip" Value="{Binding Path=Tag, RelativeSource={RelativeSource Self}}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="HelpButton" TargetType="Button">
+        <Setter Property="Padding" Value="6,2" />
+        <Setter Property="Margin" Value="8,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Content" Value="?" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="ToolTip" Value="{DynamicResource M.Help.Tip}" />
     </Style>
 
     <!-- Cards -->

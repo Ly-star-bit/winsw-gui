@@ -60,7 +60,26 @@ namespace WinSW.Gui.ViewModels
             {
                 if (Dialogs.PickFile(Localizer.Get("M.Dlg.SelectExecutable"), Localizer.Get("M.Filter.Executables")) is { } path)
                 {
-                    this.Model.Executable = path;
+                    this.Model.Executable = this.Relativize(path);
+
+                    // The wrapper's default working directory is its own folder, which is
+                    // rarely what a program expects; the program's folder is the usual intent.
+                    if (string.IsNullOrWhiteSpace(this.Model.WorkingDirectory))
+                    {
+                        this.Model.WorkingDirectory = this.Relativize(Path.GetDirectoryName(path) ?? string.Empty);
+                    }
+                }
+            });
+
+            this.OpenHelpCommand = new RelayCommand(p =>
+            {
+                string anchor = p as string ?? string.Empty;
+                try
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md" + (anchor.Length > 0 ? "#" + anchor : string.Empty)) { UseShellExecute = true });
+                }
+                catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
+                {
                 }
             });
 
@@ -173,6 +192,38 @@ namespace WinSW.Gui.ViewModels
         public AsyncRelayCommand ApplyToServiceCommand { get; }
 
         public RelayCommand BrowseExecutableCommand { get; }
+
+        public RelayCommand OpenHelpCommand { get; }
+
+        /// <summary>Raised after a save or apply, for a transient on-screen notice.</summary>
+        public event Action<string, bool>? Toast;
+
+        /// <summary>
+        /// Paths inside the configuration's own folder are written as %BASE%-relative, so the
+        /// service keeps working when the folder is moved or the package is exported.
+        /// </summary>
+        private string Relativize(string path)
+        {
+            if (this.filePath is null || path.Length == 0)
+            {
+                return path;
+            }
+
+            string baseDirectory = Path.GetDirectoryName(this.filePath) ?? string.Empty;
+            if (baseDirectory.Length == 0)
+            {
+                return path;
+            }
+
+            string full = Path.GetFullPath(path);
+            if (string.Equals(full, baseDirectory, StringComparison.OrdinalIgnoreCase))
+            {
+                return "%BASE%";
+            }
+
+            string prefix = baseDirectory.TrimEnd('\\') + "\\";
+            return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? "%BASE%\\" + full.Substring(prefix.Length) : path;
+        }
 
         public RelayCommand BrowseStopExecutableCommand { get; }
 
@@ -371,7 +422,7 @@ namespace WinSW.Gui.ViewModels
             this.Recompute();
         }
 
-        private void Open()
+        public void Open()
         {
             if (Dialogs.PickFile(Localizer.Get("M.Dlg.OpenConfig"), Localizer.Get("M.Filter.Config")) is { } path)
             {
@@ -426,6 +477,7 @@ namespace WinSW.Gui.ViewModels
                 this.StatusMessage = this.installedService is null
                     ? Localizer.Format("M.Editor.Saved", path)
                     : Localizer.Format("M.Editor.SavedApply", path);
+                this.Toast?.Invoke(Localizer.Format("M.Editor.Saved", Path.GetFileName(path)), false);
                 return;
             }
             catch (UnauthorizedAccessException)
@@ -500,6 +552,7 @@ namespace WinSW.Gui.ViewModels
                 { Succeeded: true } => Localizer.Format("M.Editor.Applied", entry.ServiceName),
                 _ => result.Error ?? Localizer.Get("M.Editor.RefreshFailed"),
             };
+            this.Toast?.Invoke(this.StatusMessage, !result.Succeeded);
         }
 
         // Change tracking --------------------------------------------------------

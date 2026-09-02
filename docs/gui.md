@@ -57,7 +57,16 @@ Across the pages:
   registered per user from the rail.
 - **Accessibility**: high-contrast mode is honoured automatically; controls carry automation
   names for screen readers.
-- **Updates**: the rail shows when a newer GUI release exists. Each release also carries
+- **First run**: an empty dashboard offers to create the first service or open a file, and
+  the wizard can download the right WinSW build for the machine and install everything
+  into the program's own folder.
+- **Everyday polish**: filter by clicking the stat cards, sort by status, double-click a
+  service for its logs, Ctrl+C / Ctrl+wheel / wrap in the log viewer, a pick-a-service box
+  on the Logs page, transient notices for action results, red borders on invalid fields,
+  masked passwords with a reveal toggle, number-and-unit editors for durations, a
+  collapsible icon-only rail, a resizable preview pane, and a Settings page that gathers
+  language, theme, tray and the shell verb. Closing with unsaved edits asks first.
+- **Updates**: the Settings page shows when a newer GUI release exists. Each release also carries
   winget manifests (`winget-manifests.zip`) ready for submission to winget-pkgs.
 
 ## Building

@@ -38,6 +38,10 @@
             <DataTemplate DataType="{x:Type vm:RemoteViewModel}">
                 <views:RemoteView />
             </DataTemplate>
+            <!-- The settings page edits the shell's own preferences, so it binds to the shell. -->
+            <DataTemplate DataType="{x:Type vm:ShellViewModel}">
+                <views:SettingsView />
+            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

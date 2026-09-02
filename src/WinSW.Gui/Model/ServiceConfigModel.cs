@@ -28,6 +28,31 @@ namespace WinSW.Gui.Model
     /// parser changes, this must change with it.
     /// </para>
     /// </remarks>
+    /// <summary>
+    /// Validation messages by field name, with a null-returning indexer so a binding such as
+    /// <c>{Binding FieldErrors[StopTimeout]}</c> is simply empty for a clean field.
+    /// </summary>
+    public sealed class FieldErrorMap : ObservableObject
+    {
+        private readonly Dictionary<string, string> errors = new(StringComparer.Ordinal);
+
+        public string? this[string field] => this.errors.TryGetValue(field, out string? message) ? message : null;
+
+        public int Count => this.errors.Count;
+
+        internal void Replace(Dictionary<string, string> fresh)
+        {
+            this.errors.Clear();
+            foreach (var pair in fresh)
+            {
+                this.errors[pair.Key] = pair.Value;
+            }
+
+            this.Raise("Item[]");
+            this.Raise(nameof(this.Count));
+        }
+    }
+
     public sealed class ServiceConfigModel : ObservableObject
     {
         /// <summary>Time suffixes accepted by <c>XmlServiceConfig.ParseTimeSpan</c>.</summary>
@@ -101,6 +126,9 @@ namespace WinSW.Gui.Model
             get => this.filePath;
             set => this.Set(ref this.filePath, value);
         }
+
+        /// <summary>Refreshed by <see cref="Validate"/>; the editor binds field borders to it.</summary>
+        public FieldErrorMap FieldErrors { get; } = new();
 
         // Identity -----------------------------------------------------------
 
@@ -883,52 +911,62 @@ namespace WinSW.Gui.Model
         public IReadOnlyList<string> Validate()
         {
             var problems = new List<string>();
+            var byField = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            void Add(string field, string message)
+            {
+                problems.Add(message);
+                if (!byField.ContainsKey(field))
+                {
+                    byField[field] = message;
+                }
+            }
 
             if (string.IsNullOrWhiteSpace(this.id))
             {
-                problems.Add(Localizer.Get("M.Val.IdRequired"));
+                Add(nameof(this.Id), Localizer.Get("M.Val.IdRequired"));
             }
             else if (this.id.IndexOfAny(new[] { ' ', '/', '\\' }) >= 0)
             {
-                problems.Add(Localizer.Get("M.Val.IdChars"));
+                Add(nameof(this.Id), Localizer.Get("M.Val.IdChars"));
             }
 
             if (string.IsNullOrWhiteSpace(this.executable))
             {
-                problems.Add(Localizer.Get("M.Val.ExeRequired"));
+                Add(nameof(this.Executable), Localizer.Get("M.Val.ExeRequired"));
             }
 
-            CheckTime(this.stopTimeout, Localizer.Get("M.Val.StopTimeout"));
-            CheckTime(this.preshutdownTimeout, Localizer.Get("M.Val.PreshutdownTimeout"));
-            CheckTime(this.resetFailureAfter, Localizer.Get("M.Val.ResetFailure"));
+            CheckTime(nameof(this.StopTimeout), this.stopTimeout, Localizer.Get("M.Val.StopTimeout"));
+            CheckTime(nameof(this.PreshutdownTimeout), this.preshutdownTimeout, Localizer.Get("M.Val.PreshutdownTimeout"));
+            CheckTime(nameof(this.ResetFailureAfter), this.resetFailureAfter, Localizer.Get("M.Val.ResetFailure"));
 
             foreach (var action in this.FailureActions)
             {
-                CheckTime(action.Delay, Localizer.Format("M.Val.FailureDelay", action.Action));
+                CheckTime(nameof(this.FailureActions), action.Delay, Localizer.Format("M.Val.FailureDelay", action.Action));
             }
 
             if (this.UsesTimePattern && string.IsNullOrWhiteSpace(this.rollPattern))
             {
-                problems.Add(Localizer.Format("M.Val.PatternRequired", this.logMode));
+                Add(nameof(this.RollPattern), Localizer.Format("M.Val.PatternRequired", this.logMode));
             }
 
-            CheckInt(this.rollPeriod, Localizer.Get("M.Val.RollPeriod"));
-            CheckInt(this.keepFiles, Localizer.Get("M.Val.KeepFiles"));
-            CheckInt(this.sizeThreshold, Localizer.Get("M.Val.SizeThreshold"));
-            CheckInt(this.zipOlderThanNumDays, Localizer.Get("M.Val.ZipDays"));
+            CheckInt(nameof(this.RollPeriod), this.rollPeriod, Localizer.Get("M.Val.RollPeriod"));
+            CheckInt(nameof(this.KeepFiles), this.keepFiles, Localizer.Get("M.Val.KeepFiles"));
+            CheckInt(nameof(this.SizeThreshold), this.sizeThreshold, Localizer.Get("M.Val.SizeThreshold"));
+            CheckInt(nameof(this.ZipOlderThanNumDays), this.zipOlderThanNumDays, Localizer.Get("M.Val.ZipDays"));
 
             if (this.UsesZipOptions
                 && !string.IsNullOrWhiteSpace(this.autoRollAtTime)
                 && !TimeSpan.TryParse(this.autoRollAtTime, out _))
             {
-                problems.Add(Localizer.Get("M.Val.BadAutoRoll"));
+                Add(nameof(this.AutoRollAtTime), Localizer.Get("M.Val.BadAutoRoll"));
             }
 
             foreach (var variable in this.EnvironmentVariables)
             {
                 if (string.IsNullOrWhiteSpace(variable.Name))
                 {
-                    problems.Add(Localizer.Get("M.Val.EnvName"));
+                    Add(nameof(this.EnvironmentVariables), Localizer.Get("M.Val.EnvName"));
                 }
             }
 
@@ -936,7 +974,7 @@ namespace WinSW.Gui.Model
             {
                 if (string.IsNullOrWhiteSpace(download.From) || string.IsNullOrWhiteSpace(download.To))
                 {
-                    problems.Add(Localizer.Get("M.Val.DownloadIncomplete"));
+                    Add(nameof(this.Downloads), Localizer.Get("M.Val.DownloadIncomplete"));
                     continue;
                 }
 
@@ -945,7 +983,7 @@ namespace WinSW.Gui.Model
                     && !download.From.StartsWith("https:", StringComparison.OrdinalIgnoreCase)
                     && !download.UnsecureAuth)
                 {
-                    problems.Add(Localizer.Format("M.Val.BasicInsecure", download.From));
+                    Add(nameof(this.Downloads), Localizer.Format("M.Val.BasicInsecure", download.From));
                 }
             }
 
@@ -957,12 +995,12 @@ namespace WinSW.Gui.Model
                     probe.LoadXml(this.extensionsXml!);
                     if (probe.DocumentElement?.Name != "extensions")
                     {
-                        problems.Add(Localizer.Get("M.Val.ExtensionsRoot"));
+                        Add(nameof(this.ExtensionsXml), Localizer.Get("M.Val.ExtensionsRoot"));
                     }
                 }
                 catch (XmlException e)
                 {
-                    problems.Add(Localizer.Format("M.Val.ExtensionsXml", e.Message));
+                    Add(nameof(this.ExtensionsXml), Localizer.Format("M.Val.ExtensionsXml", e.Message));
                 }
             }
 
@@ -970,18 +1008,19 @@ namespace WinSW.Gui.Model
             {
                 if (mapping.Label.Length != 2 || mapping.Label[1] != ':' || !char.IsLetter(mapping.Label[0]))
                 {
-                    problems.Add(Localizer.Format("M.Val.MappingLabel", mapping.Label));
+                    Add(nameof(this.SharedDirectories), Localizer.Format("M.Val.MappingLabel", mapping.Label));
                 }
 
                 if (!mapping.UncPath.StartsWith(@"\\", StringComparison.Ordinal))
                 {
-                    problems.Add(Localizer.Format("M.Val.MappingPath", mapping.UncPath));
+                    Add(nameof(this.SharedDirectories), Localizer.Format("M.Val.MappingPath", mapping.UncPath));
                 }
             }
 
+            this.FieldErrors.Replace(byField);
             return problems;
 
-            void CheckTime(string? value, string label)
+            void CheckTime(string field, string? value, string label)
             {
                 if (string.IsNullOrWhiteSpace(value))
                 {
@@ -990,16 +1029,16 @@ namespace WinSW.Gui.Model
 
                 if (!TryParseTime(value!))
                 {
-                    problems.Add(Localizer.Format("M.Val.BadTime", label, value, string.Join(", ", TimeSuffixes)));
+                    Add(field, Localizer.Format("M.Val.BadTime", label, value, string.Join(", ", TimeSuffixes)));
                 }
             }
 
-            void CheckInt(string? value, string label)
+            void CheckInt(string field, string? value, string label)
             {
                 if (!string.IsNullOrWhiteSpace(value)
                     && !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
                 {
-                    problems.Add(Localizer.Format("M.Val.BadInt", label, value));
+                    Add(field, Localizer.Format("M.Val.BadInt", label, value));
                 }
             }
         }

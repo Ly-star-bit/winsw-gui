@@ -42,11 +42,13 @@ namespace WinSW.Gui.ViewModels
         private bool brandWrapper;
         private string manufacturer = string.Empty;
         private ServiceEntry? cloneSource;
+        private bool placeNextToProgram = true;
 
         public WizardViewModel()
         {
-            this.NextCommand = new RelayCommand(() => this.Step++, () => this.step < LastStep && this.CanLeaveCurrentStep());
-            this.BackCommand = new RelayCommand(() => this.Step--, () => this.step > 1);
+            this.NextCommand = new RelayCommand(() => this.Step++, () => !this.isBusy && this.step < LastStep && this.CanLeaveCurrentStep());
+            this.BackCommand = new RelayCommand(() => this.Step--, () => !this.isBusy && this.step > 1);
+            this.DownloadWrapperCommand = new AsyncRelayCommand(this.DownloadWrapperAsync, () => !this.isBusy);
             this.InstallCommand = new AsyncRelayCommand(this.InstallAsync, () => this.step == LastStep && !this.isBusy);
             this.ResetCommand = new RelayCommand(this.Reset);
 
@@ -92,8 +94,38 @@ namespace WinSW.Gui.ViewModels
             };
         }
 
-        /// <summary>Raised after a successful installation so the shell can show the new service.</summary>
-        public event Action? Completed;
+        /// <summary>Raised with the new service ID after a successful installation.</summary>
+        public event Action<string>? Completed;
+
+        public AsyncRelayCommand DownloadWrapperCommand { get; }
+
+        /// <summary>
+        /// Put the wrapper (and therefore the configuration) in the program's own folder. That
+        /// is the layout %BASE% assumes and the one every WinSW example uses.
+        /// </summary>
+        public bool PlaceNextToProgram
+        {
+            get => this.placeNextToProgram;
+            set
+            {
+                if (this.Set(ref this.placeNextToProgram, value))
+                {
+                    this.Raise(nameof(this.InstallDirectory));
+                    this.Raise(nameof(this.ConfigPath));
+                    this.Raise(nameof(this.EffectiveWrapperPath));
+                }
+            }
+        }
+
+        /// <summary>Where the wrapper and configuration end up.</summary>
+        public string InstallDirectory =>
+            this.placeNextToProgram && !string.IsNullOrWhiteSpace(this.targetPath)
+                ? Path.GetDirectoryName(this.targetPath) ?? string.Empty
+                : Path.GetDirectoryName(this.wrapperPath) ?? string.Empty;
+
+        /// <summary>True when the chosen ID already belongs to an installed service.</summary>
+        public bool IdInUse => !string.IsNullOrWhiteSpace(this.serviceId)
+            && this.Sources.Any(s => string.Equals(s.ServiceName, this.serviceId.Trim(), StringComparison.OrdinalIgnoreCase));
 
         public ObservableCollection<string> Problems { get; } = new();
 
@@ -155,10 +187,22 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>The wrapper that will actually be registered: the branded copy, or the original.</summary>
-        public string EffectiveWrapperPath =>
-            this.brandWrapper && !string.IsNullOrWhiteSpace(this.serviceId) && !string.IsNullOrWhiteSpace(this.wrapperPath)
-                ? Path.Combine(Path.GetDirectoryName(this.wrapperPath) ?? string.Empty, this.serviceId + ".exe")
-                : this.wrapperPath;
+        public string EffectiveWrapperPath
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(this.wrapperPath))
+                {
+                    return string.Empty;
+                }
+
+                string name = this.brandWrapper && !string.IsNullOrWhiteSpace(this.serviceId)
+                    ? this.serviceId + ".exe"
+                    : Path.GetFileName(this.wrapperPath);
+
+                return Path.Combine(this.InstallDirectory, name);
+            }
+        }
 
         public string[] LogModes { get; } = { "append", "reset", "roll-by-size", "roll-by-time", "none" };
 
@@ -202,6 +246,8 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.wrapperPath, value))
                 {
+                    this.Raise(nameof(this.InstallDirectory));
+                    this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
                     this.RefreshCommands();
                 }
@@ -216,6 +262,9 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.targetPath, value))
                 {
                     this.SuggestDefaults();
+                    this.Raise(nameof(this.InstallDirectory));
+                    this.Raise(nameof(this.ConfigPath));
+                    this.Raise(nameof(this.EffectiveWrapperPath));
                     this.RefreshCommands();
                 }
             }
@@ -244,6 +293,7 @@ namespace WinSW.Gui.ViewModels
                 {
                     this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
+                    this.Raise(nameof(this.IdInUse));
                     this.RefreshCommands();
                 }
             }
@@ -341,7 +391,7 @@ namespace WinSW.Gui.ViewModels
                     return string.Empty;
                 }
 
-                return Path.Combine(Path.GetDirectoryName(this.wrapperPath) ?? string.Empty, this.serviceId + ".xml");
+                return Path.Combine(this.InstallDirectory, this.serviceId + ".xml");
             }
         }
 
@@ -399,9 +449,79 @@ namespace WinSW.Gui.ViewModels
         private bool CanLeaveCurrentStep() => this.step switch
         {
             1 => File.Exists(this.wrapperPath) && !string.IsNullOrWhiteSpace(this.targetPath),
-            2 => !string.IsNullOrWhiteSpace(this.serviceId),
+            2 => !string.IsNullOrWhiteSpace(this.serviceId) && !this.IdInUse,
             _ => true,
         };
+
+        /// <summary>
+        /// Fetches the wrapper build matching this machine from the latest WinSW release,
+        /// into the program's folder when one is chosen, so a first-time user never has to
+        /// go looking for WinSW.exe.
+        /// </summary>
+        private async Task DownloadWrapperAsync()
+        {
+            string? folder = !string.IsNullOrWhiteSpace(this.targetPath)
+                ? Path.GetDirectoryName(this.targetPath)
+                : Dialogs.PickFolder(Localizer.Get("M.Dlg.WrapperFolder"));
+            if (folder is null)
+            {
+                return;
+            }
+
+            this.IsBusy = true;
+            this.StatusMessage = Localizer.Get("M.Wiz.FetchingRelease");
+            try
+            {
+                var latest = await UpdateChecker.LatestWrapperAsync().ConfigureAwait(true);
+                string asset = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture switch
+                {
+                    System.Runtime.InteropServices.Architecture.Arm64 => "WinSW-arm64.exe",
+                    System.Runtime.InteropServices.Architecture.X64 => "WinSW-x64.exe",
+                    _ => "WinSW-x86.exe",
+                };
+
+                if (latest is null || !latest.Assets.TryGetValue(asset, out string? url))
+                {
+                    // Older releases only ship x64/x86; fall back to the framework build.
+                    if (latest != null && latest.Assets.TryGetValue("WinSW-net461.exe", out url))
+                    {
+                        asset = "WinSW-net461.exe";
+                    }
+                    else
+                    {
+                        this.StatusMessage = Localizer.Get("M.Wiz.ReleaseUnavailable");
+                        return;
+                    }
+                }
+
+                this.StatusMessage = Localizer.Format("M.Dash.Downloading", asset, latest.Version);
+                string? downloaded = await UpdateChecker.DownloadAsync(url, folder).ConfigureAwait(true);
+                if (downloaded is null)
+                {
+                    this.StatusMessage = Localizer.Get("M.Dash.DownloadFailed");
+                    return;
+                }
+
+                string final = Path.Combine(folder, "WinSW.exe");
+                if (!string.Equals(downloaded, final, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Copy(downloaded, final, overwrite: true);
+                    File.Delete(downloaded);
+                }
+
+                this.WrapperPath = final;
+                this.PlaceNextToProgram = true;
+                this.StatusMessage = Localizer.Format("M.Wiz.WrapperDownloaded", latest.Version, final);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", e.Message);
+            }
+            finally
+            {
+                this.IsBusy = false;
+            }
+        }
 
         public ServiceConfigModel BuildModel()
         {
@@ -454,6 +574,11 @@ namespace WinSW.Gui.ViewModels
                 this.Problems.Add(Localizer.Format("M.Wiz.NotWrapper", this.wrapperPath));
             }
 
+            if (this.IdInUse)
+            {
+                this.Problems.Add(Localizer.Format("M.Wiz.IdInUse", this.serviceId.Trim()));
+            }
+
             try
             {
                 this.ConfigPreview = model.ToXmlString();
@@ -479,21 +604,40 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 string configPath = this.ConfigPath;
-                string wrapper = this.wrapperPath;
+                string wrapper = this.EffectiveWrapperPath;
 
                 if (this.brandWrapper)
                 {
-                    string branded = this.EffectiveWrapperPath;
-                    this.StatusMessage = Localizer.Format("M.Wiz.Branding", branded);
+                    this.StatusMessage = Localizer.Format("M.Wiz.Branding", wrapper);
 
-                    var customized = await WinSwCli.CustomizeAsync(this.wrapperPath, branded, string.IsNullOrWhiteSpace(this.manufacturer) ? model.DisplayName ?? model.Id : this.manufacturer.Trim()).ConfigureAwait(true);
+                    var customized = await WinSwCli.CustomizeAsync(this.wrapperPath, wrapper, string.IsNullOrWhiteSpace(this.manufacturer) ? model.DisplayName ?? model.Id : this.manufacturer.Trim()).ConfigureAwait(true);
                     if (!customized.Succeeded)
                     {
                         this.StatusMessage = Localizer.Format("M.Wiz.BrandFailed", customized.Error ?? string.Empty);
                         return;
                     }
-
-                    wrapper = branded;
+                }
+                else if (!string.Equals(wrapper, this.wrapperPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(wrapper)!);
+                        File.Copy(this.wrapperPath, wrapper, overwrite: true);
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        var copied = await WinSwCli.CopyElevatedAsync(this.wrapperPath, wrapper).ConfigureAwait(true);
+                        if (!copied.Succeeded)
+                        {
+                            this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", copied.Error ?? Localizer.Get("M.Editor.ElevatedSaveDeclined"));
+                            return;
+                        }
+                    }
+                    catch (IOException e)
+                    {
+                        this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", e.Message);
+                        return;
+                    }
                 }
 
                 this.StatusMessage = Localizer.Format("M.Wiz.Writing", configPath);
@@ -519,7 +663,7 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstalledStarted" : "M.Wiz.Installed", model.Id);
-                this.Completed?.Invoke();
+                this.Completed?.Invoke(model.Id);
             }
             finally
             {
@@ -610,6 +754,7 @@ namespace WinSW.Gui.ViewModels
         private void Reset()
         {
             this.CloneSource = null;
+            this.PlaceNextToProgram = true;
             this.BrandWrapper = false;
             this.Manufacturer = string.Empty;
             this.Step = 1;
@@ -639,6 +784,7 @@ namespace WinSW.Gui.ViewModels
             this.NextCommand.RaiseCanExecuteChanged();
             this.BackCommand.RaiseCanExecuteChanged();
             this.InstallCommand.RaiseCanExecuteChanged();
+            this.DownloadWrapperCommand.RaiseCanExecuteChanged();
         }
     }
 }

@@ -20,6 +20,7 @@ namespace WinSW.Gui.Services
         private readonly NotifyIcon icon;
         private readonly ToolStripMenuItem open;
         private readonly ToolStripMenuItem exit;
+        private string? lastNotificationTag;
 
         public TrayIcon()
         {
@@ -42,7 +43,14 @@ namespace WinSW.Gui.Services
             };
 
             this.icon.DoubleClick += (_, _) => this.OpenRequested?.Invoke();
-            this.icon.BalloonTipClicked += (_, _) => this.OpenRequested?.Invoke();
+            this.icon.BalloonTipClicked += (_, _) =>
+            {
+                this.OpenRequested?.Invoke();
+                if (this.lastNotificationTag != null)
+                {
+                    this.NotificationClicked?.Invoke(this.lastNotificationTag);
+                }
+            };
 
             this.Relabel();
             Localizer.Changed += this.Relabel;
@@ -52,14 +60,18 @@ namespace WinSW.Gui.Services
 
         public event Action? ExitRequested;
 
+        /// <summary>Raised with the tag given to <see cref="Notify"/> when its balloon is clicked.</summary>
+        public event Action<string>? NotificationClicked;
+
         public bool Visible
         {
             get => this.icon.Visible;
             set => this.icon.Visible = value;
         }
 
-        public void Notify(string title, string text, bool isError)
+        public void Notify(string title, string text, bool isError, string? tag = null)
         {
+            this.lastNotificationTag = tag;
             bool wasVisible = this.icon.Visible;
             this.icon.Visible = true;
             this.icon.ShowBalloonTip(8000, title, text, isError ? ToolTipIcon.Error : ToolTipIcon.Info);

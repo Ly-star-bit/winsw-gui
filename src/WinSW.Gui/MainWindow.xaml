@@ -36,12 +36,22 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="232" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Navigation rail -->
+            <!-- Navigation rail: 232 px with labels, 72 px icon-only -->
             <Border Grid.Column="0" Background="{DynamicResource RailBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,1,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Width" Value="232" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRailCollapsed}" Value="True">
+                                <Setter Property="Width" Value="72" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -49,19 +59,37 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <!-- Brand -->
-                    <StackPanel Grid.Row="0" Margin="22,18,22,22" Orientation="Horizontal">
+                    <!-- Brand + collapse toggle -->
+                    <Grid Grid.Row="0" Margin="18,14,12,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal">
                         <Border Width="34" Height="34" Background="{DynamicResource AccentGradientBrush}" CornerRadius="9">
                             <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="White" Style="{StaticResource Icon}" Text="&#xE770;" />
                         </Border>
-                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
                             <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="WinSW" />
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{DynamicResource S.ServiceWrapper}" />
                                 <TextBlock Margin="6,0,0,0" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding GuiVersion}" />
                             </StackPanel>
                         </StackPanel>
-                    </StackPanel>
+                        </StackPanel>
+                        <Button
+                            Grid.Column="1"
+                            Padding="6,4"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="{DynamicResource M.Settings.CollapseRail}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding ToggleRailCommand}"
+                            ToolTip="{DynamicResource M.Settings.CollapseRail}"
+                            Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE700;" />
+                        </Button>
+                    </Grid>
 
                     <ListBox
                         Grid.Row="1"
@@ -72,9 +100,9 @@
                         Style="{StaticResource NavList}">
                         <ListBox.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:NavigationItem}">
-                                <StackPanel Orientation="Horizontal">
+                                <StackPanel Orientation="Horizontal" ToolTip="{Binding Title}" AutomationProperties.Name="{Binding Title}">
                                     <TextBlock Width="22" FontSize="16" Style="{StaticResource Icon}" Text="{Binding Glyph}" />
-                                    <StackPanel Margin="10,0,0,0">
+                                    <StackPanel Margin="10,0,0,0" Visibility="{Binding DataContext.IsRailCollapsed, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource InverseBoolToVisibility}}">
                                         <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Title}" />
                                         <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding Subtitle}" />
                                     </StackPanel>
@@ -83,61 +111,45 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Preferences and elevation state -->
+                    <!-- Elevation state; preferences live on the Settings page -->
                     <StackPanel Grid.Row="2" Margin="14,0,14,14">
-                        <StackPanel.Resources>
-                            <Style x:Key="PrefLabel" TargetType="TextBlock">
-                                <Setter Property="FontSize" Value="12" />
-                                <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
-                                <Setter Property="VerticalAlignment" Value="Center" />
-                                <Setter Property="Margin" Value="0,0,10,0" />
-                            </Style>
-                        </StackPanel.Resources>
+                        <Button
+                            Margin="0,0,0,8"
+                            HorizontalAlignment="Center"
+                            Padding="8,6"
+                            AutomationProperties.Name="{DynamicResource M.Settings.ExpandRail}"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Command="{Binding ToggleRailCommand}"
+                            ToolTip="{DynamicResource M.Settings.ExpandRail}"
+                            Visibility="{Binding IsRailCollapsed, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE700;" />
+                        </Button>
 
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Style="{StaticResource PrefLabel}" Text="{DynamicResource M.Shell.Language}" />
-                            <ComboBox Grid.Column="1" DisplayMemberPath="NativeName" ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage}" />
-                        </Grid>
-
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Style="{StaticResource PrefLabel}" Text="{DynamicResource M.Shell.Theme}" />
-                            <ComboBox Grid.Column="1" DisplayMemberPath="Label" ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme}" />
-                        </Grid>
-
-                        <CheckBox Margin="0,0,0,4" FontSize="12" Content="{DynamicResource M.Shell.MinimizeToTray}" IsChecked="{Binding MinimizeToTray}" />
-                        <CheckBox Margin="0,0,0,4" FontSize="12" Content="{DynamicResource M.Shell.NotifyOnStop}" IsChecked="{Binding NotifyOnUnexpectedStop}" />
-                        <CheckBox Margin="0,0,0,10" FontSize="12" Content="{DynamicResource M.Shell.ContextMenu}" IsChecked="{Binding ContextMenuRegistered}" ToolTip="{DynamicResource M.Shell.ContextMenuTip}" />
-
-                        <!-- Newer GUI release available -->
-                        <Border Margin="0,0,0,8" Padding="12,8" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8" Visibility="{Binding HasGuiUpdate, Converter={StaticResource BoolToVisibility}}">
+                        <Border Padding="12,10" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" ToolTip="{Binding ElevationHint}">
                             <StackPanel>
-                                <TextBlock FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding GuiUpdateText}" TextWrapping="Wrap" />
-                                <Button Margin="0,6,0,0" HorizontalAlignment="Left" Padding="10,4" Command="{Binding OpenGuiUpdateCommand}" Content="{DynamicResource M.Shell.OpenRelease}" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Padding="12,10" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE7EF;" />
-                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ElevationLabel}" />
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE7EF;" />
+                                    <TextBlock Margin="8,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ElevationLabel}" Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
                                 </StackPanel>
-                                <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding ElevationHint}" TextWrapping="Wrap" />
+                                <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding ElevationHint}" TextWrapping="Wrap" Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
                                 <Button
                                     Margin="0,10,0,0"
                                     HorizontalAlignment="Stretch"
                                     Padding="10,6"
                                     Command="{Binding RestartElevatedCommand}"
                                     Content="{DynamicResource M.Shell.RestartElevated}"
-                                    Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}" />
+                                    Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsRailCollapsed}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -145,7 +157,37 @@
             </Border>
 
             <!-- Page host: DataTemplates in App.xaml map each view model to its view. -->
-            <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" />
+            <Grid Grid.Column="1">
+                <ContentControl Content="{Binding CurrentPage}" />
+
+                <!-- Transient notice for the outcome of an action; sits where the eye already is. -->
+                <Border
+                    MaxWidth="520"
+                    Margin="0,16,28,0"
+                    Padding="14,10"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Background="{DynamicResource CardBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    IsHitTestVisible="False"
+                    Visibility="{Binding ToastVisible, Converter={StaticResource BoolToVisibility}}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="BorderBrush" Value="{DynamicResource HealthRunningBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ToastIsError}" Value="True">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource HealthBrokenBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="18" Opacity="0.35" ShadowDepth="2" />
+                    </Border.Effect>
+                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ToastText}" TextWrapping="Wrap" />
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </ui:FluentWindow>

@@ -31,8 +31,12 @@ namespace WinSW.Gui
             this.shell.Dashboard.UnexpectedStop += entry =>
                 this.tray.Notify(
                     Localizer.Get("M.Dash.UnexpectedStopTitle"),
-                    Localizer.Format("M.Dash.UnexpectedStopBody", entry.ServiceName),
-                    isError: true);
+                    entry.CrashCount > 1
+                        ? Localizer.Format("M.Dash.UnexpectedStopRepeated", entry.ServiceName, entry.CrashCount)
+                        : Localizer.Format("M.Dash.UnexpectedStopBody", entry.ServiceName),
+                    isError: true,
+                    tag: entry.ServiceName);
+            this.tray.NotificationClicked += serviceName => this.shell.ShowService(serviceName);
 
             this.RestoreWindowPlacement();
             this.StateChanged += this.OnStateChanged;
@@ -114,6 +118,24 @@ namespace WinSW.Gui
                 e.Cancel = true;
                 this.WindowState = WindowState.Minimized;
                 return;
+            }
+
+            if (this.shell.Editor.IsDirty)
+            {
+                var answer = MessageBox.Show(
+                    this,
+                    Localizer.Get("M.Editor.UnsavedOnExit"),
+                    "WinSW",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+
+                if (answer != MessageBoxResult.Yes)
+                {
+                    e.Cancel = true;
+                    this.exiting = false;
+                    return;
+                }
             }
 
             this.SaveWindowPlacement();

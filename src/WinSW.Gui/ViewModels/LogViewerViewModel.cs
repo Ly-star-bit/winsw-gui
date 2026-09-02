@@ -94,6 +94,9 @@ namespace WinSW.Gui.ViewModels
         private bool isPaused;
         private bool isLoadingEvents;
         private bool useRegex;
+        private bool wrapLines = AppSettings.Current.LogWrapLines;
+        private double fontSize = AppSettings.Current.LogFontSize;
+        private ServiceEntry? selectedService;
         private System.Text.RegularExpressions.Regex? filterRegex;
         private bool filterInvalid;
         private int errorCount;
@@ -164,6 +167,48 @@ namespace WinSW.Gui.ViewModels
         public AsyncRelayCommand RefreshEventsCommand { get; }
 
         public RelayCommand NextErrorCommand { get; }
+
+        /// <summary>Installed services, so a service can be picked here as well as from the dashboard.</summary>
+        public IEnumerable<ServiceEntry> Services { get; set; } = Array.Empty<ServiceEntry>();
+
+        public ServiceEntry? SelectedService
+        {
+            get => this.selectedService;
+            set
+            {
+                if (this.Set(ref this.selectedService, value) && value != null && !ReferenceEquals(value, this.service))
+                {
+                    this.Attach(value);
+                }
+            }
+        }
+
+        public bool WrapLines
+        {
+            get => this.wrapLines;
+            set
+            {
+                if (this.Set(ref this.wrapLines, value))
+                {
+                    AppSettings.Current.LogWrapLines = value;
+                    AppSettings.Current.Save();
+                }
+            }
+        }
+
+        public double FontSize
+        {
+            get => this.fontSize;
+            set
+            {
+                double clamped = Math.Clamp(value, 9, 24);
+                if (this.Set(ref this.fontSize, clamped))
+                {
+                    AppSettings.Current.LogFontSize = clamped;
+                    AppSettings.Current.Save();
+                }
+            }
+        }
 
         /// <summary>Raised with the index of a line the view should bring into view and highlight.</summary>
         public event Action<int>? ScrollToRequested;
@@ -308,6 +353,8 @@ namespace WinSW.Gui.ViewModels
         public void Attach(ServiceEntry entry)
         {
             this.service = entry;
+            this.selectedService = entry;
+            this.Raise(nameof(this.SelectedService));
             this.Raise(nameof(this.ServiceName));
             this.RescanCommand.RaiseCanExecuteChanged();
             this.RefreshEventsCommand.RaiseCanExecuteChanged();

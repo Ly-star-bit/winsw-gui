@@ -47,11 +47,23 @@ namespace WinSW.Gui.ViewModels
         private ReleaseInfo? latestWrapper;
         private bool checkedForWrapperUpdate;
         private string? pendingConfigPath;
+        private string? pendingServiceName;
+        private string healthFilter = "all";
+        private bool sortByStatus = AppSettings.Current.SortServicesByStatus;
+        private readonly Dictionary<string, (DateTime At, int Count)> notified = new(StringComparer.OrdinalIgnoreCase);
 
         public DashboardViewModel()
         {
             this.ServicesView = CollectionViewSource.GetDefaultView(this.Services);
             this.ServicesView.Filter = this.MatchesSearch;
+            if (this.ServicesView is ICollectionViewLiveShaping live)
+            {
+                // Rows move as their state changes when sorting by status, without a manual refresh.
+                live.LiveSortingProperties.Add(nameof(ServiceEntry.SortRank));
+                live.IsLiveSorting = true;
+            }
+
+            this.ApplySort();
 
             this.ReloadCommand = new AsyncRelayCommand(() => this.ReloadAsync(quiet: false));
             this.StartCommand = new AsyncRelayCommand(() => this.RunAsync("start", (w, c) => WinSwCli.StartAsync(w, c)), () => this.selectedService?.CanStart == true);
@@ -92,6 +104,10 @@ namespace WinSW.Gui.ViewModels
             this.StopSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("stop"), () => this.HasMultipleSelected);
             this.RestartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("restart"), () => this.HasMultipleSelected);
 
+            this.SetFilterCommand = new RelayCommand(p => this.HealthFilter = p as string ?? "all");
+            this.CreateServiceCommand = new RelayCommand(() => this.CreateServiceRequested?.Invoke());
+            this.OpenConfigFileCommand = new RelayCommand(() => this.OpenConfigFileRequested?.Invoke());
+
             this.ExportScriptCommand = new RelayCommand(this.ExportScript, () => this.selectedService?.ConfigPath != null);
             this.DiagnosticsCommand = new AsyncRelayCommand(this.CreateDiagnosticsAsync, () => this.selectedService != null);
             this.UpgradeWrapperCommand = new AsyncRelayCommand(this.UpgradeWrapperAsync, () => this.WrapperUpdateAvailable);
@@ -131,6 +147,61 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Raised when a service goes from running to stopped without this GUI asking it to.</summary>
         public event Action<ServiceEntry>? UnexpectedStop;
+
+        /// <summary>Raised with the outcome of an operation, for a transient on-screen notice.</summary>
+        public event Action<string, bool>? Toast;
+
+        public event Action? CreateServiceRequested;
+
+        public event Action? OpenConfigFileRequested;
+
+        public RelayCommand SetFilterCommand { get; }
+
+        public RelayCommand CreateServiceCommand { get; }
+
+        public RelayCommand OpenConfigFileCommand { get; }
+
+        /// <summary>"all", "running", "stopped" or "problem"; the stat cards set it.</summary>
+        public string HealthFilter
+        {
+            get => this.healthFilter;
+            set
+            {
+                if (this.Set(ref this.healthFilter, value ?? "all"))
+                {
+                    this.ServicesView.Refresh();
+                }
+            }
+        }
+
+        public bool SortByStatus
+        {
+            get => this.sortByStatus;
+            set
+            {
+                if (this.Set(ref this.sortByStatus, value))
+                {
+                    AppSettings.Current.SortServicesByStatus = value;
+                    AppSettings.Current.Save();
+                    this.ApplySort();
+                }
+            }
+        }
+
+        /// <summary>No services at all, and not because a scan is still running: show the getting-started card.</summary>
+        public bool IsEmpty => this.Services.Count == 0 && !this.isScanning;
+
+        /// <summary>Selects a service by ID once the next scan has finished (used after the wizard installs one).</summary>
+        public void SelectServiceWhenReady(string serviceName) => this.pendingServiceName = serviceName;
+
+        public void SelectByName(string serviceName)
+        {
+            var match = this.Services.FirstOrDefault(s => string.Equals(s.ServiceName, serviceName, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                this.SelectedService = match;
+            }
+        }
 
         public ObservableCollection<ServiceEntry> Services { get; } = new();
 
@@ -271,7 +342,13 @@ namespace WinSW.Gui.ViewModels
         public bool IsScanning
         {
             get => this.isScanning;
-            set => this.Set(ref this.isScanning, value);
+            set
+            {
+                if (this.Set(ref this.isScanning, value))
+                {
+                    this.Raise(nameof(this.IsEmpty));
+                }
+            }
         }
 
         /// <summary>The process tree of the selected service; only replaced when its shape changes.</summary>
@@ -409,6 +486,12 @@ namespace WinSW.Gui.ViewModels
 
                 this.RefreshStatuses();
 
+                if (this.pendingServiceName is { } wanted)
+                {
+                    this.pendingServiceName = null;
+                    this.SelectByName(wanted);
+                }
+
                 if (this.pendingConfigPath is { } pending)
                 {
                     this.pendingConfigPath = null;
@@ -480,6 +563,7 @@ namespace WinSW.Gui.ViewModels
                     { Succeeded: true } => Localizer.Format("M.Dash.Completed", label, entry.ServiceName),
                     _ => result.Error ?? Localizer.Format("M.Dash.Failed", label),
                 };
+                this.Toast?.Invoke(this.StatusMessage, !result.Succeeded && !result.Cancelled);
 
                 // An uninstall removes the entry entirely; anything else only moves its state.
                 if (label == "uninstall" && result.Succeeded)
@@ -549,7 +633,19 @@ namespace WinSW.Gui.ViewModels
                     && !this.isBusy
                     && AppSettings.Current.NotifyOnUnexpectedStop)
                 {
-                    this.UnexpectedStop?.Invoke(entry);
+                    // A crash-looping service would otherwise raise a balloon every poll.
+                    // One notice per five minutes, carrying how many times it has happened.
+                    var now = DateTime.UtcNow;
+                    this.notified.TryGetValue(entry.ServiceName, out var record);
+                    int count = now - record.At < TimeSpan.FromMinutes(5) ? record.Count + 1 : 1;
+                    bool announce = count == 1 || now - record.At >= TimeSpan.FromMinutes(5);
+                    this.notified[entry.ServiceName] = (announce ? now : record.At, count);
+                    entry.CrashCount = count;
+
+                    if (announce)
+                    {
+                        this.UnexpectedStop?.Invoke(entry);
+                    }
                 }
 
                 this.lastHealth[entry.ServiceName] = health;
@@ -701,6 +797,7 @@ namespace WinSW.Gui.ViewModels
 
         private void RaiseCounts()
         {
+            this.Raise(nameof(this.IsEmpty));
             this.Raise(nameof(this.TotalCount));
             this.Raise(nameof(this.RunningCount));
             this.Raise(nameof(this.StoppedCount));
@@ -720,16 +817,43 @@ namespace WinSW.Gui.ViewModels
             this.OpenFolderCommand.RaiseCanExecuteChanged();
         }
 
+        private void ApplySort()
+        {
+            using (this.ServicesView.DeferRefresh())
+            {
+                this.ServicesView.SortDescriptions.Clear();
+                if (this.sortByStatus)
+                {
+                    this.ServicesView.SortDescriptions.Add(new SortDescription(nameof(ServiceEntry.SortRank), ListSortDirection.Ascending));
+                }
+
+                this.ServicesView.SortDescriptions.Add(new SortDescription(nameof(ServiceEntry.ServiceName), ListSortDirection.Ascending));
+            }
+        }
+
         private bool MatchesSearch(object item)
         {
-            if (string.IsNullOrWhiteSpace(this.searchText))
-            {
-                return true;
-            }
-
             if (item is not ServiceEntry entry)
             {
                 return false;
+            }
+
+            bool healthOk = this.healthFilter switch
+            {
+                "running" => entry.Health == ServiceHealth.Running,
+                "stopped" => entry.Health == ServiceHealth.Stopped,
+                "problem" => entry.Health == ServiceHealth.Broken,
+                _ => true,
+            };
+
+            if (!healthOk)
+            {
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(this.searchText))
+            {
+                return true;
             }
 
             string needle = this.searchText.Trim();

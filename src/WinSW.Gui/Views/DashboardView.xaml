@@ -2,6 +2,7 @@
     x:Class="WinSW.Gui.Views.DashboardView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:model="clr-namespace:WinSW.Gui.Model"
     xmlns:services="clr-namespace:WinSW.Gui.Services"
     xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
@@ -76,6 +77,17 @@
             <Setter Property="Padding" Value="16,12" />
             <Setter Property="Margin" Value="0,0,12,0" />
             <Setter Property="MinWidth" Value="140" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="ToolTip" Value="{DynamicResource M.Dash.FilterTip}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="StatValue" TargetType="TextBlock">
@@ -115,19 +127,22 @@
                 <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="{DynamicResource S.EveryWindowsServiceOnThisMachine}" />
             </StackPanel>
 
-            <TextBox
-                Grid.Column="1"
-                Width="240"
-                Margin="0,0,10,0"
-                VerticalAlignment="Center"
-                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                ToolTip="{DynamicResource S.FilterByServiceIDDisplayName}" />
+            <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Center" Orientation="Horizontal">
+                <CheckBox Margin="0,0,12,0" VerticalAlignment="Center" Content="{DynamicResource M.Dash.SortByStatus}" IsChecked="{Binding SortByStatus}" />
+                <ui:TextBox
+                    Width="240"
+                    AutomationProperties.Name="{DynamicResource S.FilterByServiceIDDisplayName}"
+                    PlaceholderText="{DynamicResource M.Ph.Search}"
+                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip="{DynamicResource S.FilterByServiceIDDisplayName}" />
+            </StackPanel>
 
             <Button
                 Grid.Column="2"
                 VerticalAlignment="Center"
                 Command="{Binding ReloadCommand}"
-                Padding="12,7">
+                Padding="12,7"
+                ToolTip="F5">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
                     <TextBlock Text="{DynamicResource S.Rescan}" />
@@ -135,27 +150,39 @@
             </Button>
         </Grid>
 
-        <!-- Stats -->
+        <!-- Stats: each card is also a filter -->
         <StackPanel Grid.Row="1" Margin="0,0,0,18" Orientation="Horizontal">
-            <Border Style="{StaticResource StatCard}">
+            <Border Style="{StaticResource StatCard}" Tag="{Binding HealthFilter, Converter={StaticResource EqualityToBoolean}, ConverterParameter=all}">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding SetFilterCommand}" CommandParameter="all" />
+                </Border.InputBindings>
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Managed}" />
                     <TextBlock Style="{StaticResource StatValue}" Text="{Binding TotalCount}" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource StatCard}">
+            <Border Style="{StaticResource StatCard}" Tag="{Binding HealthFilter, Converter={StaticResource EqualityToBoolean}, ConverterParameter=running}">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding SetFilterCommand}" CommandParameter="running" />
+                </Border.InputBindings>
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Running}" />
                     <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthRunningBrush}" Text="{Binding RunningCount}" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource StatCard}">
+            <Border Style="{StaticResource StatCard}" Tag="{Binding HealthFilter, Converter={StaticResource EqualityToBoolean}, ConverterParameter=stopped}">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding SetFilterCommand}" CommandParameter="stopped" />
+                </Border.InputBindings>
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Stopped}" />
                     <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthStoppedBrush}" Text="{Binding StoppedCount}" />
                 </StackPanel>
             </Border>
-            <Border Style="{StaticResource StatCard}">
+            <Border Style="{StaticResource StatCard}" Tag="{Binding HealthFilter, Converter={StaticResource EqualityToBoolean}, ConverterParameter=problem}">
+                <Border.InputBindings>
+                    <MouseBinding MouseAction="LeftClick" Command="{Binding SetFilterCommand}" CommandParameter="problem" />
+                </Border.InputBindings>
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.NeedsAttention}" />
                     <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthBrokenBrush}" Text="{Binding ProblemCount}" />
@@ -198,8 +225,25 @@
                     ItemsSource="{Binding ServicesView}"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     SelectedItem="{Binding SelectedService}"
+                    MouseDoubleClick="OnServiceDoubleClick"
                     SelectionChanged="OnServiceSelectionChanged"
                     SelectionMode="Extended" />
+
+                <!-- Getting started: nothing is installed yet -->
+                <Border Grid.Row="1" Padding="24" Style="{StaticResource Card}" VerticalAlignment="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock FontSize="34" Style="{StaticResource Icon}" Text="&#xE7B8;" />
+                        <TextBlock Margin="0,12,0,4" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Empty.Title}" />
+                        <TextBlock Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Empty.Body}" />
+                        <Button Margin="0,16,0,8" HorizontalAlignment="Left" Padding="14,8" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding CreateServiceCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE710;" />
+                                <TextBlock Text="{DynamicResource M.Empty.Create}" />
+                            </StackPanel>
+                        </Button>
+                        <Button HorizontalAlignment="Left" Padding="14,8" Command="{Binding OpenConfigFileCommand}" Content="{DynamicResource M.Empty.Open}" />
+                    </StackPanel>
+                </Border>
             </Grid>
 
             <!-- Detail panel -->
@@ -398,8 +442,8 @@
                             </Grid>
                         </Border>
 
-                        <!-- Actions (commands live on the page VM, hence the RelativeSource) -->
-                        <WrapPanel Grid.Row="4" Margin="0,0,0,8">
+                        <!-- Actions: three primaries; everything else, destructive ones last, behind "More" -->
+                        <StackPanel Grid.Row="4" Margin="0,0,0,8" Orientation="Horizontal">
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
@@ -418,55 +462,36 @@
                                     <TextBlock Text="{DynamicResource S.Restart}" />
                                 </StackPanel>
                             </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ViewLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource M.Dash.DoubleClickTip}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
+                                    <TextBlock Text="{DynamicResource S.Logs}" />
+                                </StackPanel>
+                            </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.EditConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE713;" />
                                     <TextBlock Text="{DynamicResource S.EditConfiguration}" />
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ViewLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <Button x:Name="MoreButton" Style="{StaticResource ActionButton}" Click="OnMoreClick" AutomationProperties.Name="{DynamicResource M.Dash.More}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
-                                    <TextBlock Text="{DynamicResource S.Logs}" />
+                                    <TextBlock Text="{DynamicResource M.Dash.More}" />
+                                    <TextBlock Margin="6,0,0,0" FontSize="10" Style="{StaticResource Icon}" Text="&#xE70D;" />
                                 </StackPanel>
+                                <Button.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Command="{Binding RefreshConfigCommand}" Header="{DynamicResource S.ApplyConfig}" ToolTip="{DynamicResource S.ReApplyTheConfigurationFileTo}" />
+                                        <MenuItem Command="{Binding OpenFolderCommand}" Header="{DynamicResource S.Reveal}" />
+                                        <MenuItem Command="{Binding ExportScriptCommand}" Header="{DynamicResource M.Dash.Export}" ToolTip="{DynamicResource M.Dash.ExportTip}" />
+                                        <MenuItem Command="{Binding DiagnosticsCommand}" Header="{DynamicResource M.Dash.Diagnostics}" ToolTip="{DynamicResource M.Dash.DiagnosticsTip}" />
+                                        <Separator />
+                                        <MenuItem Command="{Binding KillCommand}" Foreground="{DynamicResource HealthPendingBrush}" Header="{DynamicResource S.Terminate}" ToolTip="{DynamicResource S.ForceTerminateTheServiceProcessTree}" />
+                                        <MenuItem Command="{Binding UninstallCommand}" Foreground="{DynamicResource HealthBrokenBrush}" Header="{DynamicResource S.Uninstall}" />
+                                    </ContextMenu>
+                                </Button.ContextMenu>
                             </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RefreshConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource S.ReApplyTheConfigurationFileTo}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE895;" />
-                                    <TextBlock Text="{DynamicResource S.ApplyConfig}" />
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE838;" />
-                                    <TextBlock Text="{DynamicResource S.Reveal}" />
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.KillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource S.ForceTerminateTheServiceProcessTree}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
-                                    <TextBlock Text="{DynamicResource S.Terminate}" />
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ExportScriptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource M.Dash.ExportTip}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8C8;" />
-                                    <TextBlock Text="{DynamicResource M.Dash.Export}" />
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.DiagnosticsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource M.Dash.DiagnosticsTip}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE9D9;" />
-                                    <TextBlock Text="{DynamicResource M.Dash.Diagnostics}" />
-                                </StackPanel>
-                            </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE74D;" />
-                                    <TextBlock Text="{DynamicResource S.Uninstall}" />
-                                </StackPanel>
-                            </Button>
-                        </WrapPanel>
+                        </StackPanel>
 
                         <!-- Process tree -->
                         <Grid Grid.Row="5">
@@ -543,7 +568,11 @@
             Grid.RowSpan="4"
             Margin="-28,-24,-28,-20"
             Background="{DynamicResource OverlayBrush}"
+            Focusable="True"
             Visibility="{Binding ConfirmVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding ConfirmCommand}" />
+            </Grid.InputBindings>
             <Border
                 MaxWidth="460"
                 HorizontalAlignment="Center"
@@ -554,7 +583,7 @@
                     <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
                     <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding ConfirmMessage}" />
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="{DynamicResource S.Cancel}" />
+                        <Button x:Name="ConfirmCancelButton" Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="{DynamicResource S.Cancel}" />
                         <Button
                             Padding="14,7"
                             Background="{DynamicResource HealthBrokenBrush}"

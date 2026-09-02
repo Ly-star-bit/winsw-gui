@@ -2,6 +2,8 @@
     x:Class="WinSW.Gui.Views.WizardView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:controls="clr-namespace:WinSW.Gui.Controls"
     xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -132,19 +134,25 @@
                             <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Wiz.CloneHint}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WinSWExecutable}" />
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWrapperCommand}" />
-                                <TextBox Text="{Binding WrapperPath, UpdateSourceTrigger=PropertyChanged}" />
-                            </DockPanel>
-                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.TheConfigurationFileIsWrittenNext}" />
-                        </StackPanel>
-                        <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.ProgramToRun}" />
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseTargetCommand}" />
-                                <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" />
+                                <ui:TextBox PlaceholderText="{DynamicResource M.Ph.Program}" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
+                        </StackPanel>
+                        <StackPanel Style="{StaticResource Field}">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WinSWExecutable}" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWrapperCommand}" />
+                                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Padding="10,0" Command="{Binding DownloadWrapperCommand}" Content="{DynamicResource M.Wiz.Download}" ToolTip="{DynamicResource M.Wiz.DownloadTip}" />
+                                <ui:TextBox PlaceholderText="{DynamicResource M.Ph.Wrapper}" Text="{Binding WrapperPath, UpdateSourceTrigger=PropertyChanged}" />
+                            </DockPanel>
+                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Wiz.WrapperHint}" />
+                        </StackPanel>
+                        <CheckBox Margin="0,0,0,6" Content="{DynamicResource M.Wiz.PlaceNextToProgram}" IsChecked="{Binding PlaceNextToProgram}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <TextBlock Style="{StaticResource FieldHint}" Margin="0" Text="{DynamicResource M.Wiz.InstallDir}" />
+                            <TextBlock Style="{StaticResource Mono}" Margin="6,0,0,0" Text="{Binding InstallDirectory}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Arguments}" />
@@ -182,12 +190,13 @@
                         <TextBlock Margin="0,0,0,16" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.ServiceID}" />
-                            <TextBox Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
+                            <ui:TextBox PlaceholderText="{DynamicResource M.Ph.ServiceId}" Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthBrokenBrush}" Text="{DynamicResource M.Wiz.IdInUseHint}" Visibility="{Binding IdInUse, Converter={StaticResource BoolToVisibility}}" />
                             <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.NoSpacesAlsoBecomesTheConfiguration}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.DisplayName}" />
-                            <TextBox Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <ui:TextBox PlaceholderText="{DynamicResource M.Ph.DisplayName}" Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Description}" />
@@ -242,7 +251,7 @@
                         <CheckBox Margin="0,4,0,8" Content="{DynamicResource S.RestartTheServiceAutomaticallyWhenThe}" IsChecked="{Binding RestartOnFailure}" />
                         <StackPanel Style="{StaticResource Field}" IsEnabled="{Binding RestartOnFailure}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.RestartDelay}" />
-                            <TextBox HorizontalAlignment="Left" MinWidth="200" Text="{Binding RestartDelay, UpdateSourceTrigger=PropertyChanged}" />
+                            <controls:DurationEditor Value="{Binding RestartDelay, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
                     </StackPanel>
 

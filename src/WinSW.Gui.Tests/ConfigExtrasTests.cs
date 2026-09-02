@@ -82,6 +82,31 @@ namespace WinSW.Gui.Tests
         }
 
         [Fact]
+        public void Validate_MapsMessagesToFields()
+        {
+            var model = ServiceConfigModel.CreateNew();
+            model.Id = "bad id";
+            model.Executable = "x.exe";
+            model.StopTimeout = "soon";
+            model.KeepFiles = "many";
+            model.LogMode = "roll-by-size";
+
+            model.Validate();
+
+            Assert.NotNull(model.FieldErrors["Id"]);
+            Assert.NotNull(model.FieldErrors["StopTimeout"]);
+            Assert.NotNull(model.FieldErrors["KeepFiles"]);
+            Assert.Null(model.FieldErrors["Executable"]);
+            Assert.Equal(3, model.FieldErrors.Count);
+
+            model.Id = "ok";
+            model.StopTimeout = "15 sec";
+            model.KeepFiles = "8";
+            model.Validate();
+            Assert.Equal(0, model.FieldErrors.Count);
+        }
+
+        [Fact]
         public void FromXml_ParsesText_AndKeepsFilePath()
         {
             var model = ServiceConfigModel.FromXml("<service><id>a</id><executable>a.exe</executable></service>", @"C:\x\a.xml");

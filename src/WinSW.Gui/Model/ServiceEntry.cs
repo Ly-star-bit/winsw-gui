@@ -35,6 +35,7 @@ namespace WinSW.Gui.Model
         private TimeSpan lastCpuTime;
         private DateTime lastSampleAt;
         private readonly List<double> cpuHistory = new();
+        private int crashCount;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -220,6 +221,7 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.status, value))
                 {
                     this.Raise(nameof(this.Health));
+                    this.Raise(nameof(this.SortRank));
                     this.Raise(nameof(this.StatusText));
                     this.Raise(nameof(this.CanStart));
                     this.Raise(nameof(this.CanStop));
@@ -253,12 +255,30 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.problem, value))
                 {
                     this.Raise(nameof(this.Health));
+                    this.Raise(nameof(this.SortRank));
                     this.Raise(nameof(this.HasProblem));
                 }
             }
         }
 
         public bool HasProblem => !string.IsNullOrEmpty(this.problem);
+
+        /// <summary>Unexpected stops seen in the current five-minute window; shown in the notification.</summary>
+        public int CrashCount
+        {
+            get => this.crashCount;
+            set => this.Set(ref this.crashCount, value);
+        }
+
+        /// <summary>Order for "sort by status": what needs a look first.</summary>
+        public int SortRank => this.Health switch
+        {
+            ServiceHealth.Broken => 0,
+            ServiceHealth.Pending => 1,
+            ServiceHealth.Stopped => 2,
+            ServiceHealth.Running => 3,
+            _ => 4,
+        };
 
         public ServiceHealth Health => this.problem != null ? ServiceHealth.Broken : this.status switch
         {
