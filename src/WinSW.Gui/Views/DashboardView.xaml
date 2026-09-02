@@ -390,7 +390,7 @@
                                     Height="32"
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Bottom"
-                                    Points="{Binding CpuHistory, Converter={StaticResource Sparkline}, ConverterParameter=140,32}"
+                                    Points="{Binding CpuHistory, Converter={StaticResource Sparkline}}"
                                     Stroke="{DynamicResource AccentBrush}"
                                     StrokeLineJoin="Round"
                                     StrokeThickness="1.5"
