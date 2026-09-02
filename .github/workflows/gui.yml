@@ -1,0 +1,65 @@
+name: GUI
+
+# Builds the graphical console on a Windows runner and publishes it as a downloadable
+# artifact. Separate from the wrapper's own workflow so that either can fail on its own.
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "src/WinSW.Gui/**"
+      - "src/WinSW.sln"
+      - "Directory.Build.props"
+      - ".github/workflows/gui.yml"
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
+      # Same SDK line as the wrapper's workflow; the GUI targets net7.0-windows to match it.
+      - name: Install .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 7.0.x
+
+      - name: Restore
+        working-directory: ./src
+        run: dotnet restore WinSW.Gui
+
+      - name: Build
+        working-directory: ./src
+        run: dotnet build WinSW.Gui -c Release --no-restore
+
+      - name: Publish (x64, self-contained, single file)
+        working-directory: ./src
+        run: >
+          dotnet publish WinSW.Gui -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o ../artifacts/gui/win-x64
+
+      - name: Publish (x64, framework-dependent)
+        working-directory: ./src
+        run: >
+          dotnet publish WinSW.Gui -c Release -r win-x64 --no-self-contained
+          -p:PublishSingleFile=true
+          -o ../artifacts/gui/win-x64-fdd
+
+      - name: Upload self-contained build
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinSW.Gui-win-x64
+          path: artifacts/gui/win-x64/WinSW.Gui.exe
+          if-no-files-found: error
+
+      - name: Upload framework-dependent build
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinSW.Gui-win-x64-framework-dependent
+          path: artifacts/gui/win-x64-fdd/WinSW.Gui.exe
+          if-no-files-found: error

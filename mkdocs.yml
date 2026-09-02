@@ -10,6 +10,7 @@ nav:
     - Deferred File Operations: docs/deferred-file-operations.md
     - Logging and Error Reporting: docs/logging-and-error-reporting.md
     - Self Restarting Service: docs/self-restarting-service.md
+    - Graphical Console: docs/gui.md
   - Troubleshooting: docs/troubleshooting.md
   - Migration to 3.x: docs/migrate-to-3-x.md
   - Developer:

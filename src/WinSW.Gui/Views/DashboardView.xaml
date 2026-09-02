@@ -1,0 +1,455 @@
+<UserControl
+    x:Class="WinSW.Gui.Views.DashboardView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:model="clr-namespace:WinSW.Gui.Model"
+    xmlns:services="clr-namespace:WinSW.Gui.Services"
+    xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
+    d:DataContext="{d:DesignInstance Type=vm:DashboardViewModel}"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!-- One row of the service list. -->
+        <DataTemplate x:Key="ServiceRow" DataType="{x:Type model:ServiceEntry}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Ellipse
+                    Grid.Column="0"
+                    Margin="0,0,12,0"
+                    Fill="{Binding Health, Converter={StaticResource HealthToBrush}}">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse" BasedOn="{StaticResource HealthDot}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Health}" Value="Running">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard x:Name="Pulse" Storyboard="{StaticResource PulseStoryboard}" />
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <StopStoryboard BeginStoryboardName="Pulse" />
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+
+                <StackPanel Grid.Column="1">
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource TextPrimaryBrush}"
+                        Text="{Binding DisplayName}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        Style="{StaticResource Mono}"
+                        Text="{Binding ServiceName}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <Border Grid.Column="2" Style="{StaticResource StatusPill}">
+                    <TextBlock
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Foreground="{Binding Health, Converter={StaticResource HealthToBrush}}"
+                        Text="{Binding StatusText}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <HierarchicalDataTemplate x:Key="ProcessNodeTemplate" DataType="{x:Type services:ProcessNode}" ItemsSource="{Binding Children}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE7C4;" />
+                <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Name}" />
+                <TextBlock Margin="8,0,0,0" Style="{StaticResource Mono}" Text="{Binding ProcessId}" />
+            </StackPanel>
+        </HierarchicalDataTemplate>
+
+        <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="MinWidth" Value="140" />
+        </Style>
+
+        <Style x:Key="StatValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="28,24,28,20" Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource PageTitle}" Text="Services" />
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="Every Windows service on this machine that is hosted by a WinSW wrapper." />
+            </StackPanel>
+
+            <TextBox
+                Grid.Column="1"
+                Width="240"
+                Margin="0,0,10,0"
+                VerticalAlignment="Center"
+                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                ToolTip="Filter by service ID, display name or configuration path" />
+
+            <Button
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Command="{Binding ReloadCommand}"
+                Padding="12,7">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                    <TextBlock Text="Rescan" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Stats -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,18" Orientation="Horizontal">
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="MANAGED" />
+                    <TextBlock Style="{StaticResource StatValue}" Text="{Binding TotalCount}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="RUNNING" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthRunningBrush}" Text="{Binding RunningCount}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="STOPPED" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthStoppedBrush}" Text="{Binding StoppedCount}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="NEEDS ATTENTION" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{StaticResource HealthBrokenBrush}" Text="{Binding ProblemCount}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Body -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ListBox
+                Grid.Column="0"
+                Background="Transparent"
+                BorderThickness="0"
+                ItemContainerStyle="{StaticResource ServiceItem}"
+                ItemTemplate="{StaticResource ServiceRow}"
+                ItemsSource="{Binding ServicesView}"
+                ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                SelectedItem="{Binding SelectedService}" />
+
+            <!-- Detail panel -->
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <Grid>
+                    <!-- Empty state -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedService}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="40"
+                            Style="{StaticResource Icon}"
+                            Text="&#xE9F5;" />
+                        <TextBlock
+                            Margin="0,12,0,0"
+                            HorizontalAlignment="Center"
+                            Style="{StaticResource PageSubtitle}"
+                            Text="Select a service to see its details." />
+                    </StackPanel>
+
+                    <Grid DataContext="{Binding SelectedService}" Visibility="{Binding Converter={StaticResource NullToVisibility}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Title line -->
+                        <Grid Grid.Row="0" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource TextPrimaryBrush}"
+                                    Text="{Binding DisplayName}"
+                                    TextTrimming="CharacterEllipsis" />
+                                <TextBlock
+                                    Margin="0,2,0,0"
+                                    Style="{StaticResource PageSubtitle}"
+                                    Text="{Binding Description}"
+                                    Visibility="{Binding Description, Converter={StaticResource StringToVisibility}}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                                <Border Style="{StaticResource StatusPill}" Margin="0,0,8,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Margin="0,0,7,0" Fill="{Binding Health, Converter={StaticResource HealthToBrush}}" Style="{StaticResource HealthDot}" />
+                                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding StatusText}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource StatusPill}">
+                                    <TextBlock FontSize="12" Style="{StaticResource Mono}" Text="{Binding ProcessIdText}" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Problem banner -->
+                        <Border
+                            Grid.Row="1"
+                            Margin="0,0,0,14"
+                            Padding="12,10"
+                            Background="#2A1B1F"
+                            BorderBrush="{StaticResource HealthBrokenBrush}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,10,0" Foreground="{StaticResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                <TextBlock Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Facts -->
+                        <Grid Grid.Row="2" Margin="0,0,0,16">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                                <RowDefinition />
+                            </Grid.RowDefinitions>
+                            <Grid.Resources>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
+                                    <Setter Property="Margin" Value="0,0,16,6" />
+                                </Style>
+                            </Grid.Resources>
+
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Service ID" />
+                            <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource Mono}" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ServiceName}" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Wrapper" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding WrapperPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding WrapperPath}" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Configuration" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding ConfigPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigPath}" />
+
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Start mode" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding StartMode}" />
+
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Account" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Account}" />
+                        </Grid>
+
+                        <!-- Actions (commands live on the page VM, hence the RelativeSource) -->
+                        <WrapPanel Grid.Row="3" Margin="0,0,0,8">
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
+                                    <TextBlock Text="Start" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE71A;" />
+                                    <TextBlock Text="Stop" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                                    <TextBlock Text="Restart" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.EditConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE713;" />
+                                    <TextBlock Text="Edit configuration" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ViewLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
+                                    <TextBlock Text="Logs" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RefreshConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="Re-apply the configuration file to the installed service (winsw refresh)">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE895;" />
+                                    <TextBlock Text="Apply config" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.OpenFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE838;" />
+                                    <TextBlock Text="Reveal" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.KillCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="Force-terminate the service process tree (winsw dev kill)">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                    <TextBlock Text="Terminate" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.UninstallCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,8,0" Foreground="{StaticResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE74D;" />
+                                    <TextBlock Text="Uninstall" />
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+
+                        <!-- Process tree -->
+                        <Grid Grid.Row="4">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Style="{StaticResource SectionTitle}" Text="PROCESS TREE" />
+                            <TreeView
+                                Grid.Row="1"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ItemTemplate="{StaticResource ProcessNodeTemplate}"
+                                ItemsSource="{Binding DataContext.ProcessTreeRoots, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <TreeView.ItemContainerStyle>
+                                    <Style TargetType="TreeViewItem">
+                                        <Setter Property="IsExpanded" Value="True" />
+                                    </Style>
+                                </TreeView.ItemContainerStyle>
+                            </TreeView>
+                            <TextBlock
+                                Grid.Row="1"
+                                Text="The service is not running, so there is no process to show.">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource FieldHint}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.ProcessTree, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status line -->
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ProgressBar
+                Grid.Column="0"
+                Width="90"
+                Height="4"
+                Margin="0,0,12,0"
+                VerticalAlignment="Center"
+                IsIndeterminate="True">
+                <ProgressBar.Style>
+                    <Style TargetType="ProgressBar">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ProgressBar.Style>
+            </ProgressBar>
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+        </Grid>
+
+        <!-- Confirmation overlay -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="4"
+            Margin="-28,-24,-28,-20"
+            Background="#B0090A10"
+            Visibility="{Binding ConfirmVisible, Converter={StaticResource BoolToVisibility}}">
+            <Border
+                MaxWidth="460"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Style="{StaticResource Card}"
+                Padding="24">
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
+                    <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding ConfirmMessage}" />
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="Cancel" />
+                        <Button
+                            Padding="14,7"
+                            Background="{StaticResource HealthBrokenBrush}"
+                            Command="{Binding ConfirmCommand}"
+                            Content="{Binding ConfirmActionLabel}"
+                            Foreground="White" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -1,0 +1,460 @@
+<UserControl
+    x:Class="WinSW.Gui.Views.ConfigEditorView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=vm:ConfigEditorViewModel}"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <Style x:Key="Field" TargetType="StackPanel">
+            <Setter Property="Margin" Value="0,0,0,14" />
+        </Style>
+
+        <Style x:Key="Input" TargetType="TextBox">
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+
+        <Style x:Key="BrowseButton" TargetType="Button">
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Content" Value="…" />
+        </Style>
+
+        <Style x:Key="RemoveButton" TargetType="Button">
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+        </Style>
+
+        <Style x:Key="TabBody" TargetType="ScrollViewer">
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="Padding" Value="4,14,12,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="28,24,28,20" Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource PageTitle}" Text="Configuration" />
+                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource HealthPendingBrush}" Text="Unsaved" />
+                    </Border>
+                    <Border Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource HealthRunningBrush}" Text="Installed" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource Mono}" Text="{Binding FileLabel}" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" Content="XML preview" IsChecked="{Binding ShowPreview}" />
+                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding OpenCommand}" Content="Open…" />
+                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ReloadCommand}" Content="Reload" />
+                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding SaveAsCommand}" Content="Save as…" />
+                <Button Margin="0,0,8,0" Padding="12,7" Background="{StaticResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE74E;" />
+                        <TextBlock Text="Save" />
+                    </StackPanel>
+                </Button>
+                <Button Padding="12,7" Command="{Binding ApplyToServiceCommand}" ToolTip="Save, then run 'winsw refresh' against the installed service" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE895;" />
+                        <TextBlock Text="Apply to service" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- Body -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Padding="12" Style="{StaticResource Card}">
+                <TabControl Background="Transparent" BorderThickness="0" DataContext="{Binding Model}">
+
+                    <!-- General -->
+                    <TabItem Header="General">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Service ID" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding Id, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="Unique across the machine. This is what 'sc' and the Services console call the service name." />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Display name" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Description" />
+                                    <TextBox AcceptsReturn="True" MinHeight="64" Style="{StaticResource Input}" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Executable" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding DataContext.BrowseExecutableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding Executable, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DockPanel>
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="%BASE% expands to the directory containing this configuration file." />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Arguments" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Working directory" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding DataContext.BrowseWorkingDirectoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding WorkingDirectory, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DockPanel>
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="Defaults to the directory of the wrapper executable." />
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Process -->
+                    <TabItem Header="Process">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Start arguments" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding StartArguments, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="When set, overrides 'Arguments' for the start action only." />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Stop executable" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding DataContext.BrowseStopExecutableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding StopExecutable, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DockPanel>
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Stop arguments" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding StopArguments, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="Setting stop arguments switches shutdown from a Ctrl+C / kill to running the stop executable (or the main executable) with these arguments." />
+                                </StackPanel>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Stop timeout" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding StopTimeout, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Style="{StaticResource FieldHint}" Text="e.g. 15 sec, 2 min. Default 15 sec." />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Priority" />
+                                        <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding DataContext.Priorities, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Priority}" />
+                                    </StackPanel>
+                                </Grid>
+                                <CheckBox Margin="0,0,0,10" Content="Hide the console window of the executable" IsChecked="{Binding HideWindow}" />
+                                <CheckBox Margin="0,0,0,10" Content="Beep on shutdown" IsChecked="{Binding BeepOnShutdown}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Service -->
+                    <TabItem Header="Service">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Start mode" />
+                                    <ComboBox HorizontalAlignment="Left" MinWidth="220" ItemsSource="{Binding DataContext.StartModes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding StartMode}" />
+                                </StackPanel>
+                                <CheckBox Margin="0,0,0,10" Content="Delayed automatic start" IsChecked="{Binding DelayedAutoStart}" IsEnabled="{Binding SupportsDelayedAutoStart}" />
+                                <CheckBox Margin="0,0,0,10" Content="Allow the service to interact with the desktop" IsChecked="{Binding Interactive}" />
+                                <CheckBox Margin="0,0,0,10" Content="Accept pre-shutdown notifications" IsChecked="{Binding Preshutdown}" />
+                                <StackPanel Style="{StaticResource Field}" Margin="0,6,0,14">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Pre-shutdown timeout" />
+                                    <TextBox Style="{StaticResource Input}" MaxWidth="220" HorizontalAlignment="Left" Text="{Binding PreshutdownTimeout, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <CheckBox Margin="0,0,0,14" Content="Refresh service properties automatically on start" IsChecked="{Binding AutoRefresh}" />
+
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Security descriptor (SDDL)" />
+                                    <TextBox Style="{StaticResource Input}" FontFamily="{StaticResource MonoFont}" Text="{Binding SecurityDescriptor, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource SectionTitle}" Text="DEPENDENCIES" />
+                                <ItemsControl ItemsSource="{Binding Dependencies}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource RowCard}">
+                                                <DockPanel>
+                                                    <Button DockPanel.Dock="Right" Style="{StaticResource RemoveButton}" Content="Remove" Command="{Binding DataContext.RemoveDependencyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                                    <TextBox Text="{Binding ServiceName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Service ID that must start before this one" />
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Padding="12,6" Content="Add dependency" Command="{Binding DataContext.AddDependencyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Logging -->
+                    <TabItem Header="Logging">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Mode" />
+                                        <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding DataContext.LogModes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding LogMode}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Log file base name" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding LogName, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Style="{StaticResource FieldHint}" Text="Defaults to the configuration file name." />
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Log directory" />
+                                    <DockPanel>
+                                        <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding DataContext.BrowseLogPathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding LogPath, UpdateSourceTrigger=PropertyChanged}" />
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <StackPanel Style="{StaticResource Field}" Visibility="{Binding UsesTimePattern, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Date pattern" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding RollPattern, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="A .NET date format such as yyyyMMdd. Required for time-based rolling." />
+                                </StackPanel>
+                                <Grid Margin="0,0,0,14">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Visibility="{Binding UsesSizeThreshold, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Size threshold (KB)" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding SizeThreshold, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Style="{StaticResource FieldHint}" Text="Default 10240 (10 MB)." />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Visibility="{Binding UsesKeepFiles, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="Files to keep" />
+                                        <TextBox Style="{StaticResource Input}" Text="{Binding KeepFiles, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+                                <StackPanel Style="{StaticResource Field}" Visibility="{Binding UsesZipOptions, Converter={StaticResource BoolToVisibility}}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Auto-roll at time (HH:mm:ss)" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding AutoRollAtTime, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,10,0,4" Style="{StaticResource FieldLabel}" Text="Zip files older than (days)" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding ZipOlderThanNumDays, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Margin="0,10,0,4" Style="{StaticResource FieldLabel}" Text="Zip date format" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding ZipDateFormat, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <CheckBox Margin="0,0,0,10" Content="Do not write standard output to a file" IsChecked="{Binding OutFileDisabled}" />
+                                <CheckBox Margin="0,0,0,10" Content="Do not write standard error to a file" IsChecked="{Binding ErrFileDisabled}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Environment -->
+                    <TabItem Header="Environment">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="ENVIRONMENT VARIABLES" />
+                                <ItemsControl ItemsSource="{Binding EnvironmentVariables}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource RowCard}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="2*" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="3*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBox Grid.Column="0" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" ToolTip="Name" />
+                                                    <TextBox Grid.Column="2" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" ToolTip="Value" />
+                                                    <Button Grid.Column="3" Style="{StaticResource RemoveButton}" Content="Remove" Command="{Binding DataContext.RemoveEnvironmentVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Margin="0,0,0,24" Padding="12,6" Content="Add variable" Command="{Binding DataContext.AddEnvironmentVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="DOWNLOADS BEFORE START" />
+                                <ItemsControl ItemsSource="{Binding Downloads}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource RowCard}">
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition />
+                                                        <RowDefinition />
+                                                        <RowDefinition />
+                                                    </Grid.RowDefinitions>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <TextBox Grid.Row="0" Grid.Column="0" Margin="0,0,0,6" Text="{Binding From, UpdateSourceTrigger=PropertyChanged}" ToolTip="Source URL" />
+                                                    <TextBox Grid.Row="1" Grid.Column="0" Margin="0,0,0,6" Text="{Binding To, UpdateSourceTrigger=PropertyChanged}" ToolTip="Destination path" />
+                                                    <WrapPanel Grid.Row="2" Grid.Column="0">
+                                                        <ComboBox Width="90" Margin="0,0,8,0" ItemsSource="{Binding DataContext.AuthTypes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Auth}" ToolTip="Authentication" />
+                                                        <TextBox Width="130" Margin="0,0,8,0" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}" ToolTip="User (basic auth)" />
+                                                        <TextBox Width="130" Margin="0,0,8,0" Text="{Binding Password, UpdateSourceTrigger=PropertyChanged}" ToolTip="Password (basic auth)" />
+                                                        <TextBox Width="150" Margin="0,0,8,0" Text="{Binding Proxy, UpdateSourceTrigger=PropertyChanged}" ToolTip="Proxy URL" />
+                                                        <CheckBox Margin="0,0,10,0" VerticalAlignment="Center" Content="Fail on error" IsChecked="{Binding FailOnError}" />
+                                                        <CheckBox VerticalAlignment="Center" Content="Allow basic auth over HTTP" IsChecked="{Binding UnsecureAuth}" />
+                                                    </WrapPanel>
+                                                    <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource RemoveButton}" Content="Remove" Command="{Binding DataContext.RemoveDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Padding="12,6" Content="Add download" Command="{Binding DataContext.AddDownloadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Recovery -->
+                    <TabItem Header="Recovery">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <TextBlock Style="{StaticResource SectionTitle}" Text="ON FAILURE" />
+                                <TextBlock Margin="0,0,0,10" Style="{StaticResource FieldHint}" Text="Actions the service control manager takes, in order, each time the wrapped process exits unexpectedly." />
+                                <ItemsControl ItemsSource="{Binding FailureActions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource RowCard}">
+                                                <DockPanel>
+                                                    <Button DockPanel.Dock="Right" Style="{StaticResource RemoveButton}" Content="Remove" Command="{Binding DataContext.RemoveFailureActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <ComboBox Width="120" Margin="0,0,8,0" ItemsSource="{Binding DataContext.FailureActionTypes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Action}" />
+                                                        <TextBox Width="140" Text="{Binding Delay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Delay, e.g. 10 sec" />
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button HorizontalAlignment="Left" Margin="0,0,0,20" Padding="12,6" Content="Add action" Command="{Binding DataContext.AddFailureActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Reset the failure count after" />
+                                    <TextBox Style="{StaticResource Input}" MaxWidth="220" HorizontalAlignment="Left" Text="{Binding ResetFailureAfter, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="Default 1 day." />
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- Account -->
+                    <TabItem Header="Account">
+                        <ScrollViewer Style="{StaticResource TabBody}">
+                            <StackPanel MaxWidth="720" HorizontalAlignment="Left">
+                                <TextBlock Margin="0,0,0,14" Style="{StaticResource FieldHint}" Text="Leave everything blank to run as LocalSystem. These settings apply at install time only." />
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="User name" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding ServiceAccountUser, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="DOMAIN\user, or a built-in account such as NT AUTHORITY\NetworkService." />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Password" />
+                                    <TextBox Style="{StaticResource Input}" Text="{Binding ServiceAccountPassword, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="Stored in clear text in the XML. Prefer the prompt option below and let Windows keep the credential." />
+                                </StackPanel>
+                                <StackPanel Style="{StaticResource Field}">
+                                    <TextBlock Style="{StaticResource FieldLabel}" Text="Prompt for credentials at install" />
+                                    <ComboBox HorizontalAlignment="Left" MinWidth="180" SelectedValue="{Binding ServiceAccountPrompt}" SelectedValuePath="Tag">
+                                        <ComboBoxItem Content="(none)" Tag="{x:Null}" />
+                                        <ComboBoxItem Content="dialog" Tag="dialog" />
+                                        <ComboBoxItem Content="console" Tag="console" />
+                                    </ComboBox>
+                                </StackPanel>
+                                <CheckBox Content="Grant the account the 'Log on as a service' right" IsChecked="{Binding AllowServiceLogon}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Border>
+
+            <!-- Preview -->
+            <Border
+                Grid.Column="1"
+                Width="420"
+                Margin="16,0,0,0"
+                Padding="0"
+                Background="{StaticResource InputBrush}"
+                Style="{StaticResource Card}"
+                Visibility="{Binding ShowPreview, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Margin="14,12,14,0" Style="{StaticResource SectionTitle}" Text="WHAT WILL BE WRITTEN" />
+                    <TextBox
+                        Grid.Row="1"
+                        Margin="6,0"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        FontFamily="{StaticResource MonoFont}"
+                        FontSize="12"
+                        HorizontalScrollBarVisibility="Auto"
+                        IsReadOnly="True"
+                        Text="{Binding XmlPreview, Mode=OneWay}"
+                        VerticalScrollBarVisibility="Auto" />
+
+                    <Border
+                        Grid.Row="2"
+                        Margin="10"
+                        Padding="12,10"
+                        Background="#2A1B1F"
+                        BorderBrush="{StaticResource HealthBrokenBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Visibility="{Binding Problems.Count, Converter={StaticResource CountToVisibility}}">
+                        <ItemsControl ItemsSource="{Binding Problems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,0,0,4" Foreground="{StaticResource TextPrimaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="2" Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+    </Grid>
+</UserControl>

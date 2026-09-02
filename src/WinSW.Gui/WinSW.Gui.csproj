@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+
+    <!--
+      Only for the folder picker. WPF gained a native OpenFolderDialog in .NET 8; this
+      project targets net7.0-windows to match the SDK the repository's CI installs, so
+      the Windows Forms browser is the one available option that is not a hack.
+    -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>WinSW.Gui</RootNamespace>
+    <AssemblyName>WinSW.Gui</AssemblyName>
+
+    <!--
+      The GUI is a companion application, not part of the wrapper binary.
+      Warnings here must never be able to break the build of WinSW itself,
+      so the repository-wide TreatWarningsAsErrors is relaxed for this project.
+    -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <AssemblyTitle>Windows Service Wrapper Console</AssemblyTitle>
+    <Description>A graphical front end for managing services wrapped by WinSW.</Description>
+    <Product>Windows Service Wrapper</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="3.1.1" />
+
+    <!-- Same versions WinSW.Core pins for its net7.0-windows build. -->
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.0" />
+  </ItemGroup>
+
+</Project>
