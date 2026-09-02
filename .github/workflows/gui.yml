@@ -5,6 +5,7 @@ name: GUI
 on:
   push:
     branches: [ "main" ]
+    tags: [ "gui-v*" ]
     paths:
       - "src/WinSW.Gui/**"
       - "src/WinSW.sln"
@@ -13,6 +14,10 @@ on:
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
 
 jobs:
   build:
@@ -34,7 +39,28 @@ jobs:
 
       - name: Build
         working-directory: ./src
-        run: dotnet build WinSW.Gui -c Release --no-restore
+        shell: pwsh
+        run: |
+          dotnet build WinSW.Gui -c Release --no-restore 2>&1 | Tee-Object -FilePath ../build.log
+          exit $LASTEXITCODE
+
+      # Job logs are only readable when signed in. On failure, file the compiler errors as
+      # an issue so they can be read (and fixed) without an authenticated session.
+      - name: Report build errors as an issue
+        if: failure()
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $errors = Select-String -Path build.log -Pattern 'error [A-Z]+\d+' |
+            ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique | Select-Object -First 80
+          if (-not $errors) { $errors = Get-Content build.log -Tail 60 }
+          $run = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
+          $body = "Build of $env:GITHUB_SHA failed. Run: $run`n`n``````text`n" + ($errors -join "`n") + "`n``````"
+          $payload = @{ title = "GUI build failed at $($env:GITHUB_SHA.Substring(0, 7))"; body = $body } | ConvertTo-Json
+          Invoke-RestMethod -Method Post -Uri "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/issues" `
+            -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/vnd.github+json" } `
+            -Body $payload -ContentType "application/json" | Out-Null
 
       - name: Publish (x64, self-contained, single file)
         working-directory: ./src
@@ -63,3 +89,20 @@ jobs:
           name: WinSW.Gui-win-x64-framework-dependent
           path: artifacts/gui/win-x64-fdd/WinSW.Gui.exe
           if-no-files-found: error
+
+      # Pushing a tag such as gui-v0.1.0 turns that build into a GitHub Release.
+      - name: Stage release files
+        if: startsWith(github.ref, 'refs/tags/gui-v')
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item artifacts/gui/win-x64/WinSW.Gui.exe release/WinSW.Gui-win-x64.exe
+          Copy-Item artifacts/gui/win-x64-fdd/WinSW.Gui.exe release/WinSW.Gui-win-x64-framework-dependent.exe
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/gui-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: WinSW GUI ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release/*

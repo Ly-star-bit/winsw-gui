@@ -9,6 +9,10 @@
     mc:Ignorable="d">
 
     <Grid Margin="28,24,28,20" Style="{StaticResource PageRoot}">
+        <Grid.RenderTransform>
+            <TranslateTransform />
+        </Grid.RenderTransform>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

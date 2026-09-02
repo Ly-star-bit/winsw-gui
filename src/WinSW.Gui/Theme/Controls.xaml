@@ -78,9 +78,10 @@
     <!-- Page entrance -->
 
     <!--
-        Applied to each page root. A short rise-and-fade makes navigation read as a
-        transition rather than a repaint; 160 ms stays well under the point where it
-        would start to feel like waiting.
+        Applied to each page root, which must carry its own TranslateTransform: a
+        transform set from a Style setter is frozen and cannot be animated. A short
+        rise-and-fade makes navigation read as a transition rather than a repaint;
+        160 ms stays well under the point where it would start to feel like waiting.
     -->
     <Style x:Key="PageRoot" TargetType="FrameworkElement">
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
@@ -102,11 +103,6 @@
                 </BeginStoryboard>
             </EventTrigger>
         </Style.Triggers>
-        <Setter Property="RenderTransform">
-            <Setter.Value>
-                <TranslateTransform Y="0" />
-            </Setter.Value>
-        </Setter>
     </Style>
 
     <!-- Navigation rail -->
