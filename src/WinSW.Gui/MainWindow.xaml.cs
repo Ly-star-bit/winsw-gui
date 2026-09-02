@@ -34,13 +34,13 @@ namespace WinSW.Gui
                     Localizer.Format("M.Dash.UnexpectedStopBody", entry.ServiceName),
                     isError: true);
 
-            this.RestoreBounds();
+            this.RestoreWindowPlacement();
             this.StateChanged += this.OnStateChanged;
         }
 
         // Window placement -------------------------------------------------------
 
-        private void RestoreBounds()
+        private void RestoreWindowPlacement()
         {
             var settings = AppSettings.Current;
             if (settings.WindowWidth is double width && settings.WindowHeight is double height
@@ -66,7 +66,7 @@ namespace WinSW.Gui
             }
         }
 
-        private void SaveBounds()
+        private void SaveWindowPlacement()
         {
             var settings = AppSettings.Current;
             var bounds = this.WindowState == WindowState.Normal ? new Rect(this.Left, this.Top, this.Width, this.Height) : this.RestoreBounds;
@@ -111,7 +111,7 @@ namespace WinSW.Gui
                 return;
             }
 
-            this.SaveBounds();
+            this.SaveWindowPlacement();
             base.OnClosing(e);
         }
 
