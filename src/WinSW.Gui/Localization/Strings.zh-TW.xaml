@@ -315,8 +315,8 @@
     <sys:String x:Key="M.Dash.DependedBy">被相依</sys:String>
     <sys:String x:Key="M.Dash.WrapperVersion">Wrapper 版本</sys:String>
     <sys:String x:Key="M.Dash.Upgrade">升級</sys:String>
-    <sys:String x:Key="M.Dash.WrapperUpdate">可升級到 v{0}</sys:String>
-    <sys:String x:Key="M.Dash.WrapperCurrent">最新版 v{0}</sys:String>
+    <sys:String x:Key="M.Dash.WrapperUpdate">內建的 {0} 較新</sys:String>
+    <sys:String x:Key="M.Dash.WrapperCurrent">不低於內建的 {0}</sys:String>
     <sys:String x:Key="M.Dash.SelectedCount">已選取 {0} 個服務</sys:String>
     <sys:String x:Key="M.Dash.RunningMany">正在對 {1} 個服務執行 winsw {0}…</sys:String>
     <sys:String x:Key="M.Dash.RanMany">已對 {1} 個服務執行 winsw {0}，結果請見各列狀態。</sys:String>
@@ -331,7 +331,7 @@
     <sys:String x:Key="M.Dash.DownloadFailed">下載失敗，請檢查網路後再試。</sys:String>
     <sys:String x:Key="M.Dash.DownloadNotWrapper">下載的檔案不是 WinSW 執行檔，未安裝。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeTitle">升級 wrapper？</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeBody">「{0}」將被停止，wrapper 替換為新版本（{1} → {2}），先前在執行則重新啟動。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeBody">「{0}」將被停止，wrapper 替換為本程式內建的版本（{1} → {2}），之前在執行則重新啟動。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeAction">升級</sys:String>
     <sys:String x:Key="M.Dash.Export">匯出安裝套件</sys:String>
     <sys:String x:Key="M.Dash.ExportTip">將 wrapper、設定和 install.ps1 複製到資料夾</sys:String>
@@ -473,5 +473,17 @@
     <sys:String x:Key="M.Wiz.Unpacking">正在釋放內建的 WinSW…</sys:String>
     <sys:String x:Key="M.Wiz.UnpackFailed">內建 WinSW 釋放失敗，請改為手動選擇一個 WinSW.exe。</sys:String>
     <sys:String x:Key="M.Wiz.WouldOverwrite">{0} 已存在，而且不是 WinSW 可執行檔；繼續安裝會覆蓋它。</sys:String>
+
+    <sys:String x:Key="M.Dash.UpgradeMajor">注意：這是跨大版本升級（{0}.x → {1}.x）。WinSW {1} 重新命名或移除了十來個設定元素。本次升級只替換可執行檔、不會修改設定，服務可能因此無法啟動。請先對照移轉文件檢查設定。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">注意：內建的是 .NET Framework 版本，需要機器上有 .NET Framework 4.6.1 或更高。目前服務用的是自包含版本，替換後會產生這個相依性。</sys:String>
+
+    <sys:String x:Key="M.Editor.Install">安裝為服務</sys:String>
+    <sys:String x:Key="M.Editor.InstallHint">儲存檔案，若同目錄沒有 WinSW 可執行檔則放一個進去，然後註冊服務。啟動類型不是「手動」或「停用」時會順帶啟動。需要系統管理員權限。</sys:String>
+    <sys:String x:Key="M.Editor.Installing">正在安裝「{0}」…</sys:String>
+    <sys:String x:Key="M.Editor.InstallingStarting">正在安裝並啟動「{0}」…</sys:String>
+    <sys:String x:Key="M.Editor.Installed">「{0}」已安裝。</sys:String>
+    <sys:String x:Key="M.Editor.InstalledStarted">「{0}」已安裝並啟動。</sys:String>
+    <sys:String x:Key="M.Editor.InstallFailed">服務安裝失敗。</sys:String>
+    <sys:String x:Key="M.Trial.Differs">試執行不等於服務執行：試執行用的是你目前的帳戶、你的環境變數和你的桌面。裝成服務後，預設以 LocalSystem 身分執行，只看得到系統層級環境變數，沒有對應的網路磁碟機，也沒有桌面。把路徑寫成 %BASE%\… 或絕對路徑，把程式需要的變數明確寫進 &lt;env&gt;，兩邊才對得上。</sys:String>
 
 </ResourceDictionary>

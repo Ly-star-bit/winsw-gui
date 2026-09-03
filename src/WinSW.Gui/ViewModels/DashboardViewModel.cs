@@ -44,8 +44,6 @@ namespace WinSW.Gui.ViewModels
         private string confirmActionLabel = "Confirm";
         private Func<Task>? pendingAction;
         private IReadOnlyList<ServiceEntry> selectedEntries = Array.Empty<ServiceEntry>();
-        private ReleaseInfo? latestWrapper;
-        private bool checkedForWrapperUpdate;
         private string? pendingConfigPath;
         private string? pendingServiceName;
         private string healthFilter = "all";
@@ -265,32 +263,22 @@ namespace WinSW.Gui.ViewModels
 
         // Wrapper updates ------------------------------------------------------
 
-        /// <summary>The newest wrapper release, fetched once per session; null when offline.</summary>
-        public ReleaseInfo? LatestWrapper
-        {
-            get => this.latestWrapper;
-            private set
-            {
-                if (this.Set(ref this.latestWrapper, value))
-                {
-                    this.RaiseWrapperUpdate();
-                }
-            }
-        }
-
+        /// <summary>
+        /// The wrapper an upgrade installs is the one carried inside this application, not
+        /// the newest upstream release: this branch is ahead of that release, the file is
+        /// already on disk, and the upgrade therefore works with no network at all.
+        /// </summary>
         public bool WrapperUpdateAvailable =>
-            this.latestWrapper != null
-            && this.selectedService != null
-            && !string.IsNullOrEmpty(this.selectedService.WrapperVersion)
-            && UpdateChecker.IsNewer(this.latestWrapper.Version, this.selectedService.WrapperVersion)
-            && WrapperKind.ReleaseAssetFor(this.selectedService.WrapperPath) is { } asset
-            && this.latestWrapper.Assets.ContainsKey(asset);
+            this.selectedService is { } service
+            && !string.IsNullOrEmpty(service.WrapperVersion)
+            && BundledWrapper.Version is { } bundled
+            && UpdateChecker.IsNewer(bundled, service.WrapperVersion);
 
-        public string WrapperUpdateText => this.latestWrapper is null
+        public string WrapperUpdateText => BundledWrapper.Version is not { } bundled
             ? string.Empty
             : this.WrapperUpdateAvailable
-                ? Localizer.Format("M.Dash.WrapperUpdate", this.latestWrapper.Version)
-                : Localizer.Format("M.Dash.WrapperCurrent", this.latestWrapper.Version);
+                ? Localizer.Format("M.Dash.WrapperUpdate", bundled)
+                : Localizer.Format("M.Dash.WrapperCurrent", bundled);
 
         public ServiceEntry? SelectedService
         {
@@ -412,18 +400,6 @@ namespace WinSW.Gui.ViewModels
             {
                 this.ReloadCommand.Execute(null);
             }
-
-            if (!this.checkedForWrapperUpdate)
-            {
-                this.checkedForWrapperUpdate = true;
-                _ = this.CheckWrapperUpdateAsync();
-            }
-        }
-
-        private async Task CheckWrapperUpdateAsync()
-        {
-            var latest = await UpdateChecker.LatestWrapperAsync().ConfigureAwait(true);
-            this.LatestWrapper = latest;
         }
 
         /// <summary>
@@ -754,45 +730,70 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        private async Task UpgradeWrapperAsync()
+        /// <summary>
+        /// Replaces an installed service's wrapper with the one carried inside this
+        /// application: stop, swap the executable, start again if it was running.
+        /// </summary>
+        private Task UpgradeWrapperAsync()
         {
             var entry = this.selectedService;
-            var latest = this.latestWrapper;
-            if (entry?.ConfigPath is null || latest is null || WrapperKind.ReleaseAssetFor(entry.WrapperPath) is not { } asset || !latest.Assets.TryGetValue(asset, out string? url))
+            if (entry?.ConfigPath is null || BundledWrapper.Version is not { } bundled)
             {
-                return;
+                return Task.CompletedTask;
             }
 
-            this.IsBusy = true;
-            this.StatusMessage = Localizer.Format("M.Dash.Downloading", asset, latest.Version);
-            string? downloaded;
-            try
+            if (BundledWrapper.Extract() is not { } source)
             {
-                downloaded = await UpdateChecker.DownloadAsync(url, Path.Combine(Path.GetTempPath(), "WinSW.Gui", "wrapper-" + latest.Version)).ConfigureAwait(true);
-            }
-            finally
-            {
-                this.IsBusy = false;
+                this.StatusMessage = Localizer.Get("M.Wiz.UnpackFailed");
+                return Task.CompletedTask;
             }
 
-            if (downloaded is null)
+            var warnings = new List<string>();
+
+            // Swapping a 2.x wrapper for a 3.x one leaves a 2.x configuration behind it, and
+            // 3.x renamed or dropped a dozen elements. The service would install fine and
+            // then fail to start, which is the worst way to find out.
+            if (MajorVersionOf(entry.WrapperVersion) is { } installedMajor
+                && MajorVersionOf(bundled) is { } bundledMajor
+                && bundledMajor > installedMajor)
             {
-                this.StatusMessage = Localizer.Get("M.Dash.DownloadFailed");
-                return;
+                warnings.Add(Localizer.Format("M.Dash.UpgradeMajor", installedMajor, bundledMajor));
             }
 
-            if (!ServiceDiscovery.IsWrapperExecutable(downloaded))
+            // The bundled wrapper is the .NET Framework build. A service currently hosted by
+            // a self-contained one would gain that dependency.
+            if (WrapperKind.ReleaseAssetFor(entry.WrapperPath) is { } asset && asset != "WinSW-net461.exe")
             {
-                this.StatusMessage = Localizer.Get("M.Dash.DownloadNotWrapper");
-                return;
+                warnings.Add(Localizer.Get("M.Dash.UpgradeFrameworkBuild"));
+            }
+
+            string body = Localizer.Format("M.Dash.UpgradeBody", entry.ServiceName, entry.WrapperVersion, bundled);
+            if (warnings.Count > 0)
+            {
+                body += Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, warnings);
             }
 
             bool wasRunning = entry.Status == ServiceControllerStatus.Running;
             this.Ask(
                 Localizer.Get("M.Dash.UpgradeTitle"),
-                Localizer.Format("M.Dash.UpgradeBody", entry.ServiceName, entry.WrapperVersion, latest.Version),
+                body,
                 Localizer.Get("M.Dash.UpgradeAction"),
-                () => this.RunAsync("upgrade", (w, c) => WinSwCli.UpgradeWrapperAsync(w, c, downloaded, wasRunning)));
+                () => this.RunAsync("upgrade", (w, c) => WinSwCli.UpgradeWrapperAsync(w, c, source, wasRunning)));
+
+            return Task.CompletedTask;
+        }
+
+        /// <summary>The leading number of a file version such as "2.9.0.0", or null.</summary>
+        private static int? MajorVersionOf(string? version)
+        {
+            if (string.IsNullOrEmpty(version))
+            {
+                return null;
+            }
+
+            int dot = version.IndexOf('.');
+            string head = dot > 0 ? version[..dot] : version;
+            return int.TryParse(head, out int major) ? major : null;
         }
 
         private void RaiseCounts()

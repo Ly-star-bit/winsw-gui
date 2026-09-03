@@ -43,6 +43,10 @@ namespace WinSW.Gui.Services
     /// </summary>
     public static class UpdateChecker
     {
+        // Upstream, deliberately. This is no longer where an upgrade comes from — the console
+        // carries its own wrapper, which is ahead of the last upstream release — but the
+        // wizard's Download button still offers these builds for the machines the bundled one
+        // does not fit: Nano Server and anything else without the .NET Framework.
         private const string WrapperReleases = "https://api.github.com/repos/winsw/winsw/releases?per_page=10";
         private const string GuiReleases = "https://api.github.com/repos/Ly-star-bit/winsw-gui/releases?per_page=10";
 
@@ -65,7 +69,7 @@ namespace WinSW.Gui.Services
             }
         }
 
-        /// <summary>Latest stable wrapper (v3 pre-releases count: v3 is the current line).</summary>
+        /// <summary>The newest published upstream wrapper, for the wizard's Download button.</summary>
         public static Task<ReleaseInfo?> LatestWrapperAsync() => LatestAsync(WrapperReleases, static tag => tag.StartsWith("v", StringComparison.OrdinalIgnoreCase));
 
         public static Task<ReleaseInfo?> LatestGuiAsync() => LatestAsync(GuiReleases, static tag => tag.StartsWith("gui-v", StringComparison.OrdinalIgnoreCase));

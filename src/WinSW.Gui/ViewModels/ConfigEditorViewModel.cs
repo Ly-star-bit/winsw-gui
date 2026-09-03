@@ -55,6 +55,7 @@ namespace WinSW.Gui.ViewModels
             this.OpenCommand = new RelayCommand(this.Open);
             this.ReloadCommand = new RelayCommand(this.Reload, () => this.filePath != null && File.Exists(this.filePath));
             this.ApplyToServiceCommand = new AsyncRelayCommand(this.ApplyToServiceAsync, () => this.installedService != null && this.filePath != null);
+            this.InstallCommand = new AsyncRelayCommand(this.InstallAsync, () => this.installedService is null && this.filePath != null);
 
             this.BrowseExecutableCommand = new RelayCommand(() =>
             {
@@ -74,7 +75,7 @@ namespace WinSW.Gui.ViewModels
             this.OpenHelpCommand = new RelayCommand(p =>
             {
                 string anchor = p as string ?? string.Empty;
-                SystemShell.OpenUrl("https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md" + (anchor.Length > 0 ? "#" + anchor : string.Empty));
+                SystemShell.OpenUrl(ProjectLinks.Doc("xml-config-file.md", anchor));
             });
 
             this.BrowseStopExecutableCommand = new RelayCommand(() =>
@@ -185,12 +186,17 @@ namespace WinSW.Gui.ViewModels
 
         public AsyncRelayCommand ApplyToServiceCommand { get; }
 
+        public AsyncRelayCommand InstallCommand { get; }
+
         public RelayCommand BrowseExecutableCommand { get; }
 
         public RelayCommand OpenHelpCommand { get; }
 
         /// <summary>Raised after a save or apply, for a transient on-screen notice.</summary>
         public event Action<string, bool>? Toast;
+
+        /// <summary>Raised with the service ID after the editor installs a configuration.</summary>
+        public event Action<string>? ServiceInstalled;
 
         /// <summary>
         /// Paths inside the configuration's own folder are written as %BASE%-relative, so the
@@ -323,6 +329,7 @@ namespace WinSW.Gui.ViewModels
                     this.SaveCommand.RaiseCanExecuteChanged();
                     this.ReloadCommand.RaiseCanExecuteChanged();
                     this.ApplyToServiceCommand.RaiseCanExecuteChanged();
+                    this.InstallCommand.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -339,6 +346,7 @@ namespace WinSW.Gui.ViewModels
                 {
                     this.Raise(nameof(this.IsInstalled));
                     this.ApplyToServiceCommand.RaiseCanExecuteChanged();
+                    this.InstallCommand.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -547,6 +555,116 @@ namespace WinSW.Gui.ViewModels
                 _ => result.Error ?? Localizer.Get("M.Editor.RefreshFailed"),
             };
             this.Toast?.Invoke(this.StatusMessage, !result.Succeeded);
+        }
+
+        /// <summary>
+        /// Installs the configuration being edited as a service, which is the step that was
+        /// missing between a successful try run and a running service.
+        /// </summary>
+        private async Task InstallAsync()
+        {
+            if (this.filePath is null || this.installedService != null)
+            {
+                return;
+            }
+
+            if (this.IsDirty)
+            {
+                await this.WriteAsync(this.filePath).ConfigureAwait(true);
+                if (this.IsDirty)
+                {
+                    return;
+                }
+            }
+
+            if (this.Model.Validate().Count > 0)
+            {
+                this.StatusMessage = Localizer.Get("M.Wiz.FixProblems");
+                return;
+            }
+
+            if (await this.ResolveWrapperAsync(Path.GetDirectoryName(this.filePath)!).ConfigureAwait(true) is not { } wrapper)
+            {
+                this.Toast?.Invoke(this.StatusMessage, true);
+                return;
+            }
+
+            // A configuration that says it starts by itself is started now; Manual and
+            // Disabled are left alone, which is what choosing them asks for.
+            bool start = string.IsNullOrWhiteSpace(this.Model.StartMode)
+                || string.Equals(this.Model.StartMode, "Automatic", StringComparison.OrdinalIgnoreCase);
+
+            this.StatusMessage = Localizer.Format(start ? "M.Editor.InstallingStarting" : "M.Editor.Installing", this.Model.Id);
+
+            var result = start
+                ? await WinSwCli.InstallAndStartAsync(wrapper, this.filePath).ConfigureAwait(true)
+                : await WinSwCli.InstallAsync(wrapper, this.filePath).ConfigureAwait(true);
+
+            if (!result.Succeeded)
+            {
+                this.StatusMessage = result.Cancelled
+                    ? Localizer.Get("M.Editor.ElevationDeclined")
+                    : result.Error ?? Localizer.Get("M.Editor.InstallFailed");
+                this.Toast?.Invoke(this.StatusMessage, true);
+                return;
+            }
+
+            this.StatusMessage = Localizer.Format(start ? "M.Editor.InstalledStarted" : "M.Editor.Installed", this.Model.Id);
+            this.Toast?.Invoke(this.StatusMessage, false);
+
+            // The header's actions change once the configuration belongs to a service, and
+            // the dashboard is a list that has just gained an entry.
+            this.InstalledService = ServiceDiscovery.Discover()
+                .FirstOrDefault(e => string.Equals(e.ServiceName, this.Model.Id, StringComparison.OrdinalIgnoreCase));
+            this.ServiceInstalled?.Invoke(this.Model.Id);
+        }
+
+        /// <summary>
+        /// The wrapper to install with: one already sitting beside the configuration, or the
+        /// one this application carries, unpacked there.
+        /// </summary>
+        private async Task<string?> ResolveWrapperAsync(string directory)
+        {
+            foreach (string candidate in new[] { this.Model.Id + ".exe", "WinSW.exe" })
+            {
+                string existing = Path.Combine(directory, candidate);
+                if (ServiceDiscovery.IsWrapperExecutable(existing))
+                {
+                    return existing;
+                }
+            }
+
+            if (BundledWrapper.Extract() is not { } source)
+            {
+                this.StatusMessage = Localizer.Get("M.Wiz.UnpackFailed");
+                return null;
+            }
+
+            string destination = Path.Combine(directory, "WinSW.exe");
+            try
+            {
+                File.Copy(source, destination, overwrite: true);
+                return destination;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Program Files and the like: stage it in with one elevation prompt.
+                var copied = await WinSwCli.CopyElevatedAsync(source, destination).ConfigureAwait(true);
+                if (copied.Succeeded)
+                {
+                    return destination;
+                }
+
+                this.StatusMessage = copied.Cancelled
+                    ? Localizer.Get("M.Editor.ElevatedSaveDeclined")
+                    : copied.Error ?? Localizer.Format("M.Editor.WriteFailed", destination, string.Empty);
+                return null;
+            }
+            catch (IOException e)
+            {
+                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", destination, e.Message);
+                return null;
+            }
         }
 
         // Change tracking --------------------------------------------------------

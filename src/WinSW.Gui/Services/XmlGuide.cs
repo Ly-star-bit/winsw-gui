@@ -18,8 +18,14 @@ namespace WinSW.Gui.Services
     /// </remarks>
     public static class XmlGuide
     {
-        /// <summary>Public address of the same document, for the "open online" button.</summary>
-        public const string OnlineUrl = "https://github.com/winsw/winsw/blob/v3/docs/xml-config-cheatsheet.md";
+        /// <summary>
+        /// Public address of the same document, in the language being shown, for the
+        /// "open online" button.
+        /// </summary>
+        public static string OnlineUrl => ProjectLinks.Doc(
+            ResourceFor(Localizer.Current.Code) == "zh-CN"
+                ? "xml-config-cheatsheet.zh-CN.md"
+                : "xml-config-cheatsheet.md");
 
         private static readonly Dictionary<string, string> Cache = new();
 

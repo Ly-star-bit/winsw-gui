@@ -104,6 +104,10 @@ namespace WinSW.Gui.ViewModels
 
             this.Dashboard.Toast += this.ShowToast;
             this.Editor.Toast += this.ShowToast;
+
+            // A configuration installed from the editor is a service the dashboard has not
+            // heard of yet.
+            this.Editor.ServiceInstalled += _ => this.Dashboard.ReloadCommand.Execute(null);
             this.Dashboard.CreateServiceRequested += () => this.Navigate(this.Wizard);
             this.Dashboard.OpenConfigFileRequested += () =>
             {

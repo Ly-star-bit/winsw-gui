@@ -107,6 +107,25 @@ namespace WinSW.Gui.Tests
         public void HeadingsAreStrippedOfInlineSyntax(string markdown, string expected) =>
             Assert.Equal(expected, MarkdownRenderer.StripInlineSyntax(markdown));
 
+        /// <summary>
+        /// The cheat sheet and this console's own page exist only in this repository, so a
+        /// link into the upstream one is a 404 rather than a stale page.
+        /// </summary>
+        [Fact]
+        public void DocumentationLinksPointAtThisRepository()
+        {
+            Assert.Equal(
+                "https://github.com/Ly-star-bit/winsw-gui/blob/main/docs/xml-config-file.md#env",
+                ProjectLinks.Doc("xml-config-file.md", "env"));
+
+            Assert.Equal(
+                "https://github.com/Ly-star-bit/winsw-gui/blob/main/docs/xml-config-cheatsheet.md",
+                ProjectLinks.Doc("xml-config-cheatsheet.md"));
+
+            Assert.StartsWith(ProjectLinks.DocsBase, XmlGuide.OnlineUrl, StringComparison.Ordinal);
+            Assert.DoesNotContain("winsw/winsw", XmlGuide.OnlineUrl, StringComparison.Ordinal);
+        }
+
         private static string GuideFor(string code)
         {
             using var stream = typeof(XmlGuide).Assembly.GetManifestResourceStream("WinSW.Gui.Guide." + code + ".md");

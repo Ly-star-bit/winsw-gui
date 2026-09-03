@@ -502,11 +502,11 @@ namespace WinSW.Gui.Services
             link.SetResourceReference(TextElement.ForegroundProperty, "AccentBrush");
 
             // Only absolute links can be followed; the relative ones point at sibling
-            // documents in the repository, so they are resolved against the project page.
+            // documents in the repository, so they are resolved against the project's docs.
             link.Click += (_, _) => SystemShell.OpenUrl(
                 target.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                     ? target
-                    : "https://github.com/winsw/winsw/blob/v3/docs/" + target);
+                    : ProjectLinks.DocsBase + target);
 
             return link;
         }

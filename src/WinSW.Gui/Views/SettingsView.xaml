@@ -2,6 +2,7 @@
     x:Class="WinSW.Gui.Views.SettingsView"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:services="clr-namespace:WinSW.Gui.Services"
     xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -105,9 +106,9 @@
                         </StackPanel>
                         <TextBlock Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Settings.AboutBody}" />
                         <StackPanel Margin="0,10,0,0" Orientation="Horizontal">
-                            <Button Margin="0,0,8,0" Padding="10,5" Click="OnOpenLink" Tag="https://github.com/Ly-star-bit/winsw-gui" Content="GitHub" />
-                            <Button Margin="0,0,8,0" Padding="10,5" Click="OnOpenLink" Tag="https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md" Content="{DynamicResource M.Settings.WrapperDocs}" />
-                            <Button Padding="10,5" Click="OnOpenLink" Tag="https://github.com/Ly-star-bit/winsw-gui/issues" Content="{DynamicResource M.Settings.ReportIssue}" />
+                            <Button Margin="0,0,8,0" Padding="10,5" Click="OnOpenLink" Tag="{x:Static services:ProjectLinks.Repository}" Content="GitHub" />
+                            <Button Margin="0,0,8,0" Padding="10,5" Click="OnOpenLink" Tag="{x:Static services:ProjectLinks.XmlConfig}" Content="{DynamicResource M.Settings.WrapperDocs}" />
+                            <Button Padding="10,5" Click="OnOpenLink" Tag="{x:Static services:ProjectLinks.Issues}" Content="{DynamicResource M.Settings.ReportIssue}" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

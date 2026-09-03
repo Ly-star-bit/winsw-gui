@@ -315,8 +315,8 @@
     <sys:String x:Key="M.Dash.DependedBy">Depended on by</sys:String>
     <sys:String x:Key="M.Dash.WrapperVersion">Wrapper version</sys:String>
     <sys:String x:Key="M.Dash.Upgrade">Upgrade</sys:String>
-    <sys:String x:Key="M.Dash.WrapperUpdate">v{0} is available</sys:String>
-    <sys:String x:Key="M.Dash.WrapperCurrent">latest is v{0}</sys:String>
+    <sys:String x:Key="M.Dash.WrapperUpdate">the bundled {0} is newer</sys:String>
+    <sys:String x:Key="M.Dash.WrapperCurrent">not older than the bundled {0}</sys:String>
     <sys:String x:Key="M.Dash.SelectedCount">{0} services selected</sys:String>
     <sys:String x:Key="M.Dash.RunningMany">Running 'winsw {0}' on {1} services…</sys:String>
     <sys:String x:Key="M.Dash.RanMany">'winsw {0}' ran on {1} services; see each row for the result.</sys:String>
@@ -331,7 +331,7 @@
     <sys:String x:Key="M.Dash.DownloadFailed">The download failed. Check the network connection and try again.</sys:String>
     <sys:String x:Key="M.Dash.DownloadNotWrapper">The downloaded file is not a WinSW executable; it was not installed.</sys:String>
     <sys:String x:Key="M.Dash.UpgradeTitle">Upgrade the wrapper?</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeBody">'{0}' will be stopped, its wrapper replaced ({1} → {2}), and started again if it was running.</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeBody">'{0}' will be stopped, its wrapper replaced with the one bundled with this application ({1} → {2}), and started again if it was running.</sys:String>
     <sys:String x:Key="M.Dash.UpgradeAction">Upgrade</sys:String>
     <sys:String x:Key="M.Dash.Export">Export package</sys:String>
     <sys:String x:Key="M.Dash.ExportTip">Copy wrapper + configuration + install.ps1 to a folder</sys:String>
@@ -473,5 +473,17 @@
     <sys:String x:Key="M.Wiz.Unpacking">Unpacking the bundled WinSW…</sys:String>
     <sys:String x:Key="M.Wiz.UnpackFailed">Could not unpack the bundled WinSW. Pick a WinSW.exe instead.</sys:String>
     <sys:String x:Key="M.Wiz.WouldOverwrite">{0} already exists and is not a WinSW executable; installing would overwrite it.</sys:String>
+
+    <sys:String x:Key="M.Dash.UpgradeMajor">Warning: this crosses a major version ({0}.x → {1}.x). WinSW {1} renamed or removed a dozen configuration elements. The upgrade replaces the executable only — it does not touch the configuration — so the service may fail to start afterwards. Check the configuration against the migration guide first.</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">Note: the bundled wrapper is the .NET Framework build and needs .NET Framework 4.6.1 or later. This service currently runs a self-contained build, which has no such dependency.</sys:String>
+
+    <sys:String x:Key="M.Editor.Install">Install as a service</sys:String>
+    <sys:String x:Key="M.Editor.InstallHint">Saves the file, puts a WinSW executable beside it if there is not one already, and registers the service. Started straight away unless the start mode is Manual or Disabled. Needs administrator rights.</sys:String>
+    <sys:String x:Key="M.Editor.Installing">Installing '{0}'…</sys:String>
+    <sys:String x:Key="M.Editor.InstallingStarting">Installing and starting '{0}'…</sys:String>
+    <sys:String x:Key="M.Editor.Installed">'{0}' installed.</sys:String>
+    <sys:String x:Key="M.Editor.InstalledStarted">'{0}' installed and started.</sys:String>
+    <sys:String x:Key="M.Editor.InstallFailed">The service could not be installed.</sys:String>
+    <sys:String x:Key="M.Trial.Differs">A try run is not a service run: it uses your account, your environment and your desktop. A service runs as LocalSystem unless an account is given, sees only machine-level environment variables, has no mapped network drives and no desktop. Write paths as %BASE%\… or absolute, and put anything the program needs into &lt;env&gt;, so the two agree.</sys:String>
 
 </ResourceDictionary>

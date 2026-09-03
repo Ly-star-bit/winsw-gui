@@ -29,7 +29,15 @@ namespace WinSW.Gui.Services
         /// </summary>
         public static bool IsAvailable => Assembly.GetExecutingAssembly().GetManifestResourceInfo(ResourceName) != null;
 
-        /// <summary>The wrapper's product version, or null when it cannot be determined.</summary>
+        /// <summary>
+        /// The wrapper's file version, or null when it cannot be determined.
+        /// </summary>
+        /// <remarks>
+        /// The file version, not the product version, because it is what an installed
+        /// service reports and therefore the only version the two can be compared on. Its
+        /// revision counts the commits that have touched the wrapper, so a wrapper newer
+        /// than the last upstream release — which this one is — says so.
+        /// </remarks>
         public static string? Version
         {
             get
@@ -39,17 +47,7 @@ namespace WinSW.Gui.Services
                     return version;
                 }
 
-                if (Extract() is not { } path)
-                {
-                    return null;
-                }
-
-                string? product = FileVersionInfo.GetVersionInfo(path).ProductVersion;
-
-                // The wrapper stamps its informational version as "3.0.0+<commit>"; the
-                // commit is noise in a one-line hint.
-                int plus = product?.IndexOf('+') ?? -1;
-                return version = plus > 0 ? product![..plus] : product;
+                return Extract() is { } path ? version = FileVersionInfo.GetVersionInfo(path).FileVersion : null;
             }
         }
 

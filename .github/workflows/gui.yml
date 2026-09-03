@@ -33,8 +33,11 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # Full history: the wrapper's file version counts the commits that touched it.
       - name: Checkout
         uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
 
       # 8.0.x builds the console; 7.0.x is kept for the wrapper, whose project still lists a
       # net7.0-windows target alongside the net461 one this workflow actually builds.
@@ -66,7 +69,13 @@ jobs:
         working-directory: ./src
         shell: pwsh
         run: |
-          dotnet build WinSW -c Release -f net461 -p:NuGetAudit=false -p:Version=3.0.0 -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
+          # The revision counts commits that have touched the wrapper, so it moves when the
+          # wrapper changes and not on every rebuild of the console. It also makes this build
+          # sort above the last upstream release, whose binaries all report 3.0.0.0 — which
+          # is true: this branch is ahead of it.
+          $revision = (git rev-list --count HEAD -- WinSW WinSW.Core WinSW.Plugins).Trim()
+          Write-Host "Wrapper file version: 3.0.0.$revision"
+          dotnet build WinSW -c Release -f net461 -p:NuGetAudit=false -p:Version=3.0.0 -p:FileVersion=3.0.0.$revision -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
           exit $LASTEXITCODE
 
       - name: Restore

@@ -315,8 +315,8 @@
     <sys:String x:Key="M.Dash.DependedBy">依存元</sys:String>
     <sys:String x:Key="M.Dash.WrapperVersion">ラッパーのバージョン</sys:String>
     <sys:String x:Key="M.Dash.Upgrade">アップグレード</sys:String>
-    <sys:String x:Key="M.Dash.WrapperUpdate">v{0} が利用可能</sys:String>
-    <sys:String x:Key="M.Dash.WrapperCurrent">最新は v{0}</sys:String>
+    <sys:String x:Key="M.Dash.WrapperUpdate">同梱の {0} の方が新しい</sys:String>
+    <sys:String x:Key="M.Dash.WrapperCurrent">同梱の {0} 以上</sys:String>
     <sys:String x:Key="M.Dash.SelectedCount">{0} 件のサービスを選択</sys:String>
     <sys:String x:Key="M.Dash.RunningMany">{1} 件のサービスに winsw {0} を実行中…</sys:String>
     <sys:String x:Key="M.Dash.RanMany">{1} 件のサービスに winsw {0} を実行しました。結果は各行を確認してください。</sys:String>
@@ -331,7 +331,7 @@
     <sys:String x:Key="M.Dash.DownloadFailed">ダウンロードに失敗しました。ネットワーク接続を確認して再試行してください。</sys:String>
     <sys:String x:Key="M.Dash.DownloadNotWrapper">ダウンロードしたファイルは WinSW 実行ファイルではないため、インストールされませんでした。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeTitle">ラッパーをアップグレードしますか?</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeBody">'{0}' を停止してラッパーを置き換え ({1} → {2})、実行中だった場合は再開します。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeBody">「{0}」を停止し、ラッパーをこのアプリに同梱されたもの（{1} → {2}）に置き換え、実行中だった場合は再度開始します。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeAction">アップグレード</sys:String>
     <sys:String x:Key="M.Dash.Export">パッケージをエクスポート</sys:String>
     <sys:String x:Key="M.Dash.ExportTip">ラッパー、構成、install.ps1 をフォルダーにコピー</sys:String>
@@ -473,5 +473,17 @@
     <sys:String x:Key="M.Wiz.Unpacking">同梱の WinSW を展開しています…</sys:String>
     <sys:String x:Key="M.Wiz.UnpackFailed">同梱の WinSW を展開できませんでした。WinSW.exe を手動で選択してください。</sys:String>
     <sys:String x:Key="M.Wiz.WouldOverwrite">{0} は既に存在し、WinSW の実行ファイルではありません。続行すると上書きされます。</sys:String>
+
+    <sys:String x:Key="M.Dash.UpgradeMajor">警告: メジャーバージョンをまたぐ更新です（{0}.x → {1}.x）。WinSW {1} では十数個の設定要素が改名または削除されています。この更新は実行ファイルを置き換えるだけで設定には触れないため、更新後にサービスが起動しなくなる可能性があります。先に移行ガイドと照らして設定を確認してください。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">注意: 同梱のラッパーは .NET Framework 版で、.NET Framework 4.6.1 以降が必要です。このサービスは現在、その依存を持たない自己完結型のビルドで動作しています。</sys:String>
+
+    <sys:String x:Key="M.Editor.Install">サービスとしてインストール</sys:String>
+    <sys:String x:Key="M.Editor.InstallHint">ファイルを保存し、同じフォルダーに WinSW の実行ファイルがなければ配置して、サービスを登録します。スタートアップの種類が「手動」「無効」以外なら続けて開始します。管理者権限が必要です。</sys:String>
+    <sys:String x:Key="M.Editor.Installing">「{0}」をインストールしています…</sys:String>
+    <sys:String x:Key="M.Editor.InstallingStarting">「{0}」をインストールして開始しています…</sys:String>
+    <sys:String x:Key="M.Editor.Installed">「{0}」をインストールしました。</sys:String>
+    <sys:String x:Key="M.Editor.InstalledStarted">「{0}」をインストールして開始しました。</sys:String>
+    <sys:String x:Key="M.Editor.InstallFailed">サービスをインストールできませんでした。</sys:String>
+    <sys:String x:Key="M.Trial.Differs">試し実行はサービス実行とは違います。試し実行は現在のアカウント・環境変数・デスクトップを使います。サービスとして動くときは、アカウントを指定しない限り LocalSystem で動き、システム環境変数しか見えず、割り当てたネットワークドライブもデスクトップもありません。パスは %BASE%\… か絶対パスで書き、必要な変数は &lt;env&gt; に明示してください。</sys:String>
 
 </ResourceDictionary>

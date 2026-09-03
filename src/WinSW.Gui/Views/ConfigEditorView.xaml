@@ -136,6 +136,12 @@
                         <TextBlock Text="{DynamicResource M.Editor.SaveAndApply}" />
                     </StackPanel>
                 </Button>
+                <Button Padding="12,7" Command="{Binding InstallCommand}" ToolTip="{DynamicResource M.Editor.InstallHint}" Visibility="{Binding IsInstalled, Converter={StaticResource InverseBoolToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE896;" />
+                        <TextBlock Text="{DynamicResource M.Editor.Install}" />
+                    </StackPanel>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -566,12 +572,13 @@
                         </StackPanel>
                     </Expander.Header>
                     <Border Margin="0,8,0,0" Padding="12" Style="{StaticResource Card}">
-                        <Grid Height="220">
+                        <Grid Height="252">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <StackPanel Grid.Row="0" Margin="0,0,0,8" Orientation="Horizontal">
+                            <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal">
                                 <Button Margin="0,0,8,0" Padding="12,6" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding StartTrialCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE768;" />
@@ -581,6 +588,10 @@
                                 <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StopTrialCommand}" Content="{DynamicResource S.Stop}" />
                                 <Button Margin="0,0,14,0" Padding="12,6" Command="{Binding ClearTrialCommand}" Content="{DynamicResource S.Clear}" />
                                 <TextBlock VerticalAlignment="Center" MaxWidth="600" Style="{StaticResource FieldHint}" Margin="0" Text="{DynamicResource M.Trial.Hint}" />
+                                </StackPanel>
+
+                                <!-- A try run is not a service run, and the gap between them is where most first starts fail. -->
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Trial.Differs}" />
                             </StackPanel>
                             <Border Grid.Row="1" Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
                                 <ListBox

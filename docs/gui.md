@@ -11,7 +11,7 @@ It is a separate program. The wrapper binary is unchanged and does not depend on
 | Page | Purpose |
 | --- | --- |
 | **Services** | Lists WinSW-managed services with live status and process ID, the process tree of the running service, and Start / Stop / Restart / Apply config / Terminate / Uninstall. |
-| **Configuration** | A form over the XML configuration file with live validation and a preview of exactly what will be written. Comments and formatting in an existing file are preserved. Can push the change to an installed service with `winsw refresh`. |
+| **Configuration** | A form over the XML configuration file with live validation and a preview of exactly what will be written. Comments and formatting in an existing file are preserved. A configuration that is not yet a service can be installed as one from here — the bundled wrapper is placed beside it if there is not one already; a configuration that already belongs to a service can be pushed to it with `winsw refresh`. |
 | **Logs** | Tails the service's log files (including rolled files) with filtering, follow mode and pause. |
 | **New service** | A four-step wizard: pick the wrapper and the program, describe the service, choose logging and recovery, then write the configuration and install it — one elevation prompt covers both install and start. |
 
@@ -34,7 +34,10 @@ Across the pages:
   "Restart as administrator" button in the rail for prompt-free sessions.
 - **Try run**: the Configuration page can launch the program with the configured arguments,
   working directory and environment as the current user, without installing anything, and
-  show its output — the fastest way to find a bad path or argument.
+  show its output — the fastest way to find a bad path or argument. The panel also spells out
+  where a try run and a service run differ (account, environment, mapped drives, desktop),
+  which is where most first starts fail; **Install as a service** on the same page is the
+  step after it.
 - **Full configuration coverage**: lifecycle hooks (`prestart` … `poststop`), network drive
   mappings, and the `<extensions>` element as raw XML. The preview pane can also be switched
   to a raw XML editor and applied back to the form.
@@ -48,8 +51,10 @@ Across the pages:
   for a machine without the GUI.
 - **Diagnostics bundle**: one zip with the configuration, log tails, Windows events and
   versions, for bug reports.
-- **Wrapper upgrades**: the detail panel shows the installed wrapper version against the
-  latest WinSW release and can download and swap it in (stop → replace → start, one prompt).
+- **Wrapper upgrades**: the detail panel compares an installed service's wrapper against the
+  one bundled with the console and can swap it in (stop → replace → start, one prompt), with
+  no network involved. Crossing a major version, or replacing a self-contained wrapper with
+  the bundled .NET Framework build, is called out in the confirmation.
 - **Remote**: read-only status of services on another computer, through the SCM's RPC
   interface, with your current credentials.
 - **Command line and Explorer**: `WinSW.Gui.exe myapp.xml` opens that service (or the file in
