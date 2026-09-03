@@ -550,10 +550,16 @@ namespace WinSW.Gui.ViewModels
                 {
                     // An upgrade replaced the wrapper's own file. The version was read once at
                     // discovery, so without this the panel keeps showing the version that has
-                    // just been overwritten — and keeps offering the upgrade.
+                    // just been overwritten — and keeps offering the upgrade. Every service
+                    // running from that same file was upgraded by the one copy, so they are
+                    // re-read too: under the install root they all share one wrapper.
                     if (label == "upgrade" && result.Succeeded)
                     {
-                        ServiceDiscovery.RefreshWrapperVersion(entry);
+                        foreach (var sharing in this.Services.Where(e => string.Equals(e.WrapperPath, entry.WrapperPath, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            ServiceDiscovery.RefreshWrapperVersion(sharing);
+                        }
+
                         this.RaiseWrapperUpdate();
                     }
 
