@@ -66,6 +66,11 @@ Across the pages:
   masked passwords with a reveal toggle, number-and-unit editors for durations, a
   collapsible icon-only rail, a resizable preview pane, and a Settings page that gathers
   language, theme, tray and the shell verb. Closing with unsaved edits asks first.
+- **The wrapper travels with the console**: WinSW itself is embedded in the executable, so
+  the wizard installs a service on a machine that has never seen WinSW and cannot reach
+  GitHub — no download, no file to hunt for. The bundled build is the 0.65 MB net461 one,
+  which runs on x86, x64 and ARM64 alike; the Download and Browse buttons are still there
+  for anyone who wants a specific wrapper version or the self-contained .NET build.
 - **XML reference, ready for an assistant**: the Configuration page has an *XML rules*
   button that opens the complete configuration specification
   ([English](xml-config-cheatsheet.md), [中文](xml-config-cheatsheet.zh-CN.md)) inside the

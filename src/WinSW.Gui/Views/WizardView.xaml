@@ -142,14 +142,18 @@
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WinSWExecutable}" />
-                            <DockPanel>
-                                <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWrapperCommand}" />
-                                <Button DockPanel.Dock="Right" Margin="8,0,0,0" Padding="10,0" Command="{Binding DownloadWrapperCommand}" Content="{DynamicResource M.Wiz.Download}" ToolTip="{DynamicResource M.Wiz.DownloadTip}" />
-                                <ui:TextBox PlaceholderText="{DynamicResource M.Ph.Wrapper}" Text="{Binding WrapperPath, UpdateSourceTrigger=PropertyChanged}" />
-                            </DockPanel>
-                            <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Wiz.WrapperHint}" />
+                            <CheckBox Margin="0,0,0,4" Content="{DynamicResource M.Wiz.UseBundled}" IsChecked="{Binding UseBundledWrapper}" Visibility="{Binding HasBundledWrapper, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Style="{StaticResource FieldHint}" Text="{Binding BundledWrapperHint}" Visibility="{Binding UseBundledWrapper, Converter={StaticResource BoolToVisibility}}" />
+                            <StackPanel Visibility="{Binding UseBundledWrapper, Converter={StaticResource InverseBoolToVisibility}}">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Style="{StaticResource BrowseButton}" Command="{Binding BrowseWrapperCommand}" />
+                                    <Button DockPanel.Dock="Right" Margin="8,0,0,0" Padding="10,0" Command="{Binding DownloadWrapperCommand}" Content="{DynamicResource M.Wiz.Download}" ToolTip="{DynamicResource M.Wiz.DownloadTip}" />
+                                    <ui:TextBox PlaceholderText="{DynamicResource M.Ph.Wrapper}" Text="{Binding WrapperPath, UpdateSourceTrigger=PropertyChanged}" />
+                                </DockPanel>
+                                <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Wiz.WrapperHint}" />
+                            </StackPanel>
                         </StackPanel>
-                        <CheckBox Margin="0,0,0,6" Content="{DynamicResource M.Wiz.PlaceNextToProgram}" IsChecked="{Binding PlaceNextToProgram}" />
+                        <CheckBox Margin="0,0,0,6" Content="{DynamicResource M.Wiz.PlaceNextToProgram}" IsChecked="{Binding PlaceNextToProgram}" Visibility="{Binding UseBundledWrapper, Converter={StaticResource InverseBoolToVisibility}}" />
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                             <TextBlock Style="{StaticResource FieldHint}" Margin="0" Text="{DynamicResource M.Wiz.InstallDir}" />
                             <TextBlock Style="{StaticResource Mono}" Margin="6,0,0,0" Text="{Binding InstallDirectory}" />

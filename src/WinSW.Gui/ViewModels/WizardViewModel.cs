@@ -40,6 +40,7 @@ namespace WinSW.Gui.ViewModels
         private bool isBusy;
         private string configPreview = string.Empty;
         private bool brandWrapper;
+        private bool useBundledWrapper = BundledWrapper.IsAvailable;
         private string manufacturer = string.Empty;
         private ServiceEntry? cloneSource;
         private bool placeNextToProgram = true;
@@ -56,6 +57,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (Dialogs.PickFile(Localizer.Get("M.Dlg.SelectWrapper"), Localizer.Get("M.Filter.Wrapper")) is { } path)
                 {
+                    this.UseBundledWrapper = false;
                     this.WrapperPath = path;
                 }
             });
@@ -117,9 +119,34 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>True when this build carries a wrapper of its own.</summary>
+        public bool HasBundledWrapper => BundledWrapper.IsAvailable;
+
+        /// <summary>
+        /// Install the wrapper that ships inside this application instead of one the user
+        /// supplies. It is written into the program's folder when the service is created, so
+        /// nothing has to be downloaded or hunted for first.
+        /// </summary>
+        public bool UseBundledWrapper
+        {
+            get => this.useBundledWrapper;
+            set
+            {
+                if (this.Set(ref this.useBundledWrapper, value))
+                {
+                    this.Raise(nameof(this.InstallDirectory));
+                    this.Raise(nameof(this.ConfigPath));
+                    this.Raise(nameof(this.EffectiveWrapperPath));
+                    this.RefreshCommands();
+                }
+            }
+        }
+
+        public string BundledWrapperHint => Localizer.Format("M.Wiz.BundledHint", BundledWrapper.Version ?? "3.x");
+
         /// <summary>Where the wrapper and configuration end up.</summary>
         public string InstallDirectory =>
-            this.placeNextToProgram && !string.IsNullOrWhiteSpace(this.targetPath)
+            (this.placeNextToProgram || this.useBundledWrapper) && !string.IsNullOrWhiteSpace(this.targetPath)
                 ? Path.GetDirectoryName(this.targetPath) ?? string.Empty
                 : Path.GetDirectoryName(this.wrapperPath) ?? string.Empty;
 
@@ -191,16 +218,17 @@ namespace WinSW.Gui.ViewModels
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(this.wrapperPath))
+                if (!this.useBundledWrapper && string.IsNullOrWhiteSpace(this.wrapperPath))
                 {
                     return string.Empty;
                 }
 
                 string name = this.brandWrapper && !string.IsNullOrWhiteSpace(this.serviceId)
                     ? this.serviceId + ".exe"
-                    : Path.GetFileName(this.wrapperPath);
+                    : this.useBundledWrapper ? "WinSW.exe" : Path.GetFileName(this.wrapperPath);
 
-                return Path.Combine(this.InstallDirectory, name);
+                string directory = this.InstallDirectory;
+                return directory.Length == 0 ? string.Empty : Path.Combine(directory, name);
             }
         }
 
@@ -386,12 +414,13 @@ namespace WinSW.Gui.ViewModels
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(this.wrapperPath) || string.IsNullOrWhiteSpace(this.serviceId))
+                string directory = this.InstallDirectory;
+                if (directory.Length == 0 || string.IsNullOrWhiteSpace(this.serviceId))
                 {
                     return string.Empty;
                 }
 
-                return Path.Combine(this.InstallDirectory, this.serviceId + ".xml");
+                return Path.Combine(directory, this.serviceId + ".xml");
             }
         }
 
@@ -448,7 +477,7 @@ namespace WinSW.Gui.ViewModels
 
         private bool CanLeaveCurrentStep() => this.step switch
         {
-            1 => File.Exists(this.wrapperPath) && !string.IsNullOrWhiteSpace(this.targetPath),
+            1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || File.Exists(this.wrapperPath)),
             2 => !string.IsNullOrWhiteSpace(this.serviceId) && !this.IdInUse,
             _ => true,
         };
@@ -509,6 +538,7 @@ namespace WinSW.Gui.ViewModels
                     File.Delete(downloaded);
                 }
 
+                this.UseBundledWrapper = false;
                 this.WrapperPath = final;
                 this.PlaceNextToProgram = true;
                 this.StatusMessage = Localizer.Format("M.Wiz.WrapperDownloaded", latest.Version, final);
@@ -574,6 +604,16 @@ namespace WinSW.Gui.ViewModels
                 this.Problems.Add(Localizer.Format("M.Wiz.NotWrapper", this.wrapperPath));
             }
 
+            // Installing the bundled wrapper writes WinSW.exe into the program's folder. If
+            // something else already answers to that name, say so before overwriting it.
+            if (this.useBundledWrapper
+                && this.EffectiveWrapperPath is { Length: > 0 } destination
+                && File.Exists(destination)
+                && !ServiceDiscovery.IsWrapperExecutable(destination))
+            {
+                this.Problems.Add(Localizer.Format("M.Wiz.WouldOverwrite", destination));
+            }
+
             if (this.IdInUse)
             {
                 this.Problems.Add(Localizer.Format("M.Wiz.IdInUse", this.serviceId.Trim()));
@@ -606,27 +646,42 @@ namespace WinSW.Gui.ViewModels
                 string configPath = this.ConfigPath;
                 string wrapper = this.EffectiveWrapperPath;
 
+                // The bundled wrapper is unpacked to a per-user cache first, so that from
+                // here on it is an ordinary source file like one the user picked.
+                string source = this.wrapperPath;
+                if (this.useBundledWrapper)
+                {
+                    this.StatusMessage = Localizer.Get("M.Wiz.Unpacking");
+                    if (BundledWrapper.Extract() is not { } unpacked)
+                    {
+                        this.StatusMessage = Localizer.Get("M.Wiz.UnpackFailed");
+                        return;
+                    }
+
+                    source = unpacked;
+                }
+
                 if (this.brandWrapper)
                 {
                     this.StatusMessage = Localizer.Format("M.Wiz.Branding", wrapper);
 
-                    var customized = await WinSwCli.CustomizeAsync(this.wrapperPath, wrapper, string.IsNullOrWhiteSpace(this.manufacturer) ? model.DisplayName ?? model.Id : this.manufacturer.Trim()).ConfigureAwait(true);
+                    var customized = await WinSwCli.CustomizeAsync(source, wrapper, string.IsNullOrWhiteSpace(this.manufacturer) ? model.DisplayName ?? model.Id : this.manufacturer.Trim()).ConfigureAwait(true);
                     if (!customized.Succeeded)
                     {
                         this.StatusMessage = Localizer.Format("M.Wiz.BrandFailed", customized.Error ?? string.Empty);
                         return;
                     }
                 }
-                else if (!string.Equals(wrapper, this.wrapperPath, StringComparison.OrdinalIgnoreCase))
+                else if (!string.Equals(wrapper, source, StringComparison.OrdinalIgnoreCase))
                 {
                     try
                     {
                         Directory.CreateDirectory(Path.GetDirectoryName(wrapper)!);
-                        File.Copy(this.wrapperPath, wrapper, overwrite: true);
+                        File.Copy(source, wrapper, overwrite: true);
                     }
                     catch (UnauthorizedAccessException)
                     {
-                        var copied = await WinSwCli.CopyElevatedAsync(this.wrapperPath, wrapper).ConfigureAwait(true);
+                        var copied = await WinSwCli.CopyElevatedAsync(source, wrapper).ConfigureAwait(true);
                         if (!copied.Succeeded)
                         {
                             this.StatusMessage = Localizer.Format("M.Wiz.WriteFailed", copied.Error ?? Localizer.Get("M.Editor.ElevatedSaveDeclined"));
@@ -733,6 +788,7 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            this.UseBundledWrapper = false;
             this.WrapperPath = entry.WrapperPath;
             this.TargetPath = model.Executable;
             this.Arguments = model.Arguments ?? string.Empty;
@@ -754,6 +810,7 @@ namespace WinSW.Gui.ViewModels
         private void Reset()
         {
             this.CloneSource = null;
+            this.UseBundledWrapper = BundledWrapper.IsAvailable;
             this.PlaceNextToProgram = true;
             this.BrandWrapper = false;
             this.Manufacturer = string.Empty;

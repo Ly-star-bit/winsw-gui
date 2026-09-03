@@ -10,6 +10,11 @@ on:
       - "src/WinSW.Gui/**"
       - "src/WinSW.Gui.Tests/**"
       - "src/WinSW.sln"
+      # The wrapper is embedded into the console, so its sources are part of this build.
+      - "src/WinSW/**"
+      - "src/WinSW.Core/**"
+      - "src/WinSW.Plugins/**"
+      - "src/WinSW.Tasks/**"
       # The cheat sheet is embedded into the executable, so it is part of the build.
       - "docs/xml-config-cheatsheet.md"
       - "docs/xml-config-cheatsheet.zh-CN.md"
@@ -48,6 +53,15 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "full=$version$suffix" >> $env:GITHUB_OUTPUT
           Write-Host "Version: $version$suffix"
+
+      # The console embeds this executable, so it has to exist before the console is built.
+      # 3.0.0 is the version this branch of the wrapper declares (see eng/build.yml).
+      - name: Build the wrapper that ships inside the console
+        working-directory: ./src
+        shell: pwsh
+        run: |
+          dotnet build WinSW -c Release -f net461 -p:Version=3.0.0 -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
+          exit $LASTEXITCODE
 
       - name: Restore
         working-directory: ./src
@@ -161,11 +175,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $logs = @('build.log', 'test.log') | Where-Object { Test-Path $_ }
+          $logs = @('wrapper.log', 'build.log', 'test.log') | Where-Object { Test-Path $_ }
           $errors = Select-String -Path $logs -Pattern 'error [A-Z]+\d+|\[FAIL\]|Failed [A-Za-z_.]+|Error Message|Assert\.|Expected:|Actual:|Exception:' |
             ForEach-Object { $_.Line.Trim() } | Select-Object -Unique -First 120
           if (-not $errors -and $logs) { $errors = Get-Content $logs[-1] -Tail 80 }
-          if (-not $errors) { $errors = @("No build.log or test.log was produced; the failure is in an earlier step.") }
+          if (-not $errors) { $errors = @("No wrapper.log, build.log or test.log was produced; the failure is in an earlier step.") }
           $run = "$env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
           $body = "Build of $env:GITHUB_SHA failed. Run: $run`n`n``````text`n" + ($errors -join "`n") + "`n``````"
           $payload = @{ title = "GUI build failed at $($env:GITHUB_SHA.Substring(0, 7))"; body = $body } | ConvertTo-Json

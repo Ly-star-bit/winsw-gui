@@ -468,4 +468,10 @@
     <sys:String x:Key="G.Prompt.Current">これが現在の設定です。ゼロから書き直さず、これを修正してください:</sys:String>
     <sys:String x:Key="G.Prompt.Describe">対象プログラム:&#10;  - 内容:&#10;  - コマンドライン:&#10;  - インストール先:&#10;  - 実行アカウント:&#10;  - スタートアップの種類:&#10;  - クラッシュ時:&#10;  - ログ:&#10;  - その他の要件:</sys:String>
 
+    <sys:String x:Key="M.Wiz.UseBundled">このアプリに同梱された WinSW を使う</sys:String>
+    <sys:String x:Key="M.Wiz.BundledHint">このアプリには WinSW {0} が同梱されています。インストール時に下のインストール先へ書き出されます。ダウンロードもファイル探しも不要です。</sys:String>
+    <sys:String x:Key="M.Wiz.Unpacking">同梱の WinSW を展開しています…</sys:String>
+    <sys:String x:Key="M.Wiz.UnpackFailed">同梱の WinSW を展開できませんでした。WinSW.exe を手動で選択してください。</sys:String>
+    <sys:String x:Key="M.Wiz.WouldOverwrite">{0} は既に存在し、WinSW の実行ファイルではありません。続行すると上書きされます。</sys:String>
+
 </ResourceDictionary>

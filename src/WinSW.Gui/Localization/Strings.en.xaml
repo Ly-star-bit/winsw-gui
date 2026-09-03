@@ -468,4 +468,10 @@
     <sys:String x:Key="G.Prompt.Current">This is my current configuration. Adapt it rather than starting from scratch:</sys:String>
     <sys:String x:Key="G.Prompt.Describe">My program:&#10;  - What it is:&#10;  - Command line:&#10;  - Installation folder:&#10;  - Runs as:&#10;  - Start mode:&#10;  - On crash:&#10;  - Logs:&#10;  - Extra requirements:</sys:String>
 
+    <sys:String x:Key="M.Wiz.UseBundled">Use the WinSW that ships with this application</sys:String>
+    <sys:String x:Key="M.Wiz.BundledHint">WinSW {0} is carried inside this application and will be written into the install directory below. No download, no file to find.</sys:String>
+    <sys:String x:Key="M.Wiz.Unpacking">Unpacking the bundled WinSW…</sys:String>
+    <sys:String x:Key="M.Wiz.UnpackFailed">Could not unpack the bundled WinSW. Pick a WinSW.exe instead.</sys:String>
+    <sys:String x:Key="M.Wiz.WouldOverwrite">{0} already exists and is not a WinSW executable; installing would overwrite it.</sys:String>
+
 </ResourceDictionary>

@@ -38,6 +38,26 @@
     <PackageReference Include="System.Diagnostics.EventLog" Version="7.0.0" />
   </ItemGroup>
 
+  <!--
+    The wrapper that will host the service is embedded so the wizard can install a service
+    on a machine with no network and no WinSW.exe lying around. The net461 build is the one
+    that fits: 0.65 MB of AnyCPU IL that runs on x86, x64 and ARM64 alike, against a .NET
+    Framework every supported Windows already carries. The self-contained .NET builds are
+    17 MB each and exist per architecture, and upstream ships none for ARM64 at all.
+
+    It is a plain file reference rather than a ProjectReference because the merged executable
+    is produced by a custom target in WinSW.csproj, after its build: the console's workflow
+    builds that project first, and a developer building only the console simply gets a
+    console whose wizard falls back to downloading the wrapper.
+  -->
+  <PropertyGroup>
+    <BundledWrapper Condition="'$(BundledWrapper)' == ''">$(ArtifactsPublishDir)WinSW-net461.exe</BundledWrapper>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(BundledWrapper)')">
+    <EmbeddedResource Include="$(BundledWrapper)" LogicalName="WinSW.Gui.Wrapper.exe" WithCulture="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <!--
       The configuration cheat sheet is embedded so it is readable on machines with no

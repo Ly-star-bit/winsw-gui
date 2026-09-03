@@ -468,4 +468,10 @@
     <sys:String x:Key="G.Prompt.Current">这是我现在的配置，请在它的基础上修改，不要从零重写：</sys:String>
     <sys:String x:Key="G.Prompt.Describe">我的程序：&#10;  - 是什么：&#10;  - 命令行：&#10;  - 安装目录：&#10;  - 运行账户：&#10;  - 启动类型：&#10;  - 崩溃后：&#10;  - 日志：&#10;  - 其它要求：</sys:String>
 
+    <sys:String x:Key="M.Wiz.UseBundled">使用本程序自带的 WinSW</sys:String>
+    <sys:String x:Key="M.Wiz.BundledHint">本程序内置了 WinSW {0}，安装时会写入下面的安装目录。不用下载，也不用去找文件。</sys:String>
+    <sys:String x:Key="M.Wiz.Unpacking">正在释放内置的 WinSW…</sys:String>
+    <sys:String x:Key="M.Wiz.UnpackFailed">内置 WinSW 释放失败，请改为手动选择一个 WinSW.exe。</sys:String>
+    <sys:String x:Key="M.Wiz.WouldOverwrite">{0} 已存在，而且不是 WinSW 可执行文件；继续安装会覆盖它。</sys:String>
+
 </ResourceDictionary>
