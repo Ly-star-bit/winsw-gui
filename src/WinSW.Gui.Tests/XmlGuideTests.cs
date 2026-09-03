@@ -46,8 +46,12 @@ namespace WinSW.Gui.Tests
         [Fact]
         public void PromptOmitsAnEmptyConfiguration()
         {
-            Assert.DoesNotContain("```xml", XmlGuide.BuildPrompt("   "), StringComparison.Ordinal);
-            Assert.DoesNotContain("```xml", XmlGuide.BuildPrompt(null), StringComparison.Ordinal);
+            // The specification itself is full of XML samples, so the absence of the section
+            // has to be judged on its content, not on the fence that introduces it.
+            string empty = XmlGuide.BuildPrompt(null);
+
+            Assert.Equal(empty, XmlGuide.BuildPrompt("   "));
+            Assert.DoesNotContain("<id>demo</id>", empty, StringComparison.Ordinal);
         }
 
         [Theory]

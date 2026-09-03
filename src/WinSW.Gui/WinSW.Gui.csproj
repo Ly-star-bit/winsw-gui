@@ -43,8 +43,15 @@
       The configuration cheat sheet is embedded so it is readable on machines with no
       network, and so it always matches the wrapper version shipped beside it.
     -->
-    <EmbeddedResource Include="..\..\docs\xml-config-cheatsheet.md" LogicalName="WinSW.Gui.Guide.en.md" />
-    <EmbeddedResource Include="..\..\docs\xml-config-cheatsheet.zh-CN.md" LogicalName="WinSW.Gui.Guide.zh-CN.md" />
+    <EmbeddedResource Include="..\..\docs\xml-config-cheatsheet.md" LogicalName="WinSW.Gui.Guide.en.md" WithCulture="false" />
+
+    <!--
+      WithCulture is not decoration: MSBuild reads "name.zh-CN.md" as a culture-specific
+      resource and routes it into a zh-CN satellite assembly, where GetManifestResourceStream
+      on this assembly can never find it. Saying the file is culture-neutral keeps it in the
+      main manifest, which is where the reader looks.
+    -->
+    <EmbeddedResource Include="..\..\docs\xml-config-cheatsheet.zh-CN.md" LogicalName="WinSW.Gui.Guide.zh-CN.md" WithCulture="false" />
   </ItemGroup>
 
 </Project>
