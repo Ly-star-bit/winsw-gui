@@ -13,7 +13,7 @@ It is a separate program. The wrapper binary is unchanged and does not depend on
 | **Services** | Lists WinSW-managed services with live status and process ID, the process tree of the running service, and Start / Stop / Restart / Apply config / Terminate / Uninstall. |
 | **Configuration** | A form over the XML configuration file with live validation and a preview of exactly what will be written. Comments and formatting in an existing file are preserved. A configuration that is not yet a service can be installed as one from here — the bundled wrapper is placed beside it if there is not one already; a configuration that already belongs to a service can be pushed to it with `winsw refresh`. |
 | **Logs** | Tails the service's log files (including rolled files) with filtering, follow mode and pause. |
-| **New service** | A four-step wizard: pick the wrapper and the program, describe the service, choose logging and recovery, then write the configuration and install it — one elevation prompt covers both install and start. |
+| **New service** | A four-step wizard: pick the program, describe the service, choose logging and recovery, then write the configuration and install it — one elevation prompt covers both install and start. Each service gets a folder of its own under an install root (`%ProgramData%\WinSW` by default, changeable in Settings), all sharing one WinSW executable in `bin`; the program's own folder is left untouched unless asked for. |
 
 Across the pages:
 
@@ -71,6 +71,12 @@ Across the pages:
   masked passwords with a reveal toggle, number-and-unit editors for durations, a
   collapsible icon-only rail, a resizable preview pane, and a Settings page that gathers
   language, theme, tray and the shell verb. Closing with unsaved edits asks first.
+- **Services keep to themselves**: the wizard installs into `<root>\<service id>\`, so the
+  configuration and its logs never land in a folder something else owns — a Python or JDK
+  installation whose next upgrade would take them along. One WinSW executable in `<root>\bin`
+  serves them all; asking for a branded wrapper gives that service a copy of its own. The
+  working directory suggested for an interpreter follows the script named in the arguments,
+  not the interpreter's own folder.
 - **The wrapper travels with the console**: WinSW itself is embedded in the executable, so
   the wizard installs a service on a machine that has never seen WinSW and cannot reach
   GitHub — no download, no file to hunt for. The bundled build is the 0.65 MB net461 one,

@@ -760,6 +760,18 @@ namespace WinSW.Gui.ViewModels
                 warnings.Add(Localizer.Format("M.Dash.UpgradeMajor", installedMajor, bundledMajor));
             }
 
+            // A wrapper under the install root is shared. Replacing it replaces the file every
+            // one of those services runs from, and a running process locks its own image, so
+            // they have to be stopped first.
+            var sharing = this.Services
+                .Where(e => !ReferenceEquals(e, entry) && string.Equals(e.WrapperPath, entry.WrapperPath, StringComparison.OrdinalIgnoreCase))
+                .Select(e => e.ServiceName)
+                .ToList();
+            if (sharing.Count > 0)
+            {
+                warnings.Add(Localizer.Format("M.Dash.UpgradeShared", string.Join(", ", sharing)));
+            }
+
             // The bundled wrapper is the .NET Framework build. A service currently hosted by
             // a self-contained one would gain that dependency.
             if (WrapperKind.ReleaseAssetFor(entry.WrapperPath) is { } asset && asset != "WinSW-net461.exe")

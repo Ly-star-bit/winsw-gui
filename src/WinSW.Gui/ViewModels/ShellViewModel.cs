@@ -124,6 +124,13 @@ namespace WinSW.Gui.ViewModels
             this.selectedTheme = this.Themes.First(t => t.Choice == ThemeManager.Current);
 
             this.RestartElevatedCommand = new RelayCommand(() => Elevation.RestartElevated(), () => !this.IsElevated);
+            this.BrowseInstallRootCommand = new RelayCommand(() =>
+            {
+                if (Dialogs.PickFolder(Localizer.Get("M.Settings.InstallRoot"), AppSettings.Current.EffectiveInstallRoot) is { } path)
+                {
+                    this.InstallRoot = path;
+                }
+            });
             this.OpenGuiUpdateCommand = new RelayCommand(() =>
             {
                 if (this.guiUpdate != null)
@@ -370,6 +377,29 @@ namespace WinSW.Gui.ViewModels
                 }
             }
         }
+
+        /// <summary>
+        /// Where the wizard installs services: one folder per service, sharing a wrapper in
+        /// <c>bin</c>. Blank falls back to <see cref="DefaultInstallRoot"/>.
+        /// </summary>
+        public string InstallRoot
+        {
+            get => AppSettings.Current.InstallRoot ?? string.Empty;
+            set
+            {
+                string trimmed = value.Trim();
+                if (!string.Equals(AppSettings.Current.InstallRoot ?? string.Empty, trimmed, StringComparison.Ordinal))
+                {
+                    AppSettings.Current.InstallRoot = trimmed.Length == 0 ? null : trimmed;
+                    AppSettings.Current.Save();
+                    this.Raise();
+                }
+            }
+        }
+
+        public string DefaultInstallRoot => AppSettings.Current.EffectiveInstallRoot;
+
+        public RelayCommand BrowseInstallRootCommand { get; }
 
         public bool NotifyOnUnexpectedStop
         {

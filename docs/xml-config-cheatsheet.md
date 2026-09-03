@@ -57,9 +57,12 @@ The root element must be `<service>`. Child order does not matter.
 
 Only `<id>` and `<executable>` are required. Everything else has a default.
 
-**File placement.** The configuration file lives next to the (usually renamed) WinSW
-executable and shares its base name: `myapp.exe` → `myapp.xml`. The wrapper derives its
-log base name and `%BASE%` from that pair.
+**File placement.** The classic layout puts the configuration next to the (usually renamed)
+WinSW executable, sharing its base name: `myapp.exe` → `myapp.xml`. That is not a
+requirement in 3.x — `winsw install <config>` records both paths, so one wrapper can serve
+configurations that live elsewhere. What matters is that **everything is derived from the
+configuration file, not from the wrapper**: `%BASE%` is the configuration's folder, and the
+log files are named after the configuration (`myapp.xml` → `myapp.out.log`).
 
 ---
 

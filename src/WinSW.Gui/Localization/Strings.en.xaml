@@ -422,7 +422,7 @@
     <sys:String x:Key="M.Wiz.Download">Download</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">Fetch the latest WinSW build for this machine from GitHub</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">Don't have WinSW.exe? Download puts the latest build next to your program.</sys:String>
-    <sys:String x:Key="M.Wiz.PlaceNextToProgram">Install into the program's folder (wrapper and configuration next to the program)</sys:String>
+    <sys:String x:Key="M.Wiz.PlaceNextToProgram">Install into the program's own folder instead</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">Install folder:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">A service with this ID is already installed.</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">Service ID '{0}' is already in use on this machine.</sys:String>
@@ -485,5 +485,11 @@
     <sys:String x:Key="M.Editor.InstalledStarted">'{0}' installed and started.</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">The service could not be installed.</sys:String>
     <sys:String x:Key="M.Trial.Differs">A try run is not a service run: it uses your account, your environment and your desktop. A service runs as LocalSystem unless an account is given, sees only machine-level environment variables, has no mapped network drives and no desktop. Write paths as %BASE%\… or absolute, and put anything the program needs into &lt;env&gt;, so the two agree.</sys:String>
+
+    <sys:String x:Key="M.Wiz.LayoutHint">By default each service gets a folder of its own under the install root, all sharing one WinSW executable in bin. The program's folder is left untouched — it often belongs to something else, such as a Python or JDK installation that an upgrade would replace, taking the service's configuration and logs with it. The root can be changed in Settings.</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperAt">Wrapper:</sys:String>
+    <sys:String x:Key="M.Settings.InstallRoot">Install root for new services</sys:String>
+    <sys:String x:Key="M.Settings.InstallRootHint">One folder per service under this root, sharing a single WinSW executable in bin. Leave blank for the default shown.</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeShared">Warning: this wrapper is shared with {0}. A running service locks its own executable, so those have to be stopped before it can be replaced.</sys:String>
 
 </ResourceDictionary>

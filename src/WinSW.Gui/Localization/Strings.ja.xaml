@@ -422,7 +422,7 @@
     <sys:String x:Key="M.Wiz.Download">ダウンロード</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">GitHub からこのマシン向けの最新 WinSW を取得</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">WinSW.exe がない場合は「ダウンロード」で最新ビルドをプログラムの隣に配置します。</sys:String>
-    <sys:String x:Key="M.Wiz.PlaceNextToProgram">プログラムのフォルダーにインストール (ラッパーと構成をプログラムの隣に配置)</sys:String>
+    <sys:String x:Key="M.Wiz.PlaceNextToProgram">代わりにプログラム自身のフォルダーへインストールする</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">インストール先:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">この ID のサービスは既にインストールされています。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">サービス ID '{0}' はこのマシンで既に使用されています。</sys:String>
@@ -485,5 +485,11 @@
     <sys:String x:Key="M.Editor.InstalledStarted">「{0}」をインストールして開始しました。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">サービスをインストールできませんでした。</sys:String>
     <sys:String x:Key="M.Trial.Differs">試し実行はサービス実行とは違います。試し実行は現在のアカウント・環境変数・デスクトップを使います。サービスとして動くときは、アカウントを指定しない限り LocalSystem で動き、システム環境変数しか見えず、割り当てたネットワークドライブもデスクトップもありません。パスは %BASE%\… か絶対パスで書き、必要な変数は &lt;env&gt; に明示してください。</sys:String>
+
+    <sys:String x:Key="M.Wiz.LayoutHint">既定では各サービスがインストール先ルートの下に専用フォルダーを持ち、bin にある 1 つの WinSW 実行ファイルを共有します。プログラムのフォルダーには触れません — そこは Python や JDK のインストール先など他所のものであることが多く、アップグレードでサービスの設定やログごと置き換えられてしまいます。ルートは設定で変更できます。</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperAt">ラッパー:</sys:String>
+    <sys:String x:Key="M.Settings.InstallRoot">新規サービスのインストール先ルート</sys:String>
+    <sys:String x:Key="M.Settings.InstallRootHint">このルートの下にサービスごとのフォルダーを作り、bin にある 1 つの WinSW 実行ファイルを共有します。空欄なら上に表示された既定値を使います。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeShared">警告: このラッパーは {0} と共有されています。実行中のサービスは自分の実行ファイルをロックするため、置き換える前にそれらを停止する必要があります。</sys:String>
 
 </ResourceDictionary>

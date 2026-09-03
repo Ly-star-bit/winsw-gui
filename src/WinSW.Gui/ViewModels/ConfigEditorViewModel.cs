@@ -625,9 +625,10 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private async Task<string?> ResolveWrapperAsync(string directory)
         {
-            foreach (string candidate in new[] { this.Model.Id + ".exe", "WinSW.exe" })
+            string shared = Path.Combine(AppSettings.Current.EffectiveInstallRoot, "bin", "WinSW.exe");
+
+            foreach (string existing in new[] { Path.Combine(directory, this.Model.Id + ".exe"), Path.Combine(directory, "WinSW.exe"), shared })
             {
-                string existing = Path.Combine(directory, candidate);
                 if (ServiceDiscovery.IsWrapperExecutable(existing))
                 {
                     return existing;
@@ -640,7 +641,9 @@ namespace WinSW.Gui.ViewModels
                 return null;
             }
 
-            string destination = Path.Combine(directory, "WinSW.exe");
+            // Nothing to reuse: create the shared one, where the wizard puts it too.
+            string destination = shared;
+            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             try
             {
                 File.Copy(source, destination, overwrite: true);

@@ -63,6 +63,21 @@ namespace WinSW.Gui.Services
 
         public bool SortServicesByStatus { get; set; }
 
+        /// <summary>
+        /// Where new services are installed: one folder per service under this root, with a
+        /// single wrapper shared from <c>bin</c>. Null means the default, which is
+        /// <c>%ProgramData%\WinSW</c> — the place Windows sets aside for machine-wide
+        /// application data, which is what a service's configuration and logs are.
+        /// </summary>
+        public string? InstallRoot { get; set; }
+
+        /// <summary>The configured install root, or the default when none is set.</summary>
+        [JsonIgnore]
+        public string EffectiveInstallRoot =>
+            string.IsNullOrWhiteSpace(this.InstallRoot)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "WinSW")
+                : this.InstallRoot!.Trim();
+
         private static AppSettings Load()
         {
             try

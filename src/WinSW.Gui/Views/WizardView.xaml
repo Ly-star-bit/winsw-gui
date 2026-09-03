@@ -153,10 +153,15 @@
                                 <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Wiz.WrapperHint}" />
                             </StackPanel>
                         </StackPanel>
-                        <CheckBox Margin="0,0,0,6" Content="{DynamicResource M.Wiz.PlaceNextToProgram}" IsChecked="{Binding PlaceNextToProgram}" Visibility="{Binding UseBundledWrapper, Converter={StaticResource InverseBoolToVisibility}}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <CheckBox Margin="0,0,0,4" Content="{DynamicResource M.Wiz.PlaceNextToProgram}" IsChecked="{Binding PlaceNextToProgram}" />
+                        <TextBlock Margin="0,0,0,8" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.LayoutHint}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
                             <TextBlock Style="{StaticResource FieldHint}" Margin="0" Text="{DynamicResource M.Wiz.InstallDir}" />
                             <TextBlock Style="{StaticResource Mono}" Margin="6,0,0,0" Text="{Binding InstallDirectory}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <TextBlock Style="{StaticResource FieldHint}" Margin="0" Text="{DynamicResource M.Wiz.WrapperAt}" />
+                            <TextBlock Style="{StaticResource Mono}" Margin="6,0,0,0" Text="{Binding EffectiveWrapperPath}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Arguments}" />

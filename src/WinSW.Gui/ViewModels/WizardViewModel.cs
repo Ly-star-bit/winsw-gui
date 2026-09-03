@@ -43,7 +43,8 @@ namespace WinSW.Gui.ViewModels
         private bool useBundledWrapper = BundledWrapper.IsAvailable;
         private string manufacturer = string.Empty;
         private ServiceEntry? cloneSource;
-        private bool placeNextToProgram = true;
+        private bool placeNextToProgram;
+        private string suggestedWorkingDirectory = string.Empty;
 
         public WizardViewModel()
         {
@@ -102,8 +103,10 @@ namespace WinSW.Gui.ViewModels
         public AsyncRelayCommand DownloadWrapperCommand { get; }
 
         /// <summary>
-        /// Put the wrapper (and therefore the configuration) in the program's own folder. That
-        /// is the layout %BASE% assumes and the one every WinSW example uses.
+        /// Put the wrapper and configuration in the program's own folder instead of under the
+        /// install root. Off by default: a program's folder is often one something else owns —
+        /// a Python or JDK installation that an upgrade will replace, taking the service's
+        /// configuration and logs with it.
         /// </summary>
         public bool PlaceNextToProgram
         {
@@ -144,11 +147,37 @@ namespace WinSW.Gui.ViewModels
 
         public string BundledWrapperHint => Localizer.Format("M.Wiz.BundledHint", BundledWrapper.Version ?? "3.x");
 
-        /// <summary>Where the wrapper and configuration end up.</summary>
-        public string InstallDirectory =>
-            (this.placeNextToProgram || this.useBundledWrapper) && !string.IsNullOrWhiteSpace(this.targetPath)
-                ? Path.GetDirectoryName(this.targetPath) ?? string.Empty
-                : Path.GetDirectoryName(this.wrapperPath) ?? string.Empty;
+        /// <summary>The root holding one folder per service; configurable in the settings.</summary>
+        public string InstallRoot => AppSettings.Current.EffectiveInstallRoot;
+
+        /// <summary>
+        /// Where this service's configuration and logs end up: its own folder under the
+        /// install root, or the program's folder when that was asked for.
+        /// </summary>
+        public string InstallDirectory
+        {
+            get
+            {
+                if (this.placeNextToProgram)
+                {
+                    return string.IsNullOrWhiteSpace(this.targetPath)
+                        ? string.Empty
+                        : Path.GetDirectoryName(this.targetPath) ?? string.Empty;
+                }
+
+                if (!this.useBundledWrapper && !string.IsNullOrWhiteSpace(this.wrapperPath))
+                {
+                    // A wrapper the user supplied keeps its own folder, as it did before.
+                    return Path.GetDirectoryName(this.wrapperPath) ?? string.Empty;
+                }
+
+                string id = this.serviceId.Trim();
+                return id.Length == 0 ? string.Empty : Path.Combine(this.InstallRoot, id);
+            }
+        }
+
+        /// <summary>The single wrapper every service under the install root runs from.</summary>
+        public string SharedWrapperPath => Path.Combine(this.InstallRoot, "bin", "WinSW.exe");
 
         /// <summary>True when the chosen ID already belongs to an installed service.</summary>
         public bool IdInUse => !string.IsNullOrWhiteSpace(this.serviceId)
@@ -223,12 +252,26 @@ namespace WinSW.Gui.ViewModels
                     return string.Empty;
                 }
 
-                string name = this.brandWrapper && !string.IsNullOrWhiteSpace(this.serviceId)
-                    ? this.serviceId + ".exe"
-                    : this.useBundledWrapper ? "WinSW.exe" : Path.GetFileName(this.wrapperPath);
-
                 string directory = this.InstallDirectory;
-                return directory.Length == 0 ? string.Empty : Path.Combine(directory, name);
+                if (directory.Length == 0)
+                {
+                    return string.Empty;
+                }
+
+                // Branding needs a copy of its own — the whole point is a wrapper named after
+                // the service — so it opts out of sharing.
+                if (this.brandWrapper && !string.IsNullOrWhiteSpace(this.serviceId))
+                {
+                    return Path.Combine(directory, this.serviceId.Trim() + ".exe");
+                }
+
+                // One wrapper under the root, shared by every service installed there.
+                if (this.useBundledWrapper && !this.placeNextToProgram)
+                {
+                    return this.SharedWrapperPath;
+                }
+
+                return Path.Combine(directory, this.useBundledWrapper ? "WinSW.exe" : Path.GetFileName(this.wrapperPath));
             }
         }
 
@@ -301,7 +344,13 @@ namespace WinSW.Gui.ViewModels
         public string Arguments
         {
             get => this.arguments;
-            set => this.Set(ref this.arguments, value);
+            set
+            {
+                if (this.Set(ref this.arguments, value))
+                {
+                    this.SuggestDefaults();
+                }
+            }
         }
 
         public string WorkingDirectory
@@ -319,6 +368,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.serviceId, value))
                 {
+                    this.Raise(nameof(this.InstallDirectory));
                     this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
                     this.Raise(nameof(this.IdInUse));
@@ -469,10 +519,38 @@ namespace WinSW.Gui.ViewModels
                 this.DisplayName = stem;
             }
 
-            if (string.IsNullOrWhiteSpace(this.workingDirectory))
+            // The executable's own folder is the right working directory for a program, and
+            // the wrong one for an interpreter: python.exe lives in the Python installation,
+            // not beside the script it is being asked to run. When an argument names a file
+            // that exists, that file's folder is what the program actually works in.
+            string suggestion = ScriptDirectory(this.arguments) ?? Path.GetDirectoryName(this.targetPath) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(this.workingDirectory)
+                || string.Equals(this.workingDirectory, this.suggestedWorkingDirectory, StringComparison.OrdinalIgnoreCase))
             {
-                this.WorkingDirectory = Path.GetDirectoryName(this.targetPath) ?? string.Empty;
+                this.suggestedWorkingDirectory = suggestion;
+                this.WorkingDirectory = suggestion;
             }
+
+            // Logs in their own folder beside the configuration: %BASE% is wherever the
+            // configuration ends up, and the wrapper creates the directory if it is missing.
+            if (string.IsNullOrWhiteSpace(this.logPath))
+            {
+                this.LogPath = @"%BASE%\logs";
+            }
+        }
+
+        /// <summary>The folder of the first argument that names a file on disk, or null.</summary>
+        internal static string? ScriptDirectory(string arguments)
+        {
+            foreach (string token in ServiceDiscovery.SplitCommandLine(arguments))
+            {
+                if (token.Length > 2 && !token.StartsWith('-') && !token.StartsWith('/') && File.Exists(token))
+                {
+                    return Path.GetDirectoryName(Path.GetFullPath(token));
+                }
+            }
+
+            return null;
         }
 
         private bool CanLeaveCurrentStep() => this.step switch
@@ -540,7 +618,6 @@ namespace WinSW.Gui.ViewModels
 
                 this.UseBundledWrapper = false;
                 this.WrapperPath = final;
-                this.PlaceNextToProgram = true;
                 this.StatusMessage = Localizer.Format("M.Wiz.WrapperDownloaded", latest.Version, final);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
@@ -672,8 +749,11 @@ namespace WinSW.Gui.ViewModels
                         return;
                     }
                 }
-                else if (!string.Equals(wrapper, source, StringComparison.OrdinalIgnoreCase))
+                else if (!string.Equals(wrapper, source, StringComparison.OrdinalIgnoreCase)
+                    && !ServiceDiscovery.IsWrapperExecutable(wrapper))
                 {
+                    // A shared wrapper already in place is left alone: another service may be
+                    // running from it, which locks the file. Replacing it is a separate action.
                     try
                     {
                         Directory.CreateDirectory(Path.GetDirectoryName(wrapper)!);
@@ -734,6 +814,8 @@ namespace WinSW.Gui.ViewModels
         {
             try
             {
+                // The service's own folder under the install root will not exist yet.
+                Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
                 model.Save(configPath);
                 return true;
             }
@@ -811,7 +893,8 @@ namespace WinSW.Gui.ViewModels
         {
             this.CloneSource = null;
             this.UseBundledWrapper = BundledWrapper.IsAvailable;
-            this.PlaceNextToProgram = true;
+            this.PlaceNextToProgram = false;
+            this.suggestedWorkingDirectory = string.Empty;
             this.BrandWrapper = false;
             this.Manufacturer = string.Empty;
             this.Step = 1;

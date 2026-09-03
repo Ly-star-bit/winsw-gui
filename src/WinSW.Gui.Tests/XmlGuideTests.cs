@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using WinSW.Gui.Services;
+using WinSW.Gui.ViewModels;
 using Xunit;
 
 namespace WinSW.Gui.Tests
@@ -124,6 +126,31 @@ namespace WinSW.Gui.Tests
 
             Assert.StartsWith(ProjectLinks.DocsBase, XmlGuide.OnlineUrl, StringComparison.Ordinal);
             Assert.DoesNotContain("winsw/winsw", XmlGuide.OnlineUrl, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The working directory suggested for an interpreter has to come from the script it
+        /// is being asked to run, not from where the interpreter happens to be installed.
+        /// </summary>
+        [Fact]
+        public void WorkingDirectorySuggestionFollowsTheScript()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "winsw-gui-" + Guid.NewGuid().ToString("n"));
+            Directory.CreateDirectory(directory);
+            string script = Path.Combine(directory, "server.py");
+            File.WriteAllText(script, "print('hi')");
+
+            try
+            {
+                Assert.Equal(directory.TrimEnd(Path.DirectorySeparatorChar), WizardViewModel.ScriptDirectory($"-u \"{script}\" --port 8080"));
+                Assert.Equal(directory.TrimEnd(Path.DirectorySeparatorChar), WizardViewModel.ScriptDirectory($"-u {script}"));
+                Assert.Null(WizardViewModel.ScriptDirectory("--port 8080"));
+                Assert.Null(WizardViewModel.ScriptDirectory(string.Empty));
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
         }
 
         private static string GuideFor(string code)

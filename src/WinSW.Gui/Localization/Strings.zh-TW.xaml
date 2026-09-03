@@ -422,7 +422,7 @@
     <sys:String x:Key="M.Wiz.Download">下載</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">從 GitHub 下載適合本機的最新 WinSW</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">沒有 WinSW.exe？按「下載」會把最新版放到程式旁邊。</sys:String>
-    <sys:String x:Key="M.Wiz.PlaceNextToProgram">安裝到程式所在資料夾（wrapper 和設定放在程式旁邊）</sys:String>
+    <sys:String x:Key="M.Wiz.PlaceNextToProgram">改為安裝到程式自己的資料夾裡</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">安裝資料夾：</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">已有相同 ID 的服務安裝在本機。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">服務 ID「{0}」在本機已被使用。</sys:String>
@@ -485,5 +485,11 @@
     <sys:String x:Key="M.Editor.InstalledStarted">「{0}」已安裝並啟動。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">服務安裝失敗。</sys:String>
     <sys:String x:Key="M.Trial.Differs">試執行不等於服務執行：試執行用的是你目前的帳戶、你的環境變數和你的桌面。裝成服務後，預設以 LocalSystem 身分執行，只看得到系統層級環境變數，沒有對應的網路磁碟機，也沒有桌面。把路徑寫成 %BASE%\… 或絕對路徑，把程式需要的變數明確寫進 &lt;env&gt;，兩邊才對得上。</sys:String>
+
+    <sys:String x:Key="M.Wiz.LayoutHint">預設每個服務在安裝根目錄下有自己的資料夾，共用 bin 裡的同一個 WinSW 可執行檔。程式所在目錄不會被碰 —— 那個目錄往往屬於別人，例如 Python 或 JDK 的安裝目錄，一次升級就會把服務的設定和日誌一起帶走。根目錄可以在設定裡改。</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperAt">包裝器：</sys:String>
+    <sys:String x:Key="M.Settings.InstallRoot">新建服務的安裝根目錄</sys:String>
+    <sys:String x:Key="M.Settings.InstallRootHint">每個服務在這個根目錄下占一個資料夾，共用 bin 裡的同一個 WinSW 可執行檔。留空則使用上面顯示的預設值。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeShared">注意：這個 wrapper 與 {0} 共用。執行中的服務會鎖住自己的可執行檔，所以必須先把它們停掉才能替換。</sys:String>
 
 </ResourceDictionary>

@@ -422,7 +422,7 @@
     <sys:String x:Key="M.Wiz.Download">下载</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">从 GitHub 下载适合本机的最新 WinSW</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">没有 WinSW.exe？点“下载”会把最新版放到程序旁边。</sys:String>
-    <sys:String x:Key="M.Wiz.PlaceNextToProgram">安装到程序所在文件夹（wrapper 和配置放在程序旁边）</sys:String>
+    <sys:String x:Key="M.Wiz.PlaceNextToProgram">改为安装到程序自己的文件夹里</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">安装目录：</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">已有同 ID 的服务安装在本机。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">服务 ID“{0}”在本机已被使用。</sys:String>
@@ -485,5 +485,11 @@
     <sys:String x:Key="M.Editor.InstalledStarted">“{0}”已安装并启动。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">服务安装失败。</sys:String>
     <sys:String x:Key="M.Trial.Differs">试运行不等于服务运行：试运行用的是你当前的账户、你的环境变量和你的桌面。装成服务后，默认以 LocalSystem 身份运行，只看得到系统级环境变量，没有映射的网络驱动器，也没有桌面。把路径写成 %BASE%\… 或绝对路径，把程序需要的变量显式写进 &lt;env&gt;，两边才对得上。</sys:String>
+
+    <sys:String x:Key="M.Wiz.LayoutHint">默认每个服务在安装根目录下有自己的文件夹，共用 bin 里的同一个 WinSW 可执行文件。程序所在目录不会被碰 —— 那个目录往往属于别人，比如 Python 或 JDK 的安装目录，一次升级就会把服务的配置和日志一起带走。根目录可以在设置里改。</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperAt">包装器：</sys:String>
+    <sys:String x:Key="M.Settings.InstallRoot">新建服务的安装根目录</sys:String>
+    <sys:String x:Key="M.Settings.InstallRootHint">每个服务在这个根目录下占一个文件夹，共用 bin 里的同一个 WinSW 可执行文件。留空则使用上面显示的默认值。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeShared">注意：这个 wrapper 与 {0} 共用。运行中的服务会锁住自己的可执行文件，所以必须先把它们停掉才能替换。</sys:String>
 
 </ResourceDictionary>
