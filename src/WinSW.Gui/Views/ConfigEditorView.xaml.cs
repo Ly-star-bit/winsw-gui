@@ -30,6 +30,12 @@ namespace WinSW.Gui.Views
             }
         }
 
+        // The XML reference is a window of its own: it stays open beside the editor while
+        // a configuration is being written, and carries the configuration into the prompt
+        // it can put on the clipboard.
+        private void OnOpenGuide(object sender, RoutedEventArgs e) =>
+            XmlGuideWindow.ShowGuide(Window.GetWindow(this), (this.DataContext as ConfigEditorViewModel)?.XmlPreview);
+
         // The trial-run panel always follows its output; it is short-lived and interactive.
         private void OnTrialOutputChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {

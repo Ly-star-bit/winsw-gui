@@ -124,7 +124,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.guiUpdate != null)
                 {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(this.guiUpdate.Url) { UseShellExecute = true });
+                    SystemShell.OpenUrl(this.guiUpdate.Url);
                 }
             });
 

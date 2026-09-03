@@ -66,6 +66,14 @@ Across the pages:
   masked passwords with a reveal toggle, number-and-unit editors for durations, a
   collapsible icon-only rail, a resizable preview pane, and a Settings page that gathers
   language, theme, tray and the shell verb. Closing with unsaved edits asks first.
+- **XML reference, ready for an assistant**: the Configuration page has an *XML rules*
+  button that opens the complete configuration specification
+  ([English](xml-config-cheatsheet.md), [中文](xml-config-cheatsheet.zh-CN.md)) inside the
+  application — searchable contents, a copy button on every example, and *Copy as AI prompt*,
+  which puts the specification, the file currently open in the editor and a filled-in task
+  description on the clipboard. Paste that into an assistant, paste the XML it returns into
+  the preview pane's raw editor, and apply it back to the form. The document is embedded in
+  the executable, so it works with no network.
 - **Updates**: the Settings page shows when a newer GUI release exists. Each release also carries
   winget manifests (`winget-manifests.zip`) ready for submission to winget-pkgs.
 

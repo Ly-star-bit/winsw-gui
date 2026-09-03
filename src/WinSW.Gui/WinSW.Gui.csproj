@@ -38,4 +38,13 @@
     <PackageReference Include="System.Diagnostics.EventLog" Version="7.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      The configuration cheat sheet is embedded so it is readable on machines with no
+      network, and so it always matches the wrapper version shipped beside it.
+    -->
+    <EmbeddedResource Include="..\..\docs\xml-config-cheatsheet.md" LogicalName="WinSW.Gui.Guide.en.md" />
+    <EmbeddedResource Include="..\..\docs\xml-config-cheatsheet.zh-CN.md" LogicalName="WinSW.Gui.Guide.zh-CN.md" />
+  </ItemGroup>
+
 </Project>

@@ -10,6 +10,9 @@ on:
       - "src/WinSW.Gui/**"
       - "src/WinSW.Gui.Tests/**"
       - "src/WinSW.sln"
+      # The cheat sheet is embedded into the executable, so it is part of the build.
+      - "docs/xml-config-cheatsheet.md"
+      - "docs/xml-config-cheatsheet.zh-CN.md"
       - "Directory.Build.props"
       - ".github/workflows/gui.yml"
   pull_request:

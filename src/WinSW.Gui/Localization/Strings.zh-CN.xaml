@@ -446,4 +446,26 @@
     <sys:String x:Key="M.Settings.WrapperDocs">WinSW 文档</sys:String>
     <sys:String x:Key="M.Settings.ReportIssue">反馈问题</sys:String>
 
+    <!-- XML 配置规则 -->
+    <sys:String x:Key="G.Title">XML 配置规则</sys:String>
+    <sys:String x:Key="G.Subtitle">把这份规范交给 AI，让它按你的需求生成配置文件。</sys:String>
+    <sys:String x:Key="G.CopyAll">复制全文</sys:String>
+    <sys:String x:Key="G.CopyPrompt">复制为 AI 提示词</sys:String>
+    <sys:String x:Key="G.CopyPromptHint">复制规范 + 编辑器里当前的配置 + 任务说明，粘贴给 AI 就能直接拿到写好的 XML。</sys:String>
+    <sys:String x:Key="G.Online">在线文档</sys:String>
+    <sys:String x:Key="G.SearchToc">搜索章节…</sys:String>
+    <sys:String x:Key="G.CopyCode">复制</sys:String>
+    <sys:String x:Key="G.Copied">已复制</sys:String>
+    <sys:String x:Key="G.CopiedGuide">规范已复制（{0} 个字符）</sys:String>
+    <sys:String x:Key="G.CopiedPrompt">提示词已复制（{0} 个字符）</sys:String>
+    <sys:String x:Key="G.CopyFailed">复制失败：剪贴板被其它程序占用。</sys:String>
+    <sys:String x:Key="G.Saved">已保存到 {0}</sys:String>
+    <sys:String x:Key="G.MarkdownFilter">Markdown 文件|*.md|所有文件|*.*</sys:String>
+    <sys:String x:Key="G.OpenGuide">XML 规则</sys:String>
+    <sys:String x:Key="G.OpenGuideShort">规则</sys:String>
+    <sys:String x:Key="G.OpenGuideHint">打开 WinSW XML 配置规则说明，可以直接复制给 AI 生成配置。</sys:String>
+    <sys:String x:Key="G.Prompt.Task">以上是 WinSW 3.x 配置文件的完整规范。请严格按照它，为下面描述的程序生成一个完整的 &lt;service&gt; XML 文档。只输出 XML，然后附一段简短的自检，逐条核对第 9 节的检查清单。</sys:String>
+    <sys:String x:Key="G.Prompt.Current">这是我现在的配置，请在它的基础上修改，不要从零重写：</sys:String>
+    <sys:String x:Key="G.Prompt.Describe">我的程序：&#10;  - 是什么：&#10;  - 命令行：&#10;  - 安装目录：&#10;  - 运行账户：&#10;  - 启动类型：&#10;  - 崩溃后：&#10;  - 日志：&#10;  - 其它要求：</sys:String>
+
 </ResourceDictionary>

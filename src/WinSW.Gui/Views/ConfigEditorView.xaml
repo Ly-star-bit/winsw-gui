@@ -115,6 +115,12 @@
 
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
                 <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" Content="{DynamicResource S.XMLPreview}" IsChecked="{Binding ShowPreview}" />
+                <Button Margin="0,0,8,0" Padding="12,7" Click="OnOpenGuide" ToolTip="{DynamicResource G.OpenGuideHint}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
+                        <TextBlock Text="{DynamicResource G.OpenGuide}" />
+                    </StackPanel>
+                </Button>
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding OpenCommand}" Content="{DynamicResource S.Open}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ReloadCommand}" Content="{DynamicResource S.Reload}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding SaveAsCommand}" Content="{DynamicResource S.SaveAs}" />
@@ -638,6 +644,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock VerticalAlignment="Center" Style="{StaticResource SectionTitle}" Margin="0" Text="{DynamicResource S.WhatWillBeWritten}" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Margin="0,0,6,0" Padding="8,3" Click="OnOpenGuide" Content="{DynamicResource G.OpenGuideShort}" ToolTip="{DynamicResource G.OpenGuideHint}" />
                             <Button Padding="8,3" Command="{Binding EnterXmlEditCommand}" Content="{DynamicResource M.Editor.EditXml}" Visibility="{Binding IsXmlEditing, Converter={StaticResource InverseBoolToVisibility}}" />
                             <Button Margin="0,0,6,0" Padding="8,3" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding ApplyXmlCommand}" Content="{DynamicResource M.Editor.ApplyXml}" Visibility="{Binding IsXmlEditing, Converter={StaticResource BoolToVisibility}}" />
                             <Button Padding="8,3" Command="{Binding CancelXmlEditCommand}" Content="{DynamicResource S.Cancel}" Visibility="{Binding IsXmlEditing, Converter={StaticResource BoolToVisibility}}" />

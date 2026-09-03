@@ -6,6 +6,8 @@ nav:
   - Overview: README.md
   - Usage:
     - XML Config File: docs/xml-config-file.md
+    - XML Cheat Sheet: docs/xml-config-cheatsheet.md
+    - XML Cheat Sheet (中文): docs/xml-config-cheatsheet.zh-CN.md
     - CLI Commands: docs/cli-commands.md
     - Deferred File Operations: docs/deferred-file-operations.md
     - Logging and Error Reporting: docs/logging-and-error-reporting.md

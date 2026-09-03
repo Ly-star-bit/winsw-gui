@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using WinSW.Gui.Services;
 
 namespace WinSW.Gui.Views
 {
@@ -15,13 +15,7 @@ namespace WinSW.Gui.Views
         {
             if (sender is Button { Tag: string url })
             {
-                try
-                {
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                }
+                SystemShell.OpenUrl(url);
             }
         }
     }

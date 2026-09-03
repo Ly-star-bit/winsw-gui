@@ -74,13 +74,7 @@ namespace WinSW.Gui.ViewModels
             this.OpenHelpCommand = new RelayCommand(p =>
             {
                 string anchor = p as string ?? string.Empty;
-                try
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md" + (anchor.Length > 0 ? "#" + anchor : string.Empty)) { UseShellExecute = true });
-                }
-                catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
-                {
-                }
+                SystemShell.OpenUrl("https://github.com/winsw/winsw/blob/v3/docs/xml-config-file.md" + (anchor.Length > 0 ? "#" + anchor : string.Empty));
             });
 
             this.BrowseStopExecutableCommand = new RelayCommand(() =>

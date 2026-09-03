@@ -446,4 +446,26 @@
     <sys:String x:Key="M.Settings.WrapperDocs">WinSW ドキュメント</sys:String>
     <sys:String x:Key="M.Settings.ReportIssue">問題を報告</sys:String>
 
+    <!-- XML 設定リファレンス -->
+    <sys:String x:Key="G.Title">XML 設定リファレンス</sys:String>
+    <sys:String x:Key="G.Subtitle">この仕様を AI に渡せば、設定ファイルを書いてもらえます。</sys:String>
+    <sys:String x:Key="G.CopyAll">全文をコピー</sys:String>
+    <sys:String x:Key="G.CopyPrompt">AI プロンプトとしてコピー</sys:String>
+    <sys:String x:Key="G.CopyPromptHint">仕様・編集中の設定・依頼文をまとめてコピーします。AI に貼り付ければ完成した XML が返ってきます。</sys:String>
+    <sys:String x:Key="G.Online">オンライン文書</sys:String>
+    <sys:String x:Key="G.SearchToc">セクションを検索…</sys:String>
+    <sys:String x:Key="G.CopyCode">コピー</sys:String>
+    <sys:String x:Key="G.Copied">コピーしました</sys:String>
+    <sys:String x:Key="G.CopiedGuide">仕様をコピーしました（{0} 文字）</sys:String>
+    <sys:String x:Key="G.CopiedPrompt">プロンプトをコピーしました（{0} 文字）</sys:String>
+    <sys:String x:Key="G.CopyFailed">コピーできません。他のプログラムがクリップボードを使用しています。</sys:String>
+    <sys:String x:Key="G.Saved">{0} に保存しました</sys:String>
+    <sys:String x:Key="G.MarkdownFilter">Markdown|*.md|すべてのファイル|*.*</sys:String>
+    <sys:String x:Key="G.OpenGuide">XML ルール</sys:String>
+    <sys:String x:Key="G.OpenGuideShort">ルール</sys:String>
+    <sys:String x:Key="G.OpenGuideHint">WinSW の XML 設定リファレンスを開きます。そのまま AI に貼り付けられます。</sys:String>
+    <sys:String x:Key="G.Prompt.Task">上記は WinSW 3.x 設定ファイルの完全な仕様です。これに厳密に従い、以下に説明するプログラム用の完全な &lt;service&gt; XML 文書を作成してください。XML のみを出力し、その後に第 9 節のチェックリストを 1 項目ずつ確認した短い自己点検を添えてください。</sys:String>
+    <sys:String x:Key="G.Prompt.Current">これが現在の設定です。ゼロから書き直さず、これを修正してください:</sys:String>
+    <sys:String x:Key="G.Prompt.Describe">対象プログラム:&#10;  - 内容:&#10;  - コマンドライン:&#10;  - インストール先:&#10;  - 実行アカウント:&#10;  - スタートアップの種類:&#10;  - クラッシュ時:&#10;  - ログ:&#10;  - その他の要件:</sys:String>
+
 </ResourceDictionary>
