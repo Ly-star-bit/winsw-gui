@@ -475,7 +475,7 @@
     <sys:String x:Key="M.Wiz.WouldOverwrite">{0} は既に存在し、WinSW の実行ファイルではありません。続行すると上書きされます。</sys:String>
 
     <sys:String x:Key="M.Dash.UpgradeMajor">警告: メジャーバージョンをまたぐ更新です（{0}.x → {1}.x）。WinSW {1} では十数個の設定要素が改名または削除されています。この更新は実行ファイルを置き換えるだけで設定には触れないため、更新後にサービスが起動しなくなる可能性があります。先に移行ガイドと照らして設定を確認してください。</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">注意: 同梱のラッパーは .NET Framework 版で、.NET Framework 4.6.1 以降が必要です。このサービスは現在、その依存を持たない自己完結型のビルドで動作しています。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">注意: 同梱のラッパーは .NET Framework 版で、.NET Framework 4.6.2 以降が必要です。このサービスは現在、その依存を持たない自己完結型のビルドで動作しています。</sys:String>
 
     <sys:String x:Key="M.Editor.Install">サービスとしてインストール</sys:String>
     <sys:String x:Key="M.Editor.InstallHint">ファイルを保存し、同じフォルダーに WinSW の実行ファイルがなければ配置して、サービスを登録します。スタートアップの種類が「手動」「無効」以外なら続けて開始します。管理者権限が必要です。</sys:String>

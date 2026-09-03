@@ -48,7 +48,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' != 'net7.0-windows'">
-      <_FilesToCopy Include="$(ArtifactsBinDir)WinSW\$(Configuration)\net461\System.ValueTuple.dll" />
+      <_FilesToCopy Include="$(ArtifactsBinDir)WinSW\$(Configuration)\net462\System.ValueTuple.dll" />
     </ItemGroup>
 
     <Copy SourceFiles="@(_FilesToCopy)" DestinationFolder="$(OutputPath)" />

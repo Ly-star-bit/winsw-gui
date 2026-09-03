@@ -475,7 +475,7 @@
     <sys:String x:Key="M.Wiz.WouldOverwrite">{0} 已存在，而且不是 WinSW 可执行文件；继续安装会覆盖它。</sys:String>
 
     <sys:String x:Key="M.Dash.UpgradeMajor">注意：这是跨大版本升级（{0}.x → {1}.x）。WinSW {1} 重命名或删除了十来个配置元素。本次升级只替换可执行文件、不会修改配置，服务可能因此无法启动。请先对照迁移文档检查配置。</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">注意：内置的是 .NET Framework 版本，需要机器上有 .NET Framework 4.6.1 或更高。当前服务用的是自包含版本，替换后会产生这个依赖。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">注意：内置的是 .NET Framework 版本，需要机器上有 .NET Framework 4.6.2 或更高。当前服务用的是自包含版本，替换后会产生这个依赖。</sys:String>
 
     <sys:String x:Key="M.Editor.Install">安装为服务</sys:String>
     <sys:String x:Key="M.Editor.InstallHint">保存文件，若同目录没有 WinSW 可执行文件则放一个进去，然后注册服务。启动类型不是「手动」或「禁用」时会顺带启动。需要管理员权限。</sys:String>

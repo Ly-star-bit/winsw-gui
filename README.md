@@ -22,7 +22,7 @@ See the [project manifest](MANIFEST.md).
 
 ## Supported platforms
 
-WinSW 3 can run on Windows platforms with .NET Framework 4.6.1 or later versions installed.
+WinSW 3 can run on Windows platforms with .NET Framework 4.6.2 or later versions installed.
 For systems without .NET Framework, the project provides native 64-bit and 32-bit executables based on .NET 7.
 
 More executables can be added upon request.

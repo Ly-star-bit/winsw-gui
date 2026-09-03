@@ -475,7 +475,7 @@
     <sys:String x:Key="M.Wiz.WouldOverwrite">{0} already exists and is not a WinSW executable; installing would overwrite it.</sys:String>
 
     <sys:String x:Key="M.Dash.UpgradeMajor">Warning: this crosses a major version ({0}.x → {1}.x). WinSW {1} renamed or removed a dozen configuration elements. The upgrade replaces the executable only — it does not touch the configuration — so the service may fail to start afterwards. Check the configuration against the migration guide first.</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">Note: the bundled wrapper is the .NET Framework build and needs .NET Framework 4.6.1 or later. This service currently runs a self-contained build, which has no such dependency.</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkBuild">Note: the bundled wrapper is the .NET Framework build and needs .NET Framework 4.6.2 or later. This service currently runs a self-contained build, which has no such dependency.</sys:String>
 
     <sys:String x:Key="M.Editor.Install">Install as a service</sys:String>
     <sys:String x:Key="M.Editor.InstallHint">Saves the file, puts a WinSW executable beside it if there is not one already, and registers the service. Started straight away unless the start mode is Manual or Disabled. Needs administrator rights.</sys:String>

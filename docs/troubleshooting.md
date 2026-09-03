@@ -41,7 +41,7 @@ Error `1067` (“The process terminated unexpectedly”) usually means the wrapp
 
 ## Not working on Windows 7
 
-WinSW 3 can run on Windows 7 if you have .NET Framework 4.6.1 (or later) installed.
+WinSW 3 can run on Windows 7 SP1 if you have .NET Framework 4.6.2 (or later) installed.
 
 See:
 - Supported platforms in `README.md`

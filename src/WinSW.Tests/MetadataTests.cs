@@ -15,7 +15,7 @@ namespace WinSW.Tests
         {
             var version = new Version(4, 0, 0, 0);
 
-            using var peReader = new PEReader(File.OpenRead(Layout.NET461Exe));
+            using var peReader = new PEReader(File.OpenRead(Layout.NET462Exe));
             var metadataReader = peReader.GetMetadataReader();
             foreach (var handle in metadataReader.AssemblyReferences)
             {

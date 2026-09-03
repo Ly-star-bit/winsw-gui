@@ -773,7 +773,10 @@ namespace WinSW.Gui.ViewModels
             }
 
             // The bundled wrapper is the .NET Framework build. A service currently hosted by
-            // a self-contained one would gain that dependency.
+            // a self-contained one would gain that dependency. The name compared against is
+            // upstream's, which is how ReleaseAssetFor reports a framework build.
+            //
+            // .NET Framework 4.6.2 or later, since the wrapper moved to net462.
             if (WrapperKind.ReleaseAssetFor(entry.WrapperPath) is { } asset && asset != "WinSW-net461.exe")
             {
                 warnings.Add(Localizer.Get("M.Dash.UpgradeFrameworkBuild"));

@@ -28,6 +28,9 @@ namespace WinSW.Gui.Services
 
                 if (file.Length < FrameworkBuildMaxBytes)
                 {
+                    // Upstream's own name for the .NET Framework build. It stays net461 even
+                    // though this repository now builds net462: this names a file to download
+                    // from their releases, not the one built here.
                     return "WinSW-net461.exe";
                 }
 

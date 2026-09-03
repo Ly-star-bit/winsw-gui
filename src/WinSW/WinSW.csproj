@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>net461;net7.0-windows</TargetFrameworks>
+    <TargetFrameworks>net462;net7.0-windows</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -87,7 +87,7 @@
 
   </Target>
 
-  <UsingTask TaskName="WinSW.Tasks.Trim" AssemblyFile="$(ArtifactsBinDir)WinSW.Tasks\$(Configuration)\net461\WinSW.Tasks.dll" />
+  <UsingTask TaskName="WinSW.Tasks.Trim" AssemblyFile="$(ArtifactsBinDir)WinSW.Tasks\$(Configuration)\net462\WinSW.Tasks.dll" />
   <Target Name="Trim" AfterTargets="Merge" Condition="'$(TargetFramework)' != 'net7.0-windows'">
     <Trim Path="$(ArtifactsPublishDir)WinSW-$(TargetFramework).exe" />
   </Target>
