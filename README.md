@@ -98,6 +98,7 @@ Your renamed *WinSW.exe* binary also accepts the following commands:
 | [restart](docs/cli-commands.md#restart-command)     | Stops and then starts the service. |
 | [status](docs/cli-commands.md#status-command)       | Checks the status of the service. |
 | [refresh](docs/cli-commands.md#refresh-command)     | Refreshes the service properties without reinstallation. |
+| [console](docs/cli-commands.md#console-command)     | Runs the service in the current logon session, for a program with a user interface. |
 | [customize](docs/cli-commands.md#customize-command) | Customizes the wrapper executable. |
 | dev                                                 | Experimental commands. |
 

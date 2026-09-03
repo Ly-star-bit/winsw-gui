@@ -9,6 +9,7 @@
 - [restart](#restart-command)
 - [status](#status-command)
 - [refresh](#refresh-command)
+- [console](#console-command)
 - [customize](#customize-command)
 
 ## `install` command
@@ -185,6 +186,46 @@ If a file isn't specified, WinSW searches the executable directory for a *.xml* 
 - `--no-elevate`
 
   Doesn't automatically trigger a UAC prompt.
+
+## `console` command
+
+Runs the service in the current logon session instead of under the service control manager, so that a program with a user interface is visible on the desktop.
+
+A Windows service runs in session 0, which has no desktop: nothing it starts can show a window, take a keystroke or read the screen.
+This command hosts the same configuration — the same child supervision, the same logs, the same environment — as an ordinary process in the session the user is logged on to.
+It is meant to be started by a scheduled task with a logon trigger; see [Desktop tasks](desktop-tasks.md).
+
+The wrapper runs in the foreground until it is asked to stop, or until the program it started exits.
+Nothing here needs administrator rights, and no service is installed.
+
+### Usage
+
+```console
+winsw console [<path-to-config>] [--stop]
+```
+
+### Arguments
+
+`path-to-config`
+
+The path to the configuration file.
+If a file isn't specified, WinSW searches the executable directory for a *.xml* file with the same file name without the extension.
+
+### Options
+
+- `--stop`
+
+  Signals a console-mode wrapper started for this configuration to shut down, then returns.
+  The wrapper stops its child the same way a service stop would, running `stopexecutable` and the stop hooks.
+  The signal is scoped to the current logon session; a wrapper running elevated cannot be signalled from a process that is not.
+
+### Remarks
+
+`hidewindow` decides whether the console this runs in stays on screen.
+It is on for a task registered by the graphical console, and worth turning off while working out why a program will not start.
+
+`onfailure` has no effect here: those are recovery actions the service control manager takes, and it never sees a scheduled task.
+Restarting a program that has died is the trigger's job — see [Desktop tasks](desktop-tasks.md).
 
 ## `customize` command
 

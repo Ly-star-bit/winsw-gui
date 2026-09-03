@@ -17,6 +17,8 @@ namespace WinSW.Native
         internal const uint ENABLE_ECHO_INPUT = 0x0004;
         internal const uint ENABLE_MOUSE_INPUT = 0x0010;
 
+        internal const int SW_HIDE = 0;
+
         [DllImport(Kernel32, SetLastError = true)]
         internal static extern bool AllocConsole();
 
@@ -28,6 +30,9 @@ namespace WinSW.Native
 
         [DllImport(Kernel32)]
         internal static extern bool GenerateConsoleCtrlEvent(CtrlEvents ctrlEvent, uint processGroupId);
+
+        [DllImport(Kernel32)]
+        internal static extern IntPtr GetConsoleWindow();
 
         [DllImport(Kernel32, SetLastError = true)]
         internal static extern bool GetConsoleMode(IntPtr consoleHandle, out uint mode);
@@ -46,6 +51,24 @@ namespace WinSW.Native
 
         [DllImport(Kernel32, SetLastError = true, CharSet = CharSet.Unicode)]
         internal static extern bool WriteConsoleW(IntPtr consoleOutput, string buffer, int numberOfCharsToWrite, out int numberOfCharsWritten, IntPtr reserved);
+
+        [DllImport(User32)]
+        internal static extern bool ShowWindow(IntPtr windowHandle, int commandShow);
+
+        /// <summary>
+        /// Hides the console window this process currently owns, if it owns one. A service in
+        /// session 0 has no visible desktop, so this only ever shows up in the interactive
+        /// session, where a wrapper started by the task scheduler would otherwise leave a
+        /// black window in front of the user for as long as the child runs.
+        /// </summary>
+        internal static void HideConsoleWindow()
+        {
+            var window = GetConsoleWindow();
+            if (window != IntPtr.Zero)
+            {
+                _ = ShowWindow(window, SW_HIDE);
+            }
+        }
 
         internal delegate bool ConsoleCtrlHandlerRoutine(CtrlEvents ctrlType);
 

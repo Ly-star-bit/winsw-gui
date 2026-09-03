@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
+using System.Threading;
 using log4net;
 using log4net.Appender;
 using log4net.Config;
@@ -238,6 +239,19 @@ namespace WinSW
             }
 
             {
+                var stopRunning = new Option<bool>("--stop", "Signals a console-mode wrapper started for this configuration to shut down, then returns.");
+
+                var console = new Command("console", "Runs the service in the current logon session instead of under the service control manager, so that a program with a user interface is visible on the desktop.")
+                {
+                    config,
+                    stopRunning,
+                };
+                console.SetHandler(RunConsole, config, stopRunning);
+
+                root.Add(console);
+            }
+
+            {
                 var output = new Option<string>(new[] { "--output", "-o" })
                 {
                     IsRequired = true,
@@ -395,6 +409,59 @@ namespace WinSW
                 catch
                 {
                     // handled in OnStart
+                }
+            }
+
+            // Session 0 has no desktop, so a service can host anything except a program the
+            // user has to see. This runs the same wrapper — same configuration, same logs,
+            // same child supervision — as an ordinary process in the session the user is
+            // logged on to, which is what the task scheduler starts for a logon trigger.
+            static void RunConsole(string? pathToConfig, bool stopRunning)
+            {
+                XmlServiceConfig config = null!;
+                try
+                {
+                    config = LoadConfigAndInitLoggers(pathToConfig, true);
+                }
+                catch (FileNotFoundException)
+                {
+                    Throw.Command.Exception("The specified command or file was not found.");
+                }
+
+                if (stopRunning)
+                {
+                    Log.Info(ConsoleSession.RequestStop(config.Name)
+                        ? $"Asked '{config.Name}' to stop."
+                        : $"No console-mode wrapper for '{config.Name}' is running in this session.");
+                    return;
+                }
+
+                Log.Debug("Starting WinSW in console mode.");
+
+                // The wrapper detaches from this console as it starts the child, so that a stop
+                // can attach to the child's own console and send it a Ctrl+C. Everything after
+                // that point goes to the wrapper log, and only there.
+                Log.Info($"Running '{config.Name}' in this session. Output continues in {Path.Combine(config.LogDirectory, config.BaseName + ".wrapper.log")}.");
+
+                if (config.HideWindow)
+                {
+                    ConsoleApis.HideConsoleWindow();
+                }
+
+                // Published before the child starts, so that anything watching for the wrapper
+                // to come up cannot see it running and fail to find the way to stop it.
+                using var stopping = new EventWaitHandle(false, EventResetMode.ManualReset, ConsoleSession.EventName(config.Name));
+                using var service = new WrapperService(config, foreground: true);
+
+                service.RaiseOnStart(Array.Empty<string>());
+
+                try
+                {
+                    stopping.WaitOne();
+                }
+                finally
+                {
+                    service.RaiseOnStop();
                 }
             }
 

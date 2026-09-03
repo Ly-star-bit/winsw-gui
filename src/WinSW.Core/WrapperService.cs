@@ -24,6 +24,12 @@ namespace WinSW
 
         private readonly XmlServiceConfig config;
 
+        /// <summary>
+        /// True when the wrapper is hosting the process in an ordinary logged-on session
+        /// instead of under the service control manager. See the <c>console</c> command.
+        /// </summary>
+        private readonly bool foreground;
+
         private Process process = null!;
         private volatile Process? startingProcess;
         private volatile Process? stoppingProcess;
@@ -43,18 +49,30 @@ namespace WinSW
         public static Version Version => Assembly.GetExecutingAssembly().GetName().Version!;
 
         public WrapperService(XmlServiceConfig config)
+            : this(config, foreground: false)
+        {
+        }
+
+        /// <param name="foreground">
+        /// Host the process in the current session rather than under the service control
+        /// manager. Everything the wrapper does for the child stays the same; what falls away
+        /// is the half that only means something to a service: status reporting, the
+        /// pre-shutdown notification, and the accepted-command bookkeeping.
+        /// </param>
+        public WrapperService(XmlServiceConfig config, bool foreground)
         {
             this.ServiceName = config.Name;
             this.CanStop = true;
             this.AutoLog = false;
 
             this.config = config;
+            this.foreground = foreground;
             this.ExtensionManager = new WinSWExtensionManager(config);
 
             // Register the event log provider
             EventLogProvider.Service = this;
 
-            if (config.Preshutdown)
+            if (config.Preshutdown && !foreground)
             {
                 this.AcceptPreshutdown();
             }
@@ -484,11 +502,24 @@ namespace WinSW
 
         private void SignalPending()
         {
+            if (this.foreground)
+            {
+                // There is no service control manager waiting on a status report, and asking
+                // for more time without one throws.
+                return;
+            }
+
             this.RequestAdditionalTime(15_000);
         }
 
         private void SignalStopped()
         {
+            if (this.foreground)
+            {
+                // Nothing is registered under this name; the process exiting is the report.
+                return;
+            }
+
             using var scm = ServiceManager.Open(ServiceApis.ServiceManagerAccess.Connect);
             using var sc = scm.OpenService(this.ServiceName, ServiceApis.ServiceAccess.QueryStatus);
 
@@ -554,6 +585,16 @@ namespace WinSW
 
             bool succeeded = ConsoleApis.AllocConsole(); // inherited
             Debug.Assert(succeeded);
+
+            // The console exists so that a stop can send the child a Ctrl+C, not so that
+            // anyone reads it. In session 0 it is invisible either way; in a logged-on
+            // session it is a window the user did not ask for, and 'hidewindow' is the
+            // setting that already says they do not want one.
+            if (this.config.HideWindow)
+            {
+                ConsoleApis.HideConsoleWindow();
+            }
+
             succeeded = ConsoleApis.SetConsoleCtrlHandler(null, false); // inherited
             Debug.Assert(succeeded);
             succeeded = ConsoleApis.SetConsoleOutputCP(ConsoleApis.CP_UTF8);
