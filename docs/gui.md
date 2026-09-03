@@ -92,8 +92,9 @@ cd src
 dotnet test WinSW.Gui.Tests
 ```
 
-The project targets `net7.0-windows`, the same SDK the repository's CI uses, and lives in
-the main solution.
+The project targets `net8.0-windows` — the LTS release, and the one whose WPF carries a
+native folder picker — and lives in the main solution. The wrapper it embeds is built from
+`WinSW.csproj` first; see the workflow.
 
 ```powershell
 cd src
@@ -107,7 +108,7 @@ To produce one self-contained executable:
 dotnet publish WinSW.Gui -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
-The result lands under `artifacts\bin\WinSW.Gui\Release\net7.0-windows\win-x64\publish\`. CI also publishes a `win-arm64` build.
+The result lands under `artifacts\bin\WinSW.Gui\Release\net8.0-windows\win-x64\publish\`. CI also publishes a `win-arm64` build.
 
 ## How it finds services
 

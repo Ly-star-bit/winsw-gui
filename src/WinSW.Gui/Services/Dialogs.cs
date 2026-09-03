@@ -43,21 +43,18 @@ namespace WinSW.Gui.Services
 
         public static string? PickFolder(string description, string? initialDirectory = null)
         {
-            using var dialog = new System.Windows.Forms.FolderBrowserDialog
+            var dialog = new OpenFolderDialog
             {
-                Description = description,
-                UseDescriptionForTitle = true,
-                ShowNewFolderButton = true,
+                Title = description,
+                Multiselect = false,
             };
 
             if (!string.IsNullOrEmpty(initialDirectory))
             {
-                dialog.SelectedPath = initialDirectory;
+                dialog.InitialDirectory = initialDirectory;
             }
 
-            return dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK
-                ? dialog.SelectedPath
-                : null;
+            return dialog.ShowDialog() == true ? dialog.FolderName : null;
         }
     }
 }

@@ -2,13 +2,13 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
 
     <!--
-      Only for the folder picker. WPF gained a native OpenFolderDialog in .NET 8; this
-      project targets net7.0-windows to match the SDK the repository's CI installs, so
-      the Windows Forms browser is the one available option that is not a hack.
+      Only for the tray icon: WPF has no NotifyIcon of its own. The folder picker used to
+      need Windows Forms too, until .NET 8 gave WPF a native OpenFolderDialog. Dropping this
+      is worth about 15 MB of the self-contained build and needs Shell_NotifyIcon by hand.
     -->
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
@@ -32,10 +32,10 @@
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.1.1" />
 
-    <!-- Same versions WinSW.Core pins for its net7.0-windows build. -->
+    <!-- Neither is in the shared framework; both track the target framework's major. -->
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="7.0.0" />
-    <PackageReference Include="System.Diagnostics.EventLog" Version="7.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
   </ItemGroup>
 
   <!--

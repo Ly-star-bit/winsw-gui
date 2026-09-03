@@ -36,11 +36,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      # Same SDK line as the wrapper's workflow; the GUI targets net7.0-windows to match it.
+      # 8.0.x builds the console; 7.0.x is kept for the wrapper, whose project still lists a
+      # net7.0-windows target alongside the net461 one this workflow actually builds.
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 7.0.x
+          dotnet-version: |
+            7.0.x
+            8.0.x
 
       # The version comes from the tag (gui-v1.2.3 → 1.2.3); other builds are 0.0.0-ci.<run>.
       - name: Resolve version
@@ -55,12 +58,15 @@ jobs:
           Write-Host "Version: $version$suffix"
 
       # The console embeds this executable, so it has to exist before the console is built.
+      # NuGetAudit is off for this one build: the repository compiles warnings as errors, and
+      # the audit flags log4net 2.0.12, which is the wrapper's own pinned dependency and not
+      # something this workflow gets to change.
       # 3.0.0 is the version this branch of the wrapper declares (see eng/build.yml).
       - name: Build the wrapper that ships inside the console
         working-directory: ./src
         shell: pwsh
         run: |
-          dotnet build WinSW -c Release -f net461 -p:Version=3.0.0 -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
+          dotnet build WinSW -c Release -f net461 -p:NuGetAudit=false -p:Version=3.0.0 -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
           exit $LASTEXITCODE
 
       - name: Restore
@@ -163,6 +169,15 @@ jobs:
         with:
           name: WinSW GUI ${{ github.ref_name }}
           generate_release_notes: true
+          body: |
+            | Download | Size | Requires |
+            | --- | --- | --- |
+            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~6 MB | the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64) |
+            | `WinSW.Gui-win-x64.exe` | ~70 MB | nothing — the runtime rides along |
+            | `WinSW.Gui-win-arm64.exe` | ~66 MB | nothing — the runtime rides along |
+
+            WinSW itself is carried inside the console, so the new-service wizard installs a
+            service on a machine with no network and no WinSW.exe to hand.
           files: |
             release/*.exe
             release/winget-manifests.zip
