@@ -24,6 +24,14 @@
     -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
+    <!--
+      The .NET desktop runtime pack carries its own framework messages translated into forty
+      languages, about 15 MB of the self-contained build. They are the runtime's strings, not
+      ours: this application's four languages are XAML resource dictionaries compiled into the
+      assembly, so nothing user-visible depends on them.
+    -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
     <AssemblyTitle>Windows Service Wrapper Console</AssemblyTitle>
     <Description>A graphical front end for managing services wrapped by WinSW.</Description>
     <Product>Windows Service Wrapper</Product>
