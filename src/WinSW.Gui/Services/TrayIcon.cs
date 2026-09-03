@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Windows;
 using System.Windows.Forms;
 using WinSW.Gui.Localization;
 
@@ -95,7 +94,8 @@ namespace WinSW.Gui.Services
         /// </summary>
         private static Icon LoadIcon()
         {
-            var resource = Application.GetResourceStream(new Uri("/WinSW.Gui;component/Assets/WinSW.Gui.ico", UriKind.Relative));
+            // Qualified: this file uses Windows Forms, which has an Application of its own.
+            var resource = System.Windows.Application.GetResourceStream(new Uri("/WinSW.Gui;component/Assets/WinSW.Gui.ico", UriKind.Relative));
             using var stream = resource!.Stream;
             return new Icon(stream, SystemInformation.SmallIconSize);
         }
