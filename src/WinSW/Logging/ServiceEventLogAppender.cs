@@ -19,26 +19,36 @@ namespace WinSW.Logging
 
         protected override void Append(LoggingEvent loggingEvent)
         {
+            // Both are nullable as of log4net 3: an event can be rendered from a null message,
+            // and its level is unset until a repository assigns one.
+            string message = loggingEvent.RenderedMessage ?? string.Empty;
+            var type = ToEventLogEntryType(loggingEvent.Level);
+
             var eventLog = this.provider.Locate();
 
             if (eventLog is not null)
             {
-                eventLog.WriteEntry(loggingEvent.RenderedMessage, ToEventLogEntryType(loggingEvent.Level));
+                eventLog.WriteEntry(message, type);
                 return;
             }
 
             try
             {
                 using var backupLog = new EventLog("Application", ".", "Windows Service Wrapper");
-                backupLog.WriteEntry(loggingEvent.RenderedMessage, ToEventLogEntryType(loggingEvent.Level));
+                backupLog.WriteEntry(message, type);
             }
             catch
             {
             }
         }
 
-        private static EventLogEntryType ToEventLogEntryType(Level level)
+        private static EventLogEntryType ToEventLogEntryType(Level? level)
         {
+            if (level is null)
+            {
+                return EventLogEntryType.Information;
+            }
+
             if (level.Value >= Level.Error.Value)
             {
                 return EventLogEntryType.Error;
