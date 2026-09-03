@@ -80,19 +80,23 @@ namespace WinSW.Gui.ViewModels
             this.Dashboard = new DashboardViewModel();
             this.Editor = new ConfigEditorViewModel();
             this.Logs = new LogViewerViewModel();
-            this.Wizard = new WizardViewModel { Sources = this.Dashboard.Services };
+            this.Tasks = new DesktopTasksViewModel();
+            this.Wizard = new WizardViewModel { Sources = this.Dashboard.Services, TaskSources = this.Tasks.Tasks };
             this.Remote = new RemoteViewModel();
             this.Logs.Services = this.Dashboard.Services;
 
             // The settings page binds to this shell itself; its DataTemplate maps ShellViewModel → SettingsView.
+            // The glyphs are escapes rather than literal characters: they live in the Unicode
+            // private use area, and a tool that does not know that has dropped them before.
             this.Items = new ObservableCollection<NavigationItem>
             {
-                new("", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
-                new("", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
-                new("", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
-                new("", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
-                new("", "M.Nav.Remote", "M.Nav.RemoteSub", this.Remote),
-                new("", "M.Nav.Settings", "M.Nav.SettingsSub", this),
+                new("\uE80F", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
+                new("\uE7F4", "M.Nav.Tasks", "M.Nav.TasksSub", this.Tasks),
+                new("\uE70F", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
+                new("\uE8A5", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
+                new("\uE710", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
+                new("\uE774", "M.Nav.Remote", "M.Nav.RemoteSub", this.Remote),
+                new("\uE713", "M.Nav.Settings", "M.Nav.SettingsSub", this),
             };
 
             this.ToggleRailCommand = new RelayCommand(() => this.IsRailCollapsed = !this.IsRailCollapsed);
@@ -104,11 +108,36 @@ namespace WinSW.Gui.ViewModels
 
             this.Dashboard.Toast += this.ShowToast;
             this.Editor.Toast += this.ShowToast;
+            this.Tasks.Toast += this.ShowToast;
+
+            this.Tasks.CreateTaskRequested += () =>
+            {
+                this.Wizard.DesktopTask = true;
+                this.Navigate(this.Wizard);
+            };
+
+            this.Tasks.OpenConfigRequested += task =>
+            {
+                this.Editor.Load(task.ConfigPath);
+                this.Navigate(this.Editor);
+            };
+
+            this.Tasks.OpenLogsRequested += task =>
+            {
+                this.Logs.AttachConfiguration(task.ConfigPath, task.Name);
+                this.Navigate(this.Logs);
+            };
 
             // A configuration installed from the editor is a service the dashboard has not
             // heard of yet.
             this.Editor.ServiceInstalled += _ => this.Dashboard.ReloadCommand.Execute(null);
-            this.Dashboard.CreateServiceRequested += () => this.Navigate(this.Wizard);
+            this.Dashboard.CreateServiceRequested += () =>
+            {
+                // The wizard keeps whichever mode it was last used in; arriving from a page
+                // that is about one of the two says which one is meant.
+                this.Wizard.DesktopTask = false;
+                this.Navigate(this.Wizard);
+            };
             this.Dashboard.OpenConfigFileRequested += () =>
             {
                 this.Editor.Open();
@@ -131,6 +160,13 @@ namespace WinSW.Gui.ViewModels
                     this.InstallRoot = path;
                 }
             });
+            this.BrowseTaskRootCommand = new RelayCommand(() =>
+            {
+                if (Dialogs.PickFolder(Localizer.Get("M.Settings.TaskRoot"), AppSettings.Current.EffectiveTaskRoot) is { } path)
+                {
+                    this.TaskRoot = path;
+                }
+            });
             this.OpenGuiUpdateCommand = new RelayCommand(() =>
             {
                 if (this.guiUpdate != null)
@@ -147,6 +183,10 @@ namespace WinSW.Gui.ViewModels
 
             _ = this.CheckGuiUpdateAsync();
 
+            // Once, in the background: the wizard needs to know which task names are taken
+            // before anyone has opened the desktop-task page.
+            _ = this.Tasks.ReloadAsync(quiet: true);
+
             this.Dashboard.OpenConfigRequested += entry =>
             {
                 this.Editor.LoadFrom(entry);
@@ -157,6 +197,14 @@ namespace WinSW.Gui.ViewModels
             {
                 this.Logs.Attach(entry);
                 this.Navigate(this.Logs);
+            };
+
+            this.Wizard.DesktopTaskCompleted += name =>
+            {
+                this.Tasks.SelectWhenReady(name);
+                this.Navigate(this.Tasks);
+                _ = this.Tasks.ReloadAsync(quiet: false);
+                this.ShowToast(Localizer.Format("M.Wiz.Registered", name), false);
             };
 
             this.Wizard.Completed += serviceId =>
@@ -192,6 +240,8 @@ namespace WinSW.Gui.ViewModels
         public ConfigEditorViewModel Editor { get; }
 
         public LogViewerViewModel Logs { get; }
+
+        public DesktopTasksViewModel Tasks { get; }
 
         public WizardViewModel Wizard { get; }
 
@@ -401,6 +451,29 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand BrowseInstallRootCommand { get; }
 
+        /// <summary>
+        /// Where desktop tasks are installed. A per-user location by default: the task runs as
+        /// one account with no elevation, and its logs have to be writable by that account.
+        /// </summary>
+        public string TaskRoot
+        {
+            get => AppSettings.Current.TaskRoot ?? string.Empty;
+            set
+            {
+                string trimmed = value.Trim();
+                if (!string.Equals(AppSettings.Current.TaskRoot ?? string.Empty, trimmed, StringComparison.Ordinal))
+                {
+                    AppSettings.Current.TaskRoot = trimmed.Length == 0 ? null : trimmed;
+                    AppSettings.Current.Save();
+                    this.Raise();
+                }
+            }
+        }
+
+        public string DefaultTaskRoot => AppSettings.Current.EffectiveTaskRoot;
+
+        public RelayCommand BrowseTaskRootCommand { get; }
+
         public bool NotifyOnUnexpectedStop
         {
             get => AppSettings.Current.NotifyOnUnexpectedStop;
@@ -450,6 +523,9 @@ namespace WinSW.Gui.ViewModels
                     case RemoteViewModel remote:
                         remote.Deactivate();
                         break;
+                    case DesktopTasksViewModel tasks:
+                        tasks.Deactivate();
+                        break;
                 }
 
                 switch (value)
@@ -462,6 +538,9 @@ namespace WinSW.Gui.ViewModels
                         break;
                     case RemoteViewModel remote:
                         remote.Activate();
+                        break;
+                    case DesktopTasksViewModel tasks:
+                        tasks.Activate();
                         break;
                 }
             }

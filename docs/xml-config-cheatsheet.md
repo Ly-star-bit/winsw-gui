@@ -118,7 +118,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `workingdirectory` | ? | path | folder of the config file | |
 | `priority` | ? | `Idle` \| `BelowNormal` \| `Normal` \| `AboveNormal` \| `High` \| `RealTime` | `Normal` | Case-insensitive. Raising it above `Normal` is rarely a good idea. |
 | `hidewindow` | ? | bool | `false` | Starts the child with `CreateNoWindow`. |
-| `interactive` | ? | bool | `false` | Allows desktop interaction (largely neutered since Vista). |
+| `interactive` | ? | bool | `false` | Ignored. It is parsed and never used, and what it once did was removed from Windows in 2018. A program that needs a desktop has to be a [desktop task](desktop-tasks.md), not a service. |
 | `beeponshutdown` | ? | bool | `false` | Debug aid. |
 | `env` | * | attributes | — | `<env name="KEY" value="VALUE" />`. Both attributes are required. Values are `%VAR%`-expanded. |
 | `download` | * | attributes | — | See section 8. |

@@ -350,6 +350,16 @@ namespace WinSW.Gui.ViewModels
 
         // Lifetime --------------------------------------------------------------
 
+        /// <summary>
+        /// Points the viewer at a configuration that no installed service owns — a desktop
+        /// task's, typically. The log files are found the same way either way: they are
+        /// described by the configuration, not by the thing that started the wrapper.
+        /// </summary>
+        public void AttachConfiguration(string configPath, string caption)
+        {
+            this.Attach(new ServiceEntry(caption, caption, string.Empty, configPath));
+        }
+
         public void Attach(ServiceEntry entry)
         {
             this.service = entry;

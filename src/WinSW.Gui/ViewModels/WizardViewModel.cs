@@ -45,6 +45,10 @@ namespace WinSW.Gui.ViewModels
         private ServiceEntry? cloneSource;
         private bool placeNextToProgram;
         private string suggestedWorkingDirectory = string.Empty;
+        private bool desktopTask;
+        private string logonDelay = "30 sec";
+        private bool runElevated;
+        private string keepAliveInterval = "1 min";
 
         public WizardViewModel()
         {
@@ -90,6 +94,7 @@ namespace WinSW.Gui.ViewModels
             Localizer.Changed += () =>
             {
                 this.Raise(nameof(this.StepTitle));
+                this.Raise(nameof(this.InstallLabel));
                 if (this.step == LastStep)
                 {
                     this.RefreshPreview();
@@ -99,6 +104,71 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Raised with the new service ID after a successful installation.</summary>
         public event Action<string>? Completed;
+
+        /// <summary>Raised with the new task name after a desktop task has been registered.</summary>
+        public event Action<string>? DesktopTaskCompleted;
+
+        /// <summary>
+        /// Host the program as a scheduled task in the logged-on session instead of as a
+        /// Windows service.
+        /// </summary>
+        /// <remarks>
+        /// A service runs in session 0, which has no desktop; nothing it starts can show a
+        /// window or drive the screen. Anything with a user interface — an automation robot
+        /// above all — has to run in the session someone is actually logged on to, and a
+        /// scheduled task with a logon trigger is how Windows starts a program there.
+        /// </remarks>
+        public bool DesktopTask
+        {
+            get => this.desktopTask;
+            set
+            {
+                if (this.Set(ref this.desktopTask, value))
+                {
+                    this.Raise(nameof(this.IsService));
+                    this.Raise(nameof(this.InstallRoot));
+                    this.Raise(nameof(this.InstallDirectory));
+                    this.Raise(nameof(this.SharedWrapperPath));
+                    this.Raise(nameof(this.ConfigPath));
+                    this.Raise(nameof(this.EffectiveWrapperPath));
+                    this.Raise(nameof(this.IdInUse));
+                    this.Raise(nameof(this.InstallLabel));
+                    this.RefreshCommands();
+                }
+            }
+        }
+
+        /// <summary>The inverse of <see cref="DesktopTask"/>, for the fields only a service has.</summary>
+        public bool IsService => !this.desktopTask;
+
+        /// <summary>The account the task will run as; it is the one registering it.</summary>
+        public string TaskAccount => DesktopTaskPlan.CurrentUser;
+
+        /// <summary>How long after logon to wait before starting. A desktop still settling is a bad one to automate.</summary>
+        public string LogonDelay
+        {
+            get => this.logonDelay;
+            set => this.Set(ref this.logonDelay, value);
+        }
+
+        /// <summary>Run the program with the account's full token, so one that needs administrator rights gets them without a prompt.</summary>
+        public bool RunElevated
+        {
+            get => this.runElevated;
+            set => this.Set(ref this.runElevated, value);
+        }
+
+        /// <summary>How often the trigger re-fires to bring a program that has died back up.</summary>
+        public string KeepAliveInterval
+        {
+            get => this.keepAliveInterval;
+            set => this.Set(ref this.keepAliveInterval, value);
+        }
+
+        /// <summary>Desktop tasks the wizard must not collide with; supplied by the shell.</summary>
+        public IEnumerable<DesktopTaskEntry> TaskSources { get; set; } = Array.Empty<DesktopTaskEntry>();
+
+        public string InstallLabel => Localizer.Get(this.desktopTask ? "M.Wiz.Register" : "S.Install");
 
         public AsyncRelayCommand DownloadWrapperCommand { get; }
 
@@ -147,8 +217,15 @@ namespace WinSW.Gui.ViewModels
 
         public string BundledWrapperHint => Localizer.Format("M.Wiz.BundledHint", BundledWrapper.Version ?? "3.x");
 
-        /// <summary>The root holding one folder per service; configurable in the settings.</summary>
-        public string InstallRoot => AppSettings.Current.EffectiveInstallRoot;
+        /// <summary>
+        /// The root holding one folder per service; configurable in the settings. A desktop
+        /// task uses the per-user root instead: it runs as one account with no elevation, and
+        /// everything under the folder — the configuration and, more to the point, the logs —
+        /// has to be writable by that account.
+        /// </summary>
+        public string InstallRoot => this.desktopTask
+            ? AppSettings.Current.EffectiveTaskRoot
+            : AppSettings.Current.EffectiveInstallRoot;
 
         /// <summary>
         /// Where this service's configuration and logs end up: its own folder under the
@@ -179,9 +256,22 @@ namespace WinSW.Gui.ViewModels
         /// <summary>The single wrapper every service under the install root runs from.</summary>
         public string SharedWrapperPath => Path.Combine(this.InstallRoot, "bin", "WinSW.exe");
 
-        /// <summary>True when the chosen ID already belongs to an installed service.</summary>
-        public bool IdInUse => !string.IsNullOrWhiteSpace(this.serviceId)
-            && this.Sources.Any(s => string.Equals(s.ServiceName, this.serviceId.Trim(), StringComparison.OrdinalIgnoreCase));
+        /// <summary>True when the chosen ID already belongs to an installed service or a registered task.</summary>
+        public bool IdInUse
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(this.serviceId))
+                {
+                    return false;
+                }
+
+                string id = this.serviceId.Trim();
+                return this.desktopTask
+                    ? this.TaskSources.Any(t => string.Equals(t.Name, id, StringComparison.OrdinalIgnoreCase))
+                    : this.Sources.Any(s => string.Equals(s.ServiceName, id, StringComparison.OrdinalIgnoreCase));
+            }
+        }
 
         public ObservableCollection<string> Problems { get; } = new();
 
@@ -650,8 +740,17 @@ namespace WinSW.Gui.ViewModels
                 model.KeepFiles = NullIfBlank(this.keepFiles);
             }
 
-            if (this.restartOnFailure)
+            if (this.desktopTask)
             {
+                // The wrapper allocates a console so that it can send the child a Ctrl+C on
+                // stop. In session 0 nobody sees it; in the session the user is logged on to
+                // it would be a black window in front of them for as long as the program runs.
+                model.HideWindow = true;
+            }
+            else if (this.restartOnFailure)
+            {
+                // Recovery actions belong to the service control manager, which never sees a
+                // desktop task. Bringing one of those back up is the trigger's job instead.
                 model.FailureActions.Add(new FailureAction { Action = "restart", Delay = NullIfBlank(this.restartDelay) ?? "10 sec" });
                 model.ResetFailureAfter = "1 hour";
             }
@@ -782,6 +881,12 @@ namespace WinSW.Gui.ViewModels
                     return;
                 }
 
+                if (this.desktopTask)
+                {
+                    await this.RegisterDesktopTaskAsync(model, wrapper, configPath).ConfigureAwait(true);
+                    return;
+                }
+
                 // Install and start ride on one elevation prompt; a separate start would
                 // mean a second UAC dialog for what the user sees as one action.
                 this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstallingStarting" : "M.Wiz.Installing", model.Id);
@@ -805,6 +910,60 @@ namespace WinSW.Gui.ViewModels
                 this.IsBusy = false;
             }
         }
+
+        /// <summary>
+        /// Registers the scheduled task that will host this configuration in the logged-on
+        /// session, and optionally starts it straight away.
+        /// </summary>
+        /// <remarks>
+        /// Nothing here needs administrator rights: the task runs as the account registering
+        /// it, with its own token, and everything it touches is under that account's own
+        /// application-data folder. That is the whole reason a desktop task is a per-user
+        /// thing rather than a machine-wide one.
+        /// </remarks>
+        private async Task RegisterDesktopTaskAsync(ServiceConfigModel model, string wrapper, string configPath)
+        {
+            this.StatusMessage = Localizer.Format("M.Wiz.Registering", model.Id);
+
+            var plan = new DesktopTaskPlan(model.Id, wrapper, configPath)
+            {
+                Description = model.Description ?? model.DisplayName ?? model.Id,
+                RunElevated = this.runElevated,
+                LogonDelay = Duration(this.logonDelay, TimeSpan.FromSeconds(30)),
+                KeepAlive = this.restartOnFailure,
+
+                // A repetition may not be shorter than a minute; asking for less is asking
+                // the task scheduler to reject the whole registration.
+                KeepAliveInterval = Max(Duration(this.keepAliveInterval, TimeSpan.FromMinutes(1)), TimeSpan.FromMinutes(1)),
+            };
+
+            bool start = this.startAfterInstall;
+
+            try
+            {
+                await Task.Run(() =>
+                {
+                    DesktopTasks.Register(plan);
+                    if (start)
+                    {
+                        DesktopTasks.Start(plan.Id);
+                    }
+                }).ConfigureAwait(true);
+            }
+            catch (Exception e)
+            {
+                this.StatusMessage = Localizer.Format("M.Wiz.RegisterFailed", e.Message);
+                return;
+            }
+
+            this.StatusMessage = Localizer.Format(start ? "M.Wiz.RegisteredStarted" : "M.Wiz.Registered", model.Id);
+            this.DesktopTaskCompleted?.Invoke(plan.Id);
+
+            static TimeSpan Max(TimeSpan x, TimeSpan y) => x > y ? x : y;
+        }
+
+        private static TimeSpan Duration(string value, TimeSpan fallback) =>
+            !string.IsNullOrWhiteSpace(value) && ServiceConfigModel.TryParseTime(value, out var parsed) ? parsed : fallback;
 
         /// <summary>
         /// Writes next to the wrapper, which is often under Program Files; when that is not
@@ -913,6 +1072,9 @@ namespace WinSW.Gui.ViewModels
             this.KeepFiles = "8";
             this.RestartOnFailure = true;
             this.RestartDelay = "10 sec";
+            this.LogonDelay = "30 sec";
+            this.KeepAliveInterval = "1 min";
+            this.RunElevated = false;
             this.StartAfterInstall = true;
             this.StatusMessage = string.Empty;
             this.ConfigPreview = string.Empty;

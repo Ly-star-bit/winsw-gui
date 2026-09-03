@@ -496,4 +496,60 @@
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">ラッパーは置き換えられず、{0} のままです。他のプロセスがファイルを掴んでいます。サービスは元の状態で再開しました。</sys:String>
 
+
+    <!-- Desktop tasks: programs hosted in the logged-on session by the task scheduler. -->
+    <sys:String x:Key="M.Nav.Tasks">デスクトップタスク</sys:String>
+    <sys:String x:Key="M.Nav.TasksSub">画面を持つプログラム</sys:String>
+    <sys:String x:Key="M.Task.Title">デスクトップタスク</sys:String>
+    <sys:String x:Key="M.Task.Subtitle">実際のデスクトップを必要とするプログラム（とりわけ RPA ロボット）を、何も表示できないセッション 0 ではなく、ログオン中のセッションでホストします。</sys:String>
+    <sys:String x:Key="M.Task.Registered">登録済み</sys:String>
+    <sys:String x:Key="M.Task.OpenScheduler">タスク スケジューラを開く</sys:String>
+    <sys:String x:Key="M.Task.EmptyTitle">デスクトップタスクはまだありません</sys:String>
+    <sys:String x:Key="M.Task.EmptyBody">Windows サービスはデスクトップのないセッション 0 で動くため、そこから起動したプログラムはウィンドウを表示することも画面を操作することもできません。ここに登録すれば、ログオン時に自分のセッションで起動します。</sys:String>
+    <sys:String x:Key="M.Task.EmptyCreate">デスクトップタスクを作成</sys:String>
+    <sys:String x:Key="M.Task.SelectHint">タスクを選択すると詳細が表示されます</sys:String>
+    <sys:String x:Key="M.Task.RunsAs">実行アカウント</sys:String>
+    <sys:String x:Key="M.Task.Wrapper">ラッパー</sys:String>
+    <sys:String x:Key="M.Task.LastRun">前回の実行</sys:String>
+    <sys:String x:Key="M.Task.LastResult">前回の結果</sys:String>
+    <sys:String x:Key="M.Task.Elevated">最上位の特権</sys:String>
+    <sys:String x:Key="M.Task.ToggleEnabled">有効 / 無効</sys:String>
+    <sys:String x:Key="M.Task.Delete">タスクを削除</sys:String>
+    <sys:String x:Key="M.Task.DeleteTitle">このタスクを削除しますか？</sys:String>
+    <sys:String x:Key="M.Task.DeleteBody">「{0}」を停止し、タスク スケジューラから削除します。構成ファイルとログはそのまま残ります。</sys:String>
+    <sys:String x:Key="M.Task.DeleteAction">削除</sys:String>
+    <sys:String x:Key="M.Task.Unavailable">Windows のタスク スケジューラに接続できないため、このマシンではデスクトップタスクを管理できません。</sys:String>
+    <sys:String x:Key="M.Task.NoFolder">タスク スケジューラ ライブラリにフォルダー「{0}」を作成できなかったため、タスクを登録できません。{1}</sys:String>
+    <sys:String x:Key="M.Task.NoConfig">タスク「{0}」に構成ファイルが指定されていません。</sys:String>
+    <sys:String x:Key="M.Task.Scanning">登録済みのタスクを読み込んでいます…</sys:String>
+    <sys:String x:Key="M.Task.Found">デスクトップタスク {0} 件。</sys:String>
+    <sys:String x:Key="M.Task.ScanFailed">タスク スケジューラを読み取れませんでした。{0}</sys:String>
+    <sys:String x:Key="M.Task.Running">「{1}」に対して {0} を実行しています…</sys:String>
+    <sys:String x:Key="M.Task.Completed">「{1}」の {0} が完了しました。</sys:String>
+    <sys:String x:Key="M.Task.Failed">{0} に失敗しました。{1}</sys:String>
+    <sys:String x:Key="M.Task.State.Broken">異常</sys:String>
+    <sys:String x:Key="M.Task.State.Disabled">無効</sys:String>
+    <sys:String x:Key="M.Wiz.HostMode">このプログラムをどう実行しますか？</sys:String>
+    <sys:String x:Key="M.Wiz.HostService">Windows サービス — 画面なし</sys:String>
+    <sys:String x:Key="M.Wiz.HostServiceHint">ログオンの有無にかかわらず、起動時からセッション 0 で動きます。そこから起動したプログラムはウィンドウを表示できません。</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktop">デスクトップタスク — 画面あり</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktopHint">自分のログオンセッションの実際のデスクトップで動くので、ウィンドウを出すプログラムや画面を操作するプログラム（RPA）が正しく動きます。誰かがログオンしている必要があります。無人運用にするなら自動ログオンを設定してください。</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAs">実行アカウント</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAsHint">このアカウントがログオンするとタスクが開始し、そのアカウントのセッションで動きます。管理者権限は必要ありません。</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelay">ログオン後の遅延</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelayHint">落ち着いていないデスクトップは自動化に向きません。通常は 30 秒で十分です。</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevated">アカウントの完全なトークンで実行する</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevatedHint">管理者権限を必要とするプログラム向けです。そのアカウントが管理者の場合にのみ効き、ログオン時の昇格の確認は表示されません。</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAlive">停止したら起動し直す</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveHint">トリガーが一定間隔で再実行されます。すでに動いていれば何もせず、落ちていれば起動し直します。タスクからは見えないサービス制御マネージャーの回復動作の代わりです。意図的に終了したプログラムも起動し直す点に注意してください。</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveInterval">確認する間隔</sys:String>
+    <sys:String x:Key="M.Wiz.StartAfterRegister">登録後にタスクを開始する</sys:String>
+    <sys:String x:Key="M.Wiz.Register">登録</sys:String>
+    <sys:String x:Key="M.Wiz.Registering">「{0}」のタスクを登録しています…</sys:String>
+    <sys:String x:Key="M.Wiz.Registered">「{0}」をデスクトップタスクとして登録しました。</sys:String>
+    <sys:String x:Key="M.Wiz.RegisteredStarted">「{0}」を登録して開始しました。</sys:String>
+    <sys:String x:Key="M.Wiz.RegisterFailed">タスクを登録できませんでした。{0}</sys:String>
+    <sys:String x:Key="M.Settings.TaskRoot">デスクトップタスクのインストール先</sys:String>
+    <sys:String x:Key="M.Settings.TaskRootHint">既定ではユーザーごとの場所です。デスクトップタスクは昇格なしで単一のアカウントとして動くため、ログはそのアカウントが書き込める必要があります。空欄にすると上に表示された既定値を使います。</sys:String>
+
 </ResourceDictionary>

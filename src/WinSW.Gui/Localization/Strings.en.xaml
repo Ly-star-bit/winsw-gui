@@ -496,4 +496,60 @@
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">The wrapper was not replaced — it is still {0}. Something else is holding the file open; the services were started again as they were.</sys:String>
 
+
+    <!-- Desktop tasks: programs hosted in the logged-on session by the task scheduler. -->
+    <sys:String x:Key="M.Nav.Tasks">Desktop tasks</sys:String>
+    <sys:String x:Key="M.Nav.TasksSub">Programs with a window</sys:String>
+    <sys:String x:Key="M.Task.Title">Desktop tasks</sys:String>
+    <sys:String x:Key="M.Task.Subtitle">Programs that need a real desktop — an automation robot above all — hosted in the session you are logged on to instead of in session 0, where a service can show nothing at all.</sys:String>
+    <sys:String x:Key="M.Task.Registered">Registered</sys:String>
+    <sys:String x:Key="M.Task.OpenScheduler">Open Task Scheduler</sys:String>
+    <sys:String x:Key="M.Task.EmptyTitle">No desktop tasks yet</sys:String>
+    <sys:String x:Key="M.Task.EmptyBody">A Windows service runs in session 0, which has no desktop: nothing it starts can show a window or drive the screen. Register the program here instead and it starts in your own session when you log on.</sys:String>
+    <sys:String x:Key="M.Task.EmptyCreate">New desktop task</sys:String>
+    <sys:String x:Key="M.Task.SelectHint">Select a task to see its details</sys:String>
+    <sys:String x:Key="M.Task.RunsAs">Runs as</sys:String>
+    <sys:String x:Key="M.Task.Wrapper">Wrapper</sys:String>
+    <sys:String x:Key="M.Task.LastRun">Last run</sys:String>
+    <sys:String x:Key="M.Task.LastResult">Last result</sys:String>
+    <sys:String x:Key="M.Task.Elevated">Highest privileges</sys:String>
+    <sys:String x:Key="M.Task.ToggleEnabled">Enable / disable</sys:String>
+    <sys:String x:Key="M.Task.Delete">Delete task</sys:String>
+    <sys:String x:Key="M.Task.DeleteTitle">Delete this task?</sys:String>
+    <sys:String x:Key="M.Task.DeleteBody">'{0}' will be stopped and removed from the task scheduler. Its configuration file and logs are left where they are.</sys:String>
+    <sys:String x:Key="M.Task.DeleteAction">Delete</sys:String>
+    <sys:String x:Key="M.Task.Unavailable">The Windows task scheduler could not be reached, so desktop tasks cannot be managed on this machine.</sys:String>
+    <sys:String x:Key="M.Task.NoFolder">The folder '{0}' could not be created in the task scheduler library, so the task cannot be registered. {1}</sys:String>
+    <sys:String x:Key="M.Task.NoConfig">The task '{0}' does not name a configuration file.</sys:String>
+    <sys:String x:Key="M.Task.Scanning">Reading registered tasks…</sys:String>
+    <sys:String x:Key="M.Task.Found">{0} desktop task(s).</sys:String>
+    <sys:String x:Key="M.Task.ScanFailed">The task scheduler could not be read. {0}</sys:String>
+    <sys:String x:Key="M.Task.Running">Running {0} on '{1}'…</sys:String>
+    <sys:String x:Key="M.Task.Completed">{0} completed for '{1}'.</sys:String>
+    <sys:String x:Key="M.Task.Failed">{0} failed. {1}</sys:String>
+    <sys:String x:Key="M.Task.State.Broken">Broken</sys:String>
+    <sys:String x:Key="M.Task.State.Disabled">Disabled</sys:String>
+    <sys:String x:Key="M.Wiz.HostMode">How should this program run?</sys:String>
+    <sys:String x:Key="M.Wiz.HostService">Windows service — no user interface</sys:String>
+    <sys:String x:Key="M.Wiz.HostServiceHint">Runs in session 0 from boot, whether or not anyone is logged on. Nothing it starts can show a window.</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktop">Desktop task — has a user interface</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktopHint">Runs in your own logon session, on a real desktop, so a program that shows windows or drives the screen works. It needs someone logged on; for unattended use, set the machine to log on automatically.</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAs">Runs as</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAsHint">The task starts when this account logs on, and runs in that account's session. Nothing here needs administrator rights.</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelay">Delay after logon</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelayHint">A desktop that is still settling is a bad one to automate; half a minute is usually enough.</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevated">Run with the account's full token</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevatedHint">For a program that needs administrator rights. It takes effect only if the account is an administrator, and it skips the prompt that would otherwise appear at logon.</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAlive">Start it again if it stops</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveHint">The trigger re-fires on a timer: a tick that finds the program already running does nothing, and one that finds it gone starts it. This stands in for the recovery actions a service gets from the service control manager, which a task never sees. It also brings back a program that exited on purpose.</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveInterval">Check every</sys:String>
+    <sys:String x:Key="M.Wiz.StartAfterRegister">Start the task after registering it</sys:String>
+    <sys:String x:Key="M.Wiz.Register">Register</sys:String>
+    <sys:String x:Key="M.Wiz.Registering">Registering the task for '{0}'…</sys:String>
+    <sys:String x:Key="M.Wiz.Registered">'{0}' was registered as a desktop task.</sys:String>
+    <sys:String x:Key="M.Wiz.RegisteredStarted">'{0}' was registered and started.</sys:String>
+    <sys:String x:Key="M.Wiz.RegisterFailed">The task could not be registered. {0}</sys:String>
+    <sys:String x:Key="M.Settings.TaskRoot">Install root for desktop tasks</sys:String>
+    <sys:String x:Key="M.Settings.TaskRootHint">A per-user location by default: a desktop task runs as one account without elevation, and its logs have to be writable by that account. Leave blank for the default shown.</sys:String>
+
 </ResourceDictionary>

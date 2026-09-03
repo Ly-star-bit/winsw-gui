@@ -28,7 +28,7 @@ Prefer full paths in your WinSW configuration when diagnosing startup issues.
 ## I can't access/do X while running through WinSW
 
 - Make sure the account that runs the service has permission to access X.
-- Keep in mind that Windows services have limitations (for example, UI interaction). Interactive services are not recommended by Microsoft and may not work reliably. If you need UI interaction, consider running the app in the background and using Task Scheduler to start it automatically.
+- Keep in mind that Windows services have limitations. A service runs in session 0, which has no desktop, so nothing it starts can show a window, read the screen or move the mouse. `<interactive>` does not change that — it is parsed and never used — and the mechanism it once relied on was removed in Windows 10 version 1803 and Windows Server 2019. If the program has a user interface, run it as a [desktop task](desktop-tasks.md) instead.
 
 ## The service exits with error 1067
 

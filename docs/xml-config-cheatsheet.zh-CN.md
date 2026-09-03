@@ -114,7 +114,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `workingdirectory` | ? | 路径 | 配置文件所在目录 | |
 | `priority` | ? | `Idle` \| `BelowNormal` \| `Normal` \| `AboveNormal` \| `High` \| `RealTime` | `Normal` | 不区分大小写。调到 `Normal` 以上通常弊大于利。 |
 | `hidewindow` | ? | 布尔 | `false` | 以 `CreateNoWindow` 启动子进程，不弹控制台窗口。 |
-| `interactive` | ? | 布尔 | `false` | 允许与桌面交互（Vista 之后基本已被限制）。 |
+| `interactive` | ? | 布尔 | `false` | 无效。它被解析后就没人读，而它当年依赖的机制已在 2018 年从 Windows 中移除。需要桌面的程序只能做成[桌面任务](desktop-tasks.zh-CN.md)，不能做成服务。 |
 | `beeponshutdown` | ? | 布尔 | `false` | 调试用，关机时蜂鸣。 |
 | `env` | * | 属性 | — | `<env name="KEY" value="VALUE" />`，两个属性都必填，值会做 `%VAR%` 展开。 |
 | `download` | * | 属性 | — | 见第 8 节。 |

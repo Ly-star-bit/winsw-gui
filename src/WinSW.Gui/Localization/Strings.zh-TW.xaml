@@ -496,4 +496,60 @@
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 沒有被替換，仍然是 {0}。可能有其他行程占用著這個檔案；服務已依原狀態重新啟動。</sys:String>
 
+
+    <!-- Desktop tasks: programs hosted in the logged-on session by the task scheduler. -->
+    <sys:String x:Key="M.Nav.Tasks">桌面工作</sys:String>
+    <sys:String x:Key="M.Nav.TasksSub">有介面的程式</sys:String>
+    <sys:String x:Key="M.Task.Title">桌面工作</sys:String>
+    <sys:String x:Key="M.Task.Subtitle">需要真實桌面的程式（RPA 機器人尤其如此），執行在你登入的工作階段裡，而不是工作階段 0 —— 那裡沒有桌面，服務什麼都顯示不出來。</sys:String>
+    <sys:String x:Key="M.Task.Registered">已註冊</sys:String>
+    <sys:String x:Key="M.Task.OpenScheduler">開啟工作排程器</sys:String>
+    <sys:String x:Key="M.Task.EmptyTitle">還沒有桌面工作</sys:String>
+    <sys:String x:Key="M.Task.EmptyBody">Windows 服務執行在工作階段 0，那裡沒有桌面：它啟動的程式顯示不了視窗，也操作不了螢幕。把程式註冊在這裡，你登入時它就會在你自己的工作階段裡啟動。</sys:String>
+    <sys:String x:Key="M.Task.EmptyCreate">新增桌面工作</sys:String>
+    <sys:String x:Key="M.Task.SelectHint">選擇一個工作查看詳細資料</sys:String>
+    <sys:String x:Key="M.Task.RunsAs">執行帳戶</sys:String>
+    <sys:String x:Key="M.Task.Wrapper">包裝程式</sys:String>
+    <sys:String x:Key="M.Task.LastRun">上次執行</sys:String>
+    <sys:String x:Key="M.Task.LastResult">上次結果</sys:String>
+    <sys:String x:Key="M.Task.Elevated">最高權限</sys:String>
+    <sys:String x:Key="M.Task.ToggleEnabled">啟用 / 停用</sys:String>
+    <sys:String x:Key="M.Task.Delete">刪除工作</sys:String>
+    <sys:String x:Key="M.Task.DeleteTitle">刪除這個工作？</sys:String>
+    <sys:String x:Key="M.Task.DeleteBody">「{0}」會被停止並從工作排程器中移除。它的設定檔與記錄檔會原樣保留。</sys:String>
+    <sys:String x:Key="M.Task.DeleteAction">刪除</sys:String>
+    <sys:String x:Key="M.Task.Unavailable">連不上 Windows 工作排程器，這台機器上無法管理桌面工作。</sys:String>
+    <sys:String x:Key="M.Task.NoFolder">無法在工作排程器程式庫中建立資料夾「{0}」，工作註冊失敗。{1}</sys:String>
+    <sys:String x:Key="M.Task.NoConfig">工作「{0}」沒有指定設定檔。</sys:String>
+    <sys:String x:Key="M.Task.Scanning">正在讀取已註冊的工作…</sys:String>
+    <sys:String x:Key="M.Task.Found">共 {0} 個桌面工作。</sys:String>
+    <sys:String x:Key="M.Task.ScanFailed">讀取工作排程器失敗。{0}</sys:String>
+    <sys:String x:Key="M.Task.Running">正在對「{1}」執行 {0}…</sys:String>
+    <sys:String x:Key="M.Task.Completed">「{1}」的 {0} 已完成。</sys:String>
+    <sys:String x:Key="M.Task.Failed">{0} 失敗。{1}</sys:String>
+    <sys:String x:Key="M.Task.State.Broken">有問題</sys:String>
+    <sys:String x:Key="M.Task.State.Disabled">已停用</sys:String>
+    <sys:String x:Key="M.Wiz.HostMode">這個程式要怎麼執行？</sys:String>
+    <sys:String x:Key="M.Wiz.HostService">Windows 服務 —— 沒有介面</sys:String>
+    <sys:String x:Key="M.Wiz.HostServiceHint">開機就在工作階段 0 裡執行，有沒有人登入都一樣。它啟動的程式顯示不了任何視窗。</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktop">桌面工作 —— 有介面</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktopHint">執行在你自己的登入工作階段裡，有真實桌面，所以要開視窗、要操作螢幕的程式（RPA）能正常運作。前提是有人登入著；要無人值守，就把機器設成自動登入。</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAs">執行帳戶</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAsHint">這個帳戶登入時工作啟動，並執行在該帳戶的工作階段裡。整個過程不需要系統管理員權限。</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelay">登入後延遲</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelayHint">剛登入時桌面還沒穩定，不適合馬上開始自動化；半分鐘通常夠了。</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevated">用帳戶的完整權杖執行</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevatedHint">給需要系統管理員權限的程式用。只有這個帳戶本身是系統管理員時才有效，而且登入時不會再跳 UAC。</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAlive">程式停了就重新拉起</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveHint">觸發程序按間隔反覆觸發：發現程式還在執行就什麼都不做，發現已經沒了就重新啟動。服務靠的是服務控制管理員的復原動作，工作看不到那些，這一項就是它的替代。注意它也會把主動正常結束的程式重新拉起來。</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveInterval">檢查間隔</sys:String>
+    <sys:String x:Key="M.Wiz.StartAfterRegister">註冊後立即啟動工作</sys:String>
+    <sys:String x:Key="M.Wiz.Register">註冊</sys:String>
+    <sys:String x:Key="M.Wiz.Registering">正在註冊「{0}」的工作…</sys:String>
+    <sys:String x:Key="M.Wiz.Registered">「{0}」已註冊為桌面工作。</sys:String>
+    <sys:String x:Key="M.Wiz.RegisteredStarted">「{0}」已註冊並啟動。</sys:String>
+    <sys:String x:Key="M.Wiz.RegisterFailed">工作註冊失敗。{0}</sys:String>
+    <sys:String x:Key="M.Settings.TaskRoot">桌面工作的安裝根目錄</sys:String>
+    <sys:String x:Key="M.Settings.TaskRootHint">預設放在目前使用者目錄下：桌面工作以某一個帳戶執行、不提權，記錄檔必須是這個帳戶寫得進去的。留空則使用上面顯示的預設值。</sys:String>
+
 </ResourceDictionary>

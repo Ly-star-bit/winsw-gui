@@ -12,8 +12,9 @@ It is a separate program. The wrapper binary is unchanged and does not depend on
 | --- | --- |
 | **Services** | Lists WinSW-managed services with live status and process ID, the process tree of the running service, and Start / Stop / Restart / Apply config / Terminate / Uninstall. |
 | **Configuration** | A form over the XML configuration file with live validation and a preview of exactly what will be written. Comments and formatting in an existing file are preserved. A configuration that is not yet a service can be installed as one from here — the bundled wrapper is placed beside it if there is not one already; a configuration that already belongs to a service can be pushed to it with `winsw refresh`. |
+| **Desktop tasks** | Programs that need a real desktop — an automation robot above all — hosted in the logged-on session by a scheduled task rather than in session 0 by the service control manager, with the same configuration, logs and supervision. See [Desktop tasks](desktop-tasks.md) ([中文](desktop-tasks.zh-CN.md)). |
 | **Logs** | Tails the service's log files (including rolled files) with filtering, follow mode and pause. |
-| **New service** | A four-step wizard: pick the program, describe the service, choose logging and recovery, then write the configuration and install it — one elevation prompt covers both install and start. Each service gets a folder of its own under an install root (`%ProgramData%\WinSW` by default, changeable in Settings), all sharing one WinSW executable in `bin`; the program's own folder is left untouched unless asked for. |
+| **New service** | A four-step wizard: pick the program, describe the service, choose logging and recovery, then write the configuration and install it — one elevation prompt covers both install and start. Each service gets a folder of its own under an install root (`%ProgramData%\WinSW` by default, changeable in Settings), all sharing one WinSW executable in `bin`; the program's own folder is left untouched unless asked for. The first step also chooses between a Windows service and a [desktop task](desktop-tasks.md); a desktop task needs no elevation at all and installs under `%LOCALAPPDATA%\WinSW`. |
 
 Across the pages:
 
@@ -94,6 +95,13 @@ Across the pages:
   description on the clipboard. Paste that into an assistant, paste the XML it returns into
   the preview pane's raw editor, and apply it back to the form. The document is embedded in
   the executable, so it works with no network.
+- **A desktop for programs that need one**: session 0 has no display, so a service cannot
+  show a window, read the screen or move the mouse. The Desktop tasks page registers the
+  program as a scheduled task with a logon trigger instead, which starts it in the session
+  the user is logged on to. What the task starts is still the wrapper — `winsw console` —
+  so the configuration, the log rotation and the stop hooks are the ones already understood
+  here. Stopping asks the wrapper to shut the program down cleanly and only terminates the
+  task if that runs out of time. See [Desktop tasks](desktop-tasks.md).
 - **Updates**: the Settings page shows when a newer GUI release exists. Each release also carries
   winget manifests (`winget-manifests.zip`) ready for submission to winget-pkgs.
 

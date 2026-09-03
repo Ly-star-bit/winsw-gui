@@ -128,6 +128,16 @@
                             </Style>
                         </StackPanel.Style>
                         <TextBlock Margin="0,0,0,16" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StepTitle}" />
+
+                        <!-- How the program is hosted. Everything downstream follows from this. -->
+                        <StackPanel Style="{StaticResource Field}">
+                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.HostMode}" />
+                            <RadioButton Margin="0,2,0,0" GroupName="HostMode" IsChecked="{Binding DesktopTask, Converter={StaticResource InverseBool}}" Content="{DynamicResource M.Wiz.HostService}" />
+                            <TextBlock Margin="24,0,0,6" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.HostServiceHint}" />
+                            <RadioButton GroupName="HostMode" IsChecked="{Binding DesktopTask, Mode=TwoWay}" Content="{DynamicResource M.Wiz.HostDesktop}" />
+                            <TextBlock Margin="24,0,0,0" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.HostDesktopHint}" />
+                        </StackPanel>
+
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.CloneFrom}" />
                             <ComboBox HorizontalAlignment="Left" MinWidth="320" DisplayMemberPath="DisplayName" ItemsSource="{Binding Sources}" SelectedItem="{Binding CloneSource}" />
@@ -211,11 +221,28 @@
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Description}" />
                             <TextBox AcceptsReturn="True" MinHeight="64" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" />
                         </StackPanel>
-                        <StackPanel Style="{StaticResource Field}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.StartMode}" />
-                            <ComboBox HorizontalAlignment="Left" MinWidth="200" ItemsSource="{Binding StartModes}" SelectedItem="{Binding StartMode}" />
+                        <StackPanel Visibility="{Binding IsService, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Style="{StaticResource Field}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.StartMode}" />
+                                <ComboBox HorizontalAlignment="Left" MinWidth="200" ItemsSource="{Binding StartModes}" SelectedItem="{Binding StartMode}" />
+                            </StackPanel>
+                            <CheckBox Content="{DynamicResource S.DelayedAutomaticStart}" IsChecked="{Binding DelayedAutoStart}" />
                         </StackPanel>
-                        <CheckBox Content="{DynamicResource S.DelayedAutomaticStart}" IsChecked="{Binding DelayedAutoStart}" />
+
+                        <StackPanel Visibility="{Binding DesktopTask, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel Style="{StaticResource Field}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.RunsAs}" />
+                                <TextBlock Style="{StaticResource Mono}" Text="{Binding TaskAccount}" />
+                                <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.RunsAsHint}" />
+                            </StackPanel>
+                            <StackPanel Style="{StaticResource Field}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.LogonDelay}" />
+                                <controls:DurationEditor Value="{Binding LogonDelay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.LogonDelayHint}" />
+                            </StackPanel>
+                            <CheckBox Content="{DynamicResource M.Wiz.RunElevated}" IsChecked="{Binding RunElevated}" />
+                            <TextBlock Margin="24,2,0,0" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.RunElevatedHint}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- Step 3: logging & recovery -->
@@ -257,10 +284,21 @@
                                 <TextBox Text="{Binding LogPath, UpdateSourceTrigger=PropertyChanged}" />
                             </DockPanel>
                         </StackPanel>
-                        <CheckBox Margin="0,4,0,8" Content="{DynamicResource S.RestartTheServiceAutomaticallyWhenThe}" IsChecked="{Binding RestartOnFailure}" />
-                        <StackPanel Style="{StaticResource Field}" IsEnabled="{Binding RestartOnFailure}">
-                            <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.RestartDelay}" />
-                            <controls:DurationEditor Value="{Binding RestartDelay, UpdateSourceTrigger=PropertyChanged}" />
+                        <StackPanel Visibility="{Binding IsService, Converter={StaticResource BoolToVisibility}}">
+                            <CheckBox Margin="0,4,0,8" Content="{DynamicResource S.RestartTheServiceAutomaticallyWhenThe}" IsChecked="{Binding RestartOnFailure}" />
+                            <StackPanel Style="{StaticResource Field}" IsEnabled="{Binding RestartOnFailure}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.RestartDelay}" />
+                                <controls:DurationEditor Value="{Binding RestartDelay, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding DesktopTask, Converter={StaticResource BoolToVisibility}}">
+                            <CheckBox Margin="0,4,0,4" Content="{DynamicResource M.Wiz.KeepAlive}" IsChecked="{Binding RestartOnFailure}" />
+                            <TextBlock Margin="24,0,0,8" MaxWidth="600" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.KeepAliveHint}" />
+                            <StackPanel Style="{StaticResource Field}" IsEnabled="{Binding RestartOnFailure}">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.KeepAliveInterval}" />
+                                <controls:DurationEditor Value="{Binding KeepAliveInterval, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
@@ -306,7 +344,8 @@
                                 VerticalScrollBarVisibility="Auto" />
                         </Border>
 
-                        <CheckBox Margin="0,16,0,0" Content="{DynamicResource S.StartTheServiceAfterInstalling}" IsChecked="{Binding StartAfterInstall}" />
+                        <CheckBox Margin="0,16,0,0" Content="{DynamicResource S.StartTheServiceAfterInstalling}" IsChecked="{Binding StartAfterInstall}" Visibility="{Binding IsService, Converter={StaticResource BoolToVisibility}}" />
+                        <CheckBox Margin="0,16,0,0" Content="{DynamicResource M.Wiz.StartAfterRegister}" IsChecked="{Binding StartAfterInstall}" Visibility="{Binding DesktopTask, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </Grid>
             </ScrollViewer>
@@ -330,7 +369,7 @@
                 <Button Padding="14,7" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding InstallCommand}" Visibility="{Binding IsLastStep, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE768;" />
-                        <TextBlock Text="{DynamicResource S.Install}" />
+                        <TextBlock Text="{Binding InstallLabel}" />
                     </StackPanel>
                 </Button>
             </StackPanel>

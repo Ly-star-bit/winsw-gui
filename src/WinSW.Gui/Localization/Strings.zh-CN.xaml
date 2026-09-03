@@ -496,4 +496,60 @@
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 没有被替换，仍然是 {0}。可能有其它进程占用着这个文件；服务已按原状态重新启动。</sys:String>
 
+
+    <!-- Desktop tasks: programs hosted in the logged-on session by the task scheduler. -->
+    <sys:String x:Key="M.Nav.Tasks">桌面任务</sys:String>
+    <sys:String x:Key="M.Nav.TasksSub">有界面的程序</sys:String>
+    <sys:String x:Key="M.Task.Title">桌面任务</sys:String>
+    <sys:String x:Key="M.Task.Subtitle">需要真实桌面的程序（RPA 机器人尤其如此），跑在你登录的会话里，而不是会话 0 —— 那里没有桌面，服务什么都显示不出来。</sys:String>
+    <sys:String x:Key="M.Task.Registered">已注册</sys:String>
+    <sys:String x:Key="M.Task.OpenScheduler">打开任务计划程序</sys:String>
+    <sys:String x:Key="M.Task.EmptyTitle">还没有桌面任务</sys:String>
+    <sys:String x:Key="M.Task.EmptyBody">Windows 服务跑在会话 0，那里没有桌面：它启动的程序显示不了窗口，也操作不了屏幕。把程序注册在这里，你登录时它就会在你自己的会话里启动。</sys:String>
+    <sys:String x:Key="M.Task.EmptyCreate">新建桌面任务</sys:String>
+    <sys:String x:Key="M.Task.SelectHint">选择一个任务查看详情</sys:String>
+    <sys:String x:Key="M.Task.RunsAs">运行账号</sys:String>
+    <sys:String x:Key="M.Task.Wrapper">包装器</sys:String>
+    <sys:String x:Key="M.Task.LastRun">上次运行</sys:String>
+    <sys:String x:Key="M.Task.LastResult">上次结果</sys:String>
+    <sys:String x:Key="M.Task.Elevated">最高权限</sys:String>
+    <sys:String x:Key="M.Task.ToggleEnabled">启用 / 禁用</sys:String>
+    <sys:String x:Key="M.Task.Delete">删除任务</sys:String>
+    <sys:String x:Key="M.Task.DeleteTitle">删除这个任务？</sys:String>
+    <sys:String x:Key="M.Task.DeleteBody">“{0}”会被停止并从任务计划程序中移除。它的配置文件和日志会原样保留。</sys:String>
+    <sys:String x:Key="M.Task.DeleteAction">删除</sys:String>
+    <sys:String x:Key="M.Task.Unavailable">连不上 Windows 任务计划程序，这台机器上无法管理桌面任务。</sys:String>
+    <sys:String x:Key="M.Task.NoFolder">无法在任务计划程序库中创建文件夹“{0}”，任务注册失败。{1}</sys:String>
+    <sys:String x:Key="M.Task.NoConfig">任务“{0}”没有指定配置文件。</sys:String>
+    <sys:String x:Key="M.Task.Scanning">正在读取已注册的任务…</sys:String>
+    <sys:String x:Key="M.Task.Found">共 {0} 个桌面任务。</sys:String>
+    <sys:String x:Key="M.Task.ScanFailed">读取任务计划程序失败。{0}</sys:String>
+    <sys:String x:Key="M.Task.Running">正在对“{1}”执行 {0}…</sys:String>
+    <sys:String x:Key="M.Task.Completed">“{1}”的 {0} 已完成。</sys:String>
+    <sys:String x:Key="M.Task.Failed">{0} 失败。{1}</sys:String>
+    <sys:String x:Key="M.Task.State.Broken">有问题</sys:String>
+    <sys:String x:Key="M.Task.State.Disabled">已禁用</sys:String>
+    <sys:String x:Key="M.Wiz.HostMode">这个程序要怎么运行？</sys:String>
+    <sys:String x:Key="M.Wiz.HostService">Windows 服务 —— 没有界面</sys:String>
+    <sys:String x:Key="M.Wiz.HostServiceHint">开机就在会话 0 里运行，有没有人登录都一样。它启动的程序显示不了任何窗口。</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktop">桌面任务 —— 有界面</sys:String>
+    <sys:String x:Key="M.Wiz.HostDesktopHint">跑在你自己的登录会话里，有真实桌面，所以要弹窗口、要操作屏幕的程序（RPA）能正常工作。前提是有人登录着；要无人值守，就把机器设成自动登录。</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAs">运行账号</sys:String>
+    <sys:String x:Key="M.Wiz.RunsAsHint">这个账号登录时任务启动，并跑在该账号的会话里。整个过程不需要管理员权限。</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelay">登录后延迟</sys:String>
+    <sys:String x:Key="M.Wiz.LogonDelayHint">刚登录时桌面还没稳定，不适合马上开始自动化；半分钟通常够了。</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevated">用账号的完整令牌运行</sys:String>
+    <sys:String x:Key="M.Wiz.RunElevatedHint">给需要管理员权限的程序用。只有这个账号本身是管理员时才有效，而且登录时不会再弹 UAC。</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAlive">程序停了就重新拉起</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveHint">触发器按间隔反复触发：发现程序还在跑就什么都不做，发现已经没了就重新启动。服务靠的是服务控制管理器的恢复动作，任务看不到那些，这一项就是它的替代。注意它也会把主动正常退出的程序重新拉起来。</sys:String>
+    <sys:String x:Key="M.Wiz.KeepAliveInterval">检查间隔</sys:String>
+    <sys:String x:Key="M.Wiz.StartAfterRegister">注册后立即启动任务</sys:String>
+    <sys:String x:Key="M.Wiz.Register">注册</sys:String>
+    <sys:String x:Key="M.Wiz.Registering">正在注册“{0}”的任务…</sys:String>
+    <sys:String x:Key="M.Wiz.Registered">“{0}”已注册为桌面任务。</sys:String>
+    <sys:String x:Key="M.Wiz.RegisteredStarted">“{0}”已注册并启动。</sys:String>
+    <sys:String x:Key="M.Wiz.RegisterFailed">任务注册失败。{0}</sys:String>
+    <sys:String x:Key="M.Settings.TaskRoot">桌面任务的安装根目录</sys:String>
+    <sys:String x:Key="M.Settings.TaskRootHint">默认放在当前用户目录下：桌面任务以某一个账号运行、不提权，日志必须是这个账号写得进去的。留空则使用上面显示的默认值。</sys:String>
+
 </ResourceDictionary>

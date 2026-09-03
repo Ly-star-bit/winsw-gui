@@ -1,0 +1,358 @@
+<UserControl
+    x:Class="WinSW.Gui.Views.DesktopTasksView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:model="clr-namespace:WinSW.Gui.Model"
+    xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    d:DataContext="{d:DesignInstance Type=vm:DesktopTasksViewModel}"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <!-- One row of the task list. -->
+        <DataTemplate x:Key="TaskRow" DataType="{x:Type model:DesktopTaskEntry}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Ellipse Grid.Column="0" Margin="0,0,12,0" Fill="{Binding Health, Converter={StaticResource HealthToBrush}}">
+                    <Ellipse.Style>
+                        <Style TargetType="Ellipse" BasedOn="{StaticResource HealthDot}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Health}" Value="Running">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard x:Name="Pulse" Storyboard="{StaticResource PulseStoryboard}" />
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <StopStoryboard BeginStoryboardName="Pulse" />
+                                    </DataTrigger.ExitActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Ellipse.Style>
+                </Ellipse>
+
+                <StackPanel Grid.Column="1">
+                    <TextBlock
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource TextPrimaryBrush}"
+                        Text="{Binding DisplayName}"
+                        TextTrimming="CharacterEllipsis" />
+                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Mono}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+
+                <Border Grid.Column="2" Style="{StaticResource StatusPill}">
+                    <TextBlock
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Foreground="{Binding Health, Converter={StaticResource HealthToBrush}}"
+                        Text="{Binding StatusText}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource Card}">
+            <Setter Property="Padding" Value="16,12" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+            <Setter Property="MinWidth" Value="140" />
+        </Style>
+
+        <Style x:Key="StatValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="26" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Margin" Value="0,0,8,8" />
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+
+        <Style x:Key="FactLabel" TargetType="TextBlock" BasedOn="{StaticResource FieldHint}">
+            <Setter Property="Margin" Value="0,0,14,7" />
+        </Style>
+
+        <Style x:Key="FactValue" TargetType="TextBlock" BasedOn="{StaticResource Mono}">
+            <Setter Property="Margin" Value="0,0,0,7" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="28,24,28,20" Style="{StaticResource PageRoot}">
+        <Grid.RenderTransform>
+            <TranslateTransform />
+        </Grid.RenderTransform>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <Grid Grid.Row="0" Margin="0,0,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource M.Task.Title}" />
+                <TextBlock Margin="0,4,0,0" Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Task.Subtitle}" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <ui:TextBox
+                Grid.Column="1"
+                Width="240"
+                Margin="0,0,10,0"
+                VerticalAlignment="Center"
+                PlaceholderText="{DynamicResource M.Ph.Search}"
+                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+
+            <Button Grid.Column="2" VerticalAlignment="Center" Padding="12,7" Command="{Binding ReloadCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                    <TextBlock Text="{DynamicResource S.Rescan}" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- Stats -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,18" Orientation="Horizontal">
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Task.Registered}" />
+                    <TextBlock Style="{StaticResource StatValue}" Text="{Binding TotalCount}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.Running}" />
+                    <TextBlock Style="{StaticResource StatValue}" Foreground="{DynamicResource HealthRunningBrush}" Text="{Binding RunningCount}" />
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource StatCard}" MinWidth="0" VerticalAlignment="Stretch">
+                <Button VerticalAlignment="Center" Padding="12,7" Command="{Binding OpenSchedulerCommand}" Content="{DynamicResource M.Task.OpenScheduler}" />
+            </Border>
+        </StackPanel>
+
+        <!-- Body -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="20" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0">
+                <ListBox
+                    x:Name="TaskList"
+                    AutomationProperties.Name="{DynamicResource M.Task.Title}"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    ItemContainerStyle="{StaticResource ServiceItem}"
+                    ItemTemplate="{StaticResource TaskRow}"
+                    ItemsSource="{Binding TasksView}"
+                    MouseDoubleClick="OnTaskDoubleClick"
+                    ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                    SelectedItem="{Binding SelectedTask}" />
+
+                <!-- Nothing registered yet -->
+                <Border Padding="24" Style="{StaticResource Card}" VerticalAlignment="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock FontSize="34" Style="{StaticResource Icon}" Text="&#xE7F4;" />
+                        <TextBlock Margin="0,12,0,4" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Task.EmptyTitle}" />
+                        <TextBlock Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Task.EmptyBody}" TextWrapping="Wrap" />
+                        <Button Margin="0,16,0,0" HorizontalAlignment="Left" Padding="14,8" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding CreateTaskCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE710;" />
+                                <TextBlock Text="{DynamicResource M.Task.EmptyCreate}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Detail panel -->
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <Grid>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedTask}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock HorizontalAlignment="Center" FontSize="40" Style="{StaticResource Icon}" Text="&#xE7F4;" />
+                        <TextBlock Margin="0,12,0,0" HorizontalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Task.SelectHint}" />
+                    </StackPanel>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding SelectedTask, Converter={StaticResource NullToVisibility}}">
+                        <Grid DataContext="{Binding SelectedTask}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Title line -->
+                            <Grid Grid.Row="0" Margin="0,0,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding Description}" Visibility="{Binding Description, Converter={StaticResource StringToVisibility}}" />
+                                </StackPanel>
+                                <Border Grid.Column="1" Style="{StaticResource StatusPill}" VerticalAlignment="Top">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Margin="0,0,7,0" Fill="{Binding Health, Converter={StaticResource HealthToBrush}}" Style="{StaticResource HealthDot}" />
+                                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StatusText}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <!-- Problem banner -->
+                            <Border
+                                Grid.Row="1"
+                                Margin="0,0,0,14"
+                                Padding="12,10"
+                                Background="{DynamicResource DangerSoftBrush}"
+                                BorderBrush="{DynamicResource HealthBrokenBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Facts -->
+                            <Grid Grid.Row="2" Margin="0,0,0,16">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource FactLabel}" Text="{DynamicResource M.Task.RunsAs}" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding UserId}" />
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource FactLabel}" Text="{DynamicResource S.Configuration}" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding ConfigPath}" ToolTip="{Binding ConfigPath}" />
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource FactLabel}" Text="{DynamicResource M.Task.Wrapper}" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding WrapperPath}" ToolTip="{Binding WrapperPath}" />
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource FactLabel}" Text="{DynamicResource M.Task.LastRun}" />
+                                <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding LastRunText}" />
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource FactLabel}" Text="{DynamicResource M.Task.LastResult}" />
+                                <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding LastResultText}" />
+
+                                <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource FactLabel}" Text="{DynamicResource M.Task.Elevated}" />
+                                <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding RunElevated}" />
+                            </Grid>
+
+                            <!-- Actions; bound to the page, not to the selected task -->
+                            <WrapPanel Grid.Row="3" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding StartCommand}" Content="{DynamicResource S.Start}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding StopCommand}" Content="{DynamicResource S.Stop}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding RestartCommand}" Content="{DynamicResource S.Restart}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding ToggleEnabledCommand}" Content="{DynamicResource M.Task.ToggleEnabled}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding EditConfigCommand}" Content="{DynamicResource S.EditConfiguration}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding ViewLogsCommand}" Content="{DynamicResource S.Logs}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding OpenFolderCommand}" Content="{DynamicResource S.Reveal}" />
+                                <Button Style="{StaticResource ActionButton}" Command="{Binding DeleteCommand}" Content="{DynamicResource M.Task.Delete}" Foreground="{DynamicResource HealthBrokenBrush}" />
+                            </WrapPanel>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status line -->
+        <Grid Grid.Row="3" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ProgressBar Grid.Column="0" Width="90" Height="4" Margin="0,0,12,0" VerticalAlignment="Center" IsIndeterminate="True">
+                <ProgressBar.Style>
+                    <Style TargetType="ProgressBar">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsBusy}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </ProgressBar.Style>
+            </ProgressBar>
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+        </Grid>
+
+        <!-- The task scheduler could not be reached at all -->
+        <Border
+            Grid.Row="2"
+            Padding="24"
+            MaxWidth="520"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Style="{StaticResource Card}"
+            Visibility="{Binding IsAvailable, Converter={StaticResource InverseBoolToVisibility}}">
+            <StackPanel>
+                <TextBlock FontSize="34" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding UnavailableText}" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- Confirmation overlay -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="4"
+            Margin="-28,-24,-28,-20"
+            Background="{DynamicResource OverlayBrush}"
+            Focusable="True"
+            Visibility="{Binding ConfirmVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding ConfirmCommand}" />
+            </Grid.InputBindings>
+            <Border MaxWidth="460" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
+                    <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding ConfirmMessage}" TextWrapping="Wrap" />
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button x:Name="ConfirmCancelButton" Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="{DynamicResource S.Cancel}" />
+                        <Button Padding="14,7" Background="{DynamicResource HealthBrokenBrush}" Command="{Binding ConfirmCommand}" Content="{Binding ConfirmActionLabel}" Foreground="White" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

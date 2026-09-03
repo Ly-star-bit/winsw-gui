@@ -78,6 +78,21 @@ namespace WinSW.Gui.Services
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "WinSW")
                 : this.InstallRoot!.Trim();
 
+        /// <summary>
+        /// Where desktop tasks are installed. Null means the default,
+        /// <c>%LOCALAPPDATA%\WinSW</c> — a per-user location, because a desktop task is a
+        /// per-user thing: it runs as one account, in that account's session, and everything
+        /// it writes has to be writable by that account without administrator rights.
+        /// </summary>
+        public string? TaskRoot { get; set; }
+
+        /// <summary>The configured desktop-task root, or the default when none is set.</summary>
+        [JsonIgnore]
+        public string EffectiveTaskRoot =>
+            string.IsNullOrWhiteSpace(this.TaskRoot)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSW")
+                : this.TaskRoot!.Trim();
+
         private static AppSettings Load()
         {
             try
