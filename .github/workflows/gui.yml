@@ -75,13 +75,16 @@ jobs:
         working-directory: ./src
         shell: pwsh
         run: |
+          # %3B, not ';': a semicolon on an MSBuild command line separates properties, so
+          # -p:WarningsNotAsErrors=NU1901;NU1902 asks it to set a property named NU1902.
+          #
           # The revision counts commits that have touched the wrapper, so it moves when the
           # wrapper changes and not on every rebuild of the console. It also makes this build
           # sort above the last upstream release, whose binaries all report 3.0.0.0 — which
           # is true: this branch is ahead of it.
           $revision = (git rev-list --count HEAD -- WinSW WinSW.Core WinSW.Plugins).Trim()
           Write-Host "Wrapper file version: 3.0.0.$revision"
-          dotnet build WinSW -c Release -f net461 '-p:WarningsNotAsErrors=NU1901;NU1902;NU1903;NU1904' -p:Version=3.0.0 -p:FileVersion=3.0.0.$revision -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
+          dotnet build WinSW -c Release -f net461 -p:WarningsNotAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904 -p:Version=3.0.0 -p:FileVersion=3.0.0.$revision -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
           exit $LASTEXITCODE
 
       # Advisories against the wrapper's dependencies, as job annotations, so they are read
