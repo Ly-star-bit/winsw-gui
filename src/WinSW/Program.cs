@@ -385,7 +385,7 @@ namespace WinSW
 
                 Log.Debug("Starting WinSW in service mode.");
 
-                AutoRefresh(config);
+                AutoRefresh(config, inServiceMode: true);
 
                 using var service = new WrapperService(config);
                 try
@@ -1001,7 +1001,9 @@ namespace WinSW
                 }
             }
 
-            static void AutoRefresh(XmlServiceConfig config)
+            // inServiceMode: this process was started by the service control manager and is on
+            // its way into ServiceBase.Run.
+            static void AutoRefresh(XmlServiceConfig config, bool inServiceMode = false)
             {
                 if (!config.AutoRefresh)
                 {
@@ -1025,6 +1027,19 @@ namespace WinSW
 
                 if (fileLastWriteTime > registryLastWriteTime)
                 {
+                    if (inServiceMode)
+                    {
+                        // Reconfiguring this service through the service control manager while
+                        // the manager is starting it deadlocks: StartService holds the database
+                        // lock until the service reports a status, and the service is waiting on
+                        // that same lock to change its own configuration. Neither moves, and
+                        // five minutes later StartService gives up and the start fails.
+                        Log.Warn(
+                            "The configuration file is newer than the installed service, but it cannot be applied " +
+                            "while the service is starting. Run the 'refresh' command to apply it.");
+                        return;
+                    }
+
                     DoRefresh(config);
                 }
             }
