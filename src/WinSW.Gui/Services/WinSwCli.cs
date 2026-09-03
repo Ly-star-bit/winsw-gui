@@ -119,15 +119,37 @@ namespace WinSW.Gui.Services
         /// Replaces a wrapper executable with a newer build under one prompt: stop (failure
         /// tolerated: it may not be running), copy over, start.
         /// </summary>
-        public static Task<CommandResult> UpgradeWrapperAsync(string wrapper, string configPath, string newExecutable, bool startAfter)
+        /// <summary>
+        /// Replaces a wrapper executable and brings back the services that run from it. Under
+        /// the install root that is every service at once, because they share one file.
+        /// </summary>
+        /// <remarks>
+        /// The steps are chained unconditionally. A running process locks its own image, so a
+        /// copy can fail — and a chain that skipped the restart on failure would leave the
+        /// services stopped, which is worse than not upgrading. Whether the file was actually
+        /// replaced is judged afterwards from its own version, not from an exit code that the
+        /// trailing starts would have overwritten anyway.
+        /// </remarks>
+        public static Task<CommandResult> UpgradeWrapperAsync(string wrapper, string newExecutable, IReadOnlyList<(string ConfigPath, bool WasRunning)> services)
         {
-            string stop = $"{Quote(wrapper)} stop {Quote(configPath)} --no-elevate";
-            string copy = $"copy /y {Quote(newExecutable)} {Quote(wrapper)}";
-            string start = $"{Quote(wrapper)} start {Quote(configPath)} --no-elevate";
+            var steps = new List<string>(services.Count * 2 + 1);
 
-            // cmd evaluates left to right: (stop & copy) && start, so start only runs if the copy succeeded.
-            string script = startAfter ? $"{stop} & {copy} && {start}" : $"{stop} & {copy}";
-            return RunElevatedAsync("cmd.exe", $"/d /c \"{script}\"", Path.GetDirectoryName(wrapper), DefaultTimeout, "upgrade");
+            foreach (var service in services)
+            {
+                steps.Add($"{Quote(wrapper)} stop {Quote(service.ConfigPath)} --no-elevate");
+            }
+
+            steps.Add($"copy /y {Quote(newExecutable)} {Quote(wrapper)}");
+
+            foreach (var service in services)
+            {
+                if (service.WasRunning)
+                {
+                    steps.Add($"{Quote(wrapper)} start {Quote(service.ConfigPath)} --no-elevate");
+                }
+            }
+
+            return RunElevatedAsync("cmd.exe", $"/d /c \"{string.Join(" & ", steps)}\"", Path.GetDirectoryName(wrapper), DefaultTimeout, "upgrade");
         }
 
         /// <summary>

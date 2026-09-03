@@ -490,8 +490,10 @@
     <sys:String x:Key="M.Wiz.WrapperAt">ラッパー:</sys:String>
     <sys:String x:Key="M.Settings.InstallRoot">新規サービスのインストール先ルート</sys:String>
     <sys:String x:Key="M.Settings.InstallRootHint">このルートの下にサービスごとのフォルダーを作り、bin にある 1 つの WinSW 実行ファイルを共有します。空欄なら上に表示された既定値を使います。</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeShared">警告: このラッパーは {0} と共有されています。実行中のサービスは自分の実行ファイルをロックするため、置き換える前にそれらを停止する必要があります。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeShared">このラッパーは {0} 個のサービスで共有されています。すべて停止し、ファイルを 1 度置き換え、実行中だったものを再度開始します: {1}。</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">失敗時のアクションが選択されていない行があります。restart / reboot / none のいずれかを選ぶか、行を削除してください。</sys:String>
+
+    <sys:String x:Key="M.Dash.UpgradeNotReplaced">ラッパーは置き換えられず、{0} のままです。他のプロセスがファイルを掴んでいます。サービスは元の状態で再開しました。</sys:String>
 
 </ResourceDictionary>

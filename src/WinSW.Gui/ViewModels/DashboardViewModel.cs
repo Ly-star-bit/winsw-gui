@@ -775,16 +775,19 @@ namespace WinSW.Gui.ViewModels
                 warnings.Add(Localizer.Format("M.Dash.UpgradeMajor", installedMajor, bundledMajor));
             }
 
-            // A wrapper under the install root is shared. Replacing it replaces the file every
-            // one of those services runs from, and a running process locks its own image, so
-            // they have to be stopped first.
-            var sharing = this.Services
-                .Where(e => !ReferenceEquals(e, entry) && string.Equals(e.WrapperPath, entry.WrapperPath, StringComparison.OrdinalIgnoreCase))
-                .Select(e => e.ServiceName)
+            // Under the install root one wrapper serves every service, and a running process
+            // locks its own image: the whole group is stopped, the file replaced once, and
+            // the ones that were running are started again.
+            var group = this.Services
+                .Where(e => e.ConfigPath != null && string.Equals(e.WrapperPath, entry.WrapperPath, StringComparison.OrdinalIgnoreCase))
                 .ToList();
-            if (sharing.Count > 0)
+
+            if (group.Count > 1)
             {
-                warnings.Add(Localizer.Format("M.Dash.UpgradeShared", string.Join(", ", sharing)));
+                warnings.Add(Localizer.Format(
+                    "M.Dash.UpgradeShared",
+                    group.Count,
+                    string.Join(", ", group.Where(e => !ReferenceEquals(e, entry)).Select(e => e.ServiceName))));
             }
 
             // The bundled wrapper is the .NET Framework build. A service currently hosted by
@@ -803,12 +806,29 @@ namespace WinSW.Gui.ViewModels
                 body += Environment.NewLine + Environment.NewLine + string.Join(Environment.NewLine + Environment.NewLine, warnings);
             }
 
-            bool wasRunning = entry.Status == ServiceControllerStatus.Running;
+            var plan = group
+                .Select(e => (ConfigPath: e.ConfigPath!, WasRunning: e.Status == ServiceControllerStatus.Running))
+                .ToList();
+
             this.Ask(
                 Localizer.Get("M.Dash.UpgradeTitle"),
                 body,
                 Localizer.Get("M.Dash.UpgradeAction"),
-                () => this.RunAsync("upgrade", (w, c) => WinSwCli.UpgradeWrapperAsync(w, c, source, wasRunning)));
+                () => this.RunAsync("upgrade", async (wrapper, _) =>
+                {
+                    var result = await WinSwCli.UpgradeWrapperAsync(wrapper, source, plan).ConfigureAwait(true);
+                    if (result.Cancelled)
+                    {
+                        return result;
+                    }
+
+                    // The copy's own exit code is lost behind the restarts that follow it, so
+                    // the file is asked directly whether it was replaced.
+                    ServiceDiscovery.RefreshWrapperVersion(entry);
+                    return string.Equals(entry.WrapperVersion, bundled, StringComparison.OrdinalIgnoreCase)
+                        ? CommandResult.Ok()
+                        : CommandResult.Failed(Localizer.Format("M.Dash.UpgradeNotReplaced", entry.WrapperVersion));
+                }));
 
             return Task.CompletedTask;
         }

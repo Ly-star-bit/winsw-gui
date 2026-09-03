@@ -52,9 +52,13 @@ Across the pages:
 - **Diagnostics bundle**: one zip with the configuration, log tails, Windows events and
   versions, for bug reports.
 - **Wrapper upgrades**: the detail panel compares an installed service's wrapper against the
-  one bundled with the console and can swap it in (stop → replace → start, one prompt), with
-  no network involved. Crossing a major version, or replacing a self-contained wrapper with
-  the bundled .NET Framework build, is called out in the confirmation.
+  one bundled with the console and can swap it in, with no network involved. Services under
+  the install root share one executable, so the upgrade is a group operation — stop them all,
+  replace the file once, start the ones that were running — under a single prompt. A running
+  process locks its own image, so the steps are chained unconditionally: a copy that fails
+  leaves the services as it found them rather than stopped, and success is judged afterwards
+  from the file's own version. Crossing a major version, or replacing a self-contained
+  wrapper with the bundled .NET Framework build, is called out in the confirmation.
 - **Remote**: read-only status of services on another computer, through the SCM's RPC
   interface, with your current credentials.
 - **Command line and Explorer**: `WinSW.Gui.exe myapp.xml` opens that service (or the file in

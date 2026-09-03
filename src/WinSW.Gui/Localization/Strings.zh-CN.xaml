@@ -490,8 +490,10 @@
     <sys:String x:Key="M.Wiz.WrapperAt">包装器：</sys:String>
     <sys:String x:Key="M.Settings.InstallRoot">新建服务的安装根目录</sys:String>
     <sys:String x:Key="M.Settings.InstallRootHint">每个服务在这个根目录下占一个文件夹，共用 bin 里的同一个 WinSW 可执行文件。留空则使用上面显示的默认值。</sys:String>
-    <sys:String x:Key="M.Dash.UpgradeShared">注意：这个 wrapper 与 {0} 共用。运行中的服务会锁住自己的可执行文件，所以必须先把它们停掉才能替换。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeShared">这个 wrapper 由 {0} 个服务共用。它们会被一起停止，文件替换一次，原本在运行的会重新启动：{1}。</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">有一条失败动作没有选择动作类型；请选择 restart / reboot / none，或者删掉这一行。</sys:String>
+
+    <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 没有被替换，仍然是 {0}。可能有其它进程占用着这个文件；服务已按原状态重新启动。</sys:String>
 
 </ResourceDictionary>
