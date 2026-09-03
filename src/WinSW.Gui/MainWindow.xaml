@@ -9,6 +9,7 @@
     d:DataContext="{d:DesignInstance Type=vm:ShellViewModel}"
     mc:Ignorable="d"
     Title="WinSW"
+    Icon="/Assets/WinSW.Gui.ico"
     Width="1280"
     Height="820"
     MinWidth="960"
