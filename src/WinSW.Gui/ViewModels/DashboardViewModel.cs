@@ -548,6 +548,15 @@ namespace WinSW.Gui.ViewModels
                 }
                 else
                 {
+                    // An upgrade replaced the wrapper's own file. The version was read once at
+                    // discovery, so without this the panel keeps showing the version that has
+                    // just been overwritten — and keeps offering the upgrade.
+                    if (label == "upgrade" && result.Succeeded)
+                    {
+                        ServiceDiscovery.RefreshWrapperVersion(entry);
+                        this.RaiseWrapperUpdate();
+                    }
+
                     this.RefreshStatuses();
                 }
 

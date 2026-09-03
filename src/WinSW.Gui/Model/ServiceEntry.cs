@@ -24,6 +24,7 @@ namespace WinSW.Gui.Model
     {
         private const int HistoryLength = 40;
 
+        private string wrapperVersion = string.Empty;
         private ServiceControllerStatus? status;
         private int processId;
         private string? problem;
@@ -64,8 +65,16 @@ namespace WinSW.Gui.Model
 
         public string Account { get; init; } = string.Empty;
 
-        /// <summary>File version of the wrapper executable, e.g. 3.0.0.</summary>
-        public string WrapperVersion { get; init; } = string.Empty;
+        /// <summary>
+        /// File version of the wrapper executable, e.g. 3.0.0.96. Settable rather than
+        /// init-only because an upgrade replaces that file under a live entry, and the
+        /// detail panel has to stop showing the version that is no longer on disk.
+        /// </summary>
+        public string WrapperVersion
+        {
+            get => this.wrapperVersion;
+            set => this.Set(ref this.wrapperVersion, value);
+        }
 
         /// <summary>Services that must be running before this one starts.</summary>
         public IReadOnlyList<string> DependsOn { get; init; } = Array.Empty<string>();

@@ -140,6 +140,13 @@ namespace WinSW.Gui.Services
             }
         }
 
+        /// <summary>
+        /// Re-reads the wrapper's file version. Nothing else does: the periodic poll refreshes
+        /// status and metrics, and re-reading a version resource for every service on every
+        /// tick would be work for a value that changes only when the file is replaced.
+        /// </summary>
+        public static void RefreshWrapperVersion(ServiceEntry entry) => entry.WrapperVersion = ReadVersion(entry.WrapperPath);
+
         private static string ReadVersion(string path)
         {
             try
