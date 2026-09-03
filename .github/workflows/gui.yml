@@ -61,9 +61,15 @@ jobs:
           Write-Host "Version: $version$suffix"
 
       # The console embeds this executable, so it has to exist before the console is built.
-      # NuGetAudit is off for this one build: the repository compiles warnings as errors, and
-      # the audit flags log4net 2.0.12, which is the wrapper's own pinned dependency and not
-      # something this workflow gets to change.
+      #
+      # The audit runs but does not fail the build. The repository compiles warnings as
+      # errors, and the audit reports GHSA-4f7c-pmjv-c25w against log4net: silent log event
+      # loss in XmlLayout, fixed in 3.3.0, which ships only net462 assets while the wrapper
+      # targets net461. WinSW never uses XmlLayout — it takes ILog and LogManager and nothing
+      # else — so the finding is unreachable here, and moving the whole wrapper to net462 for
+      # it would be a change of its own. Advisories are surfaced as annotations below instead
+      # of silently swallowed, so a future one that does matter is visible.
+      #
       # 3.0.0 is the version this branch of the wrapper declares (see eng/build.yml).
       - name: Build the wrapper that ships inside the console
         working-directory: ./src
@@ -75,8 +81,20 @@ jobs:
           # is true: this branch is ahead of it.
           $revision = (git rev-list --count HEAD -- WinSW WinSW.Core WinSW.Plugins).Trim()
           Write-Host "Wrapper file version: 3.0.0.$revision"
-          dotnet build WinSW -c Release -f net461 -p:NuGetAudit=false -p:Version=3.0.0 -p:FileVersion=3.0.0.$revision -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
+          dotnet build WinSW -c Release -f net461 '-p:WarningsNotAsErrors=NU1901;NU1902;NU1903;NU1904' -p:Version=3.0.0 -p:FileVersion=3.0.0.$revision -p:InformationalVersion=3.0.0+$env:GITHUB_SHA 2>&1 | Tee-Object -FilePath ../wrapper.log
           exit $LASTEXITCODE
+
+      # Advisories against the wrapper's dependencies, as job annotations, so they are read
+      # without an authenticated session and without failing an otherwise good build.
+      - name: Report dependency advisories
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path wrapper.log) {
+            Select-String -Path wrapper.log -Pattern 'NU190\d' |
+              ForEach-Object { $_.Line.Trim() } | Select-Object -Unique |
+              ForEach-Object { Write-Host "::warning::$_" }
+          }
 
       - name: Restore
         working-directory: ./src
