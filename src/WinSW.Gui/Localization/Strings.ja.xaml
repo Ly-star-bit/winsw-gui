@@ -492,4 +492,6 @@
     <sys:String x:Key="M.Settings.InstallRootHint">このルートの下にサービスごとのフォルダーを作り、bin にある 1 つの WinSW 実行ファイルを共有します。空欄なら上に表示された既定値を使います。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeShared">警告: このラッパーは {0} と共有されています。実行中のサービスは自分の実行ファイルをロックするため、置き換える前にそれらを停止する必要があります。</sys:String>
 
+    <sys:String x:Key="M.Val.FailureActionRequired">失敗時のアクションが選択されていない行があります。restart / reboot / none のいずれかを選ぶか、行を削除してください。</sys:String>
+
 </ResourceDictionary>

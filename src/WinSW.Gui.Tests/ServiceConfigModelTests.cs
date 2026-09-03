@@ -128,5 +128,40 @@ namespace WinSW.Gui.Tests
             File.WriteAllText(path, xml);
             return path;
         }
+
+        /// <summary>
+        /// A blank log mode reaches the wrapper as "Undefined logging mode" and the service
+        /// does not start. It came from a ComboBox writing null back into the model, so the
+        /// model refuses it and the writer never emits an empty one.
+        /// </summary>
+        [Fact]
+        public void BlankLogModeIsNeverWritten()
+        {
+            var model = ServiceConfigModel.CreateNew();
+            model.Id = "demo";
+            model.Executable = "demo.exe";
+
+            model.LogMode = string.Empty;
+            Assert.Equal("append", model.LogMode);
+
+            model.LogMode = "roll-by-size";
+            Assert.Equal("roll-by-size", model.LogMode);
+            Assert.Contains(@"mode=""roll-by-size""", model.ToXmlString(), StringComparison.Ordinal);
+        }
+
+        /// <summary>The same for a failure action, whose attribute is mandatory.</summary>
+        [Fact]
+        public void FailureActionWithoutAnActionIsNeitherKeptNorWritten()
+        {
+            var model = ServiceConfigModel.CreateNew();
+            model.Id = "demo";
+            model.Executable = "demo.exe";
+            model.FailureActions.Add(new FailureAction { Action = "restart", Delay = "10 sec" });
+            model.FailureActions[0].Action = string.Empty;
+
+            Assert.Equal("restart", model.FailureActions[0].Action);
+            Assert.Contains(@"action=""restart""", model.ToXmlString(), StringComparison.Ordinal);
+            Assert.DoesNotContain(@"action=""""", model.ToXmlString(), StringComparison.Ordinal);
+        }
     }
 }

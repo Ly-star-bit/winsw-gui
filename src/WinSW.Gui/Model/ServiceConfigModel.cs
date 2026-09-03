@@ -321,6 +321,16 @@ namespace WinSW.Gui.Model
             get => this.logMode;
             set
             {
+                // A ComboBox whose ItemsSource resolves after its SelectedItem binding writes
+                // null straight back into the source. The mode is an enumeration and has no
+                // empty member, so a blank is that accident and never an intention: an empty
+                // mode reaches the wrapper as "Undefined logging mode" and the service will
+                // not start.
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return;
+                }
+
                 if (this.Set(ref this.logMode, value))
                 {
                     this.Raise(nameof(this.UsesTimePattern));
@@ -753,7 +763,9 @@ namespace WinSW.Gui.Model
                 SetAttribute(element, "proxy", item.Proxy);
             });
 
-            ReplaceAll(document, root, "onfailure", this.FailureActions, static (element, item) =>
+            // An action attribute is mandatory and has no empty member; a row without one is
+            // dropped rather than written as action="", which the wrapper cannot parse.
+            ReplaceAll(document, root, "onfailure", this.FailureActions.Where(a => !string.IsNullOrWhiteSpace(a.Action)), static (element, item) =>
             {
                 element.SetAttribute("action", item.Action);
                 SetAttribute(element, "delay", item.Delay);
@@ -777,6 +789,15 @@ namespace WinSW.Gui.Model
             RemoveAll(root, "logmode");
 
             var element = root.SelectSingleNode("log") as XmlElement;
+
+            if (string.IsNullOrWhiteSpace(this.logMode))
+            {
+                // No mode is not the same as an empty one: absent means append, while
+                // <log mode=""> is a file the wrapper refuses to start from.
+                RemoveAll(root, "log");
+                return;
+            }
+
             if (element is null)
             {
                 element = document.CreateElement("log");
@@ -942,6 +963,12 @@ namespace WinSW.Gui.Model
 
             foreach (var action in this.FailureActions)
             {
+                if (string.IsNullOrWhiteSpace(action.Action))
+                {
+                    Add(nameof(this.FailureActions), Localizer.Get("M.Val.FailureActionRequired"));
+                    continue;
+                }
+
                 CheckTime(nameof(this.FailureActions), action.Delay, Localizer.Format("M.Val.FailureDelay", action.Action));
             }
 

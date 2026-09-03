@@ -492,4 +492,6 @@
     <sys:String x:Key="M.Settings.InstallRootHint">每個服務在這個根目錄下占一個資料夾，共用 bin 裡的同一個 WinSW 可執行檔。留空則使用上面顯示的預設值。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeShared">注意：這個 wrapper 與 {0} 共用。執行中的服務會鎖住自己的可執行檔，所以必須先把它們停掉才能替換。</sys:String>
 
+    <sys:String x:Key="M.Val.FailureActionRequired">有一條失敗動作沒有選擇動作類型；請選擇 restart / reboot / none，或者刪掉這一行。</sys:String>
+
 </ResourceDictionary>

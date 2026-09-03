@@ -94,10 +94,21 @@ namespace WinSW.Gui.Model
         private string? delay = "10 sec";
 
         /// <summary>One of <c>restart</c>, <c>reboot</c>, <c>none</c>.</summary>
+        /// <remarks>
+        /// Blank is refused for the same reason the log mode refuses it: a ComboBox whose
+        /// ItemsSource resolves after its SelectedItem binding writes null back into the
+        /// source, and this enumeration has no empty member.
+        /// </remarks>
         public string Action
         {
             get => this.action;
-            set => this.Set(ref this.action, value);
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    this.Set(ref this.action, value);
+                }
+            }
         }
 
         public string? Delay
