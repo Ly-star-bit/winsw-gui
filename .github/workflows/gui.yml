@@ -42,7 +42,7 @@ jobs:
       # 8.0.x builds the console; 7.0.x is kept for the wrapper, whose project still lists a
       # net7.0-windows target alongside the net462 one this workflow actually builds.
       - name: Install .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: |
             7.0.x
