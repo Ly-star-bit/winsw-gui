@@ -215,7 +215,7 @@ namespace WinSW.Gui.Services
                     }
                 }
             }
-            catch (COMException e) when (IsMissing(e))
+            catch (Exception e) when (IsMissing(e))
             {
                 // Nothing has been registered yet.
             }
@@ -243,7 +243,7 @@ namespace WinSW.Gui.Services
                 object task = folder.GetTask(name);
                 return Describe(task);
             }
-            catch (COMException e) when (IsMissing(e))
+            catch (Exception e) when (IsMissing(e))
             {
                 return null;
             }
@@ -538,7 +538,7 @@ namespace WinSW.Gui.Services
                 DateTime run = (DateTime)task.LastRunTime;
                 lastRun = run.Year < 1980 ? null : (DateTime?)run;
             }
-            catch (Exception e) when (e is COMException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException or InvalidCastException)
+            catch (Exception e) when (IsComFailure(e) || e is Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
             {
                 return null;
             }
@@ -621,8 +621,23 @@ namespace WinSW.Gui.Services
             }
         }
 
-        private static bool IsMissing(COMException e) =>
+        /// <summary>
+        /// True when a call failed because the thing it named is not there.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately typed as <see cref="Exception"/>. A failing HRESULT does not reach
+        /// managed code as a <see cref="COMException"/>: the runtime maps the well-known ones
+        /// onto specific types first, and the two that matter here — ERROR_FILE_NOT_FOUND and
+        /// ERROR_PATH_NOT_FOUND — arrive as <see cref="FileNotFoundException"/> and
+        /// <see cref="DirectoryNotFoundException"/>. The HRESULT is the contract; which
+        /// exception class carries it is not.
+        /// </remarks>
+        internal static bool IsMissing(Exception e) =>
             e.HResult == ErrorFileNotFound || e.HResult == ErrorPathNotFound;
+
+        /// <summary>True for the exception classes a failed late-bound COM call arrives as.</summary>
+        private static bool IsComFailure(Exception e) =>
+            e is COMException or IOException or UnauthorizedAccessException or InvalidCastException;
 
         /// <summary>
         /// Opens this application's folder in the task scheduler library, creating it the
@@ -640,14 +655,14 @@ namespace WinSW.Gui.Services
             {
                 return service.GetFolder(FolderPath);
             }
-            catch (COMException e) when (IsMissing(e))
+            catch (Exception e) when (IsMissing(e))
             {
                 dynamic root = service.GetFolder("\\");
                 try
                 {
                     return root.CreateFolder(FolderName, null);
                 }
-                catch (COMException inner)
+                catch (Exception inner) when (IsComFailure(inner))
                 {
                     throw new InvalidOperationException(Localizer.Format("M.Task.NoFolder", FolderName, inner.Message), inner);
                 }

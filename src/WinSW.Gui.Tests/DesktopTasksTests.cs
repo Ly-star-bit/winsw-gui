@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Runtime.InteropServices;
 using WinSW.Gui.Services;
 using Xunit;
 
@@ -13,6 +15,32 @@ namespace WinSW.Gui.Tests
         /// A change here without one there does not fail to compile: it silently turns every
         /// clean stop into a hard termination.
         /// </summary>
+        /// <summary>
+        /// The task scheduler answers "no such folder" with ERROR_FILE_NOT_FOUND, which is how
+        /// the first registration on any machine learns it has to create the folder. That
+        /// failure does not arrive as a COMException: the runtime maps the well-known HRESULTs
+        /// onto specific types, and catching the wrong one turns "create it" into "give up".
+        /// </summary>
+        [Theory]
+        [InlineData(unchecked((int)0x80070002))]
+        [InlineData(unchecked((int)0x80070003))]
+        public void MissingIsRecognisedWhateverTypeTheRuntimeChoseForIt(int hresult)
+        {
+            var thrown = Marshal.GetExceptionForHR(hresult);
+
+            Assert.NotNull(thrown);
+            Assert.True(
+                DesktopTasks.IsMissing(thrown!),
+                $"0x{hresult:x8} arrived as {thrown!.GetType().Name} and was not recognised.");
+        }
+
+        [Fact]
+        public void AnUnrelatedFailureIsNotMistakenForAMissingFolder()
+        {
+            Assert.False(DesktopTasks.IsMissing(new COMException("denied", unchecked((int)0x80070005))));
+            Assert.False(DesktopTasks.IsMissing(new IOException("something else")));
+        }
+
         [Theory]
         [InlineData("my-app", @"Local\WinSW.Console.my-app.ef484009")]
         [InlineData("ocr_server", @"Local\WinSW.Console.ocr_server.6291a5fb")]
