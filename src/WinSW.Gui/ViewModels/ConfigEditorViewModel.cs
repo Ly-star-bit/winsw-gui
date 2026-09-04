@@ -442,6 +442,17 @@ namespace WinSW.Gui.ViewModels
 
         // Saving ---------------------------------------------------------------
 
+        /// <summary>
+        /// Saves, and says whether the file is now on disk. The exit prompt needs the answer:
+        /// a save that was refused — an invalid configuration, a declined elevation, a
+        /// cancelled Save As — must leave the window open rather than close over the changes.
+        /// </summary>
+        public async Task<bool> TrySaveAsync()
+        {
+            await this.SaveAsync().ConfigureAwait(true);
+            return !this.IsDirty;
+        }
+
         private async Task SaveAsync()
         {
             if (this.filePath is null)

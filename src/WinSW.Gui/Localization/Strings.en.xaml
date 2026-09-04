@@ -403,7 +403,6 @@
     <sys:String x:Key="M.Ph.ServiceId">myapp</sys:String>
     <sys:String x:Key="M.Ph.Filter">Filter lines…</sys:String>
     <sys:String x:Key="M.Editor.SaveAndApply">Save &amp; apply</sys:String>
-    <sys:String x:Key="M.Editor.UnsavedOnExit">The configuration has unsaved changes. Close anyway and lose them?</sys:String>
     <sys:String x:Key="M.Tab.Basics">Basics</sys:String>
     <sys:String x:Key="M.Tab.Process">Process &amp; hooks</sys:String>
     <sys:String x:Key="M.Tab.Service">Service, account &amp; recovery</sys:String>
@@ -551,5 +550,12 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">The task could not be registered. {0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">Install root for desktop tasks</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">A per-user location by default: a desktop task runs as one account without elevation, and its logs have to be writable by that account. Leave blank for the default shown.</sys:String>
+
+
+    <!-- Closing the window over unsaved changes. -->
+    <sys:String x:Key="M.Exit.Title">Unsaved changes</sys:String>
+    <sys:String x:Key="M.Exit.Body">The configuration open in the editor has changes that have not been written to disk.</sys:String>
+    <sys:String x:Key="M.Exit.Save">Save and exit</sys:String>
+    <sys:String x:Key="M.Exit.Discard">Exit without saving</sys:String>
 
 </ResourceDictionary>

@@ -190,5 +190,51 @@
                 </Border>
             </Grid>
         </Grid>
+
+        <!--
+            Unsaved changes on the way out. Spans the title bar as well: it is the window
+            that is being closed, not a page, and a dialog you can walk behind is one you
+            can lose. Escape cancels, which is the safe answer.
+        -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="2"
+            Background="{DynamicResource OverlayBrush}"
+            Focusable="True"
+            Visibility="{Binding ExitPromptVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.InputBindings>
+                <KeyBinding Key="Escape" Command="{Binding CancelExitCommand}" />
+            </Grid.InputBindings>
+            <Border MaxWidth="480" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="28" Opacity="0.45" ShadowDepth="4" />
+                </Border.Effect>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,10,0" FontSize="18" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                        <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Exit.Title}" />
+                    </StackPanel>
+                    <TextBlock Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Exit.Body}" TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        Style="{StaticResource Mono}"
+                        Text="{Binding ExitPromptFile}"
+                        TextTrimming="CharacterEllipsis"
+                        ToolTip="{Binding ExitPromptFile}"
+                        Visibility="{Binding ExitPromptFile, Converter={StaticResource StringToVisibility}}" />
+                    <StackPanel Margin="0,22,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelExitCommand}" Content="{DynamicResource S.Cancel}" />
+                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding ExitWithoutSavingCommand}" Content="{DynamicResource M.Exit.Discard}" Foreground="{DynamicResource HealthBrokenBrush}" />
+                        <Button
+                            x:Name="SaveAndExitButton"
+                            Padding="14,7"
+                            Background="{DynamicResource AccentGradientBrush}"
+                            Command="{Binding SaveAndExitCommand}"
+                            Content="{DynamicResource M.Exit.Save}"
+                            Foreground="White" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </ui:FluentWindow>

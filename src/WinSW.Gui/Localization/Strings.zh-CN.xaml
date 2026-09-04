@@ -403,7 +403,6 @@
     <sys:String x:Key="M.Ph.ServiceId">myapp</sys:String>
     <sys:String x:Key="M.Ph.Filter">筛选行…</sys:String>
     <sys:String x:Key="M.Editor.SaveAndApply">保存并应用</sys:String>
-    <sys:String x:Key="M.Editor.UnsavedOnExit">配置有未保存的修改。仍要关闭并丢弃吗？</sys:String>
     <sys:String x:Key="M.Tab.Basics">基础</sys:String>
     <sys:String x:Key="M.Tab.Process">进程与钩子</sys:String>
     <sys:String x:Key="M.Tab.Service">服务、账户与恢复</sys:String>
@@ -551,5 +550,12 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">任务注册失败。{0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">桌面任务的安装根目录</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">默认放在当前用户目录下：桌面任务以某一个账号运行、不提权，日志必须是这个账号写得进去的。留空则使用上面显示的默认值。</sys:String>
+
+
+    <!-- Closing the window over unsaved changes. -->
+    <sys:String x:Key="M.Exit.Title">有未保存的修改</sys:String>
+    <sys:String x:Key="M.Exit.Body">编辑器里打开的配置有修改还没有写入磁盘。</sys:String>
+    <sys:String x:Key="M.Exit.Save">保存并退出</sys:String>
+    <sys:String x:Key="M.Exit.Discard">不保存直接退出</sys:String>
 
 </ResourceDictionary>

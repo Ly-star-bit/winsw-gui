@@ -12,6 +12,7 @@ namespace WinSW.Gui
         private readonly ShellViewModel shell;
         private readonly TrayIcon tray;
         private bool exiting;
+        private bool closeConfirmed;
 
         public MainWindow()
         {
@@ -37,6 +38,8 @@ namespace WinSW.Gui
                     isError: true,
                     tag: entry.ServiceName);
             this.tray.NotificationClicked += serviceName => this.shell.ShowService(serviceName);
+
+            this.shell.ExitDecided += this.OnExitDecided;
 
             this.RestoreWindowPlacement();
             this.StateChanged += this.OnStateChanged;
@@ -110,30 +113,52 @@ namespace WinSW.Gui
             this.Activate();
         }
 
-        protected override void OnClosing(CancelEventArgs e)
+        /// <summary>
+        /// Acts on the answer to the unsaved-changes prompt. A save that did not take —
+        /// an invalid configuration, a declined elevation, a cancelled Save As — leaves the
+        /// window open with the editor showing why, rather than closing over the changes.
+        /// </summary>
+        private async void OnExitDecided(bool save)
         {
-            if (!this.exiting && AppSettings.Current.MinimizeToTray)
+            if (save && !await this.shell.Editor.TrySaveAsync().ConfigureAwait(true))
             {
-                // Closing behaves like minimizing when the tray is on; Exit lives in the tray menu.
-                e.Cancel = true;
-                this.WindowState = WindowState.Minimized;
                 return;
             }
 
-            if (this.shell.Editor.IsDirty)
-            {
-                var answer = MessageBox.Show(
-                    this,
-                    Localizer.Get("M.Editor.UnsavedOnExit"),
-                    "WinSW",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning,
-                    MessageBoxResult.No);
+            this.closeConfirmed = true;
+            this.Close();
+        }
 
-                if (answer != MessageBoxResult.Yes)
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            // Everything below is the question "should this window really close". Once it has
+            // been answered, the second pass has nothing left to ask.
+            if (!this.closeConfirmed)
+            {
+                if (!this.exiting && AppSettings.Current.MinimizeToTray)
+                {
+                    // Closing behaves like minimizing when the tray is on; Exit lives in the tray menu.
+                    e.Cancel = true;
+                    this.WindowState = WindowState.Minimized;
+                    return;
+                }
+
+                if (this.shell.Editor.IsDirty)
                 {
                     e.Cancel = true;
+
+                    // A prompt in a window that is hidden in the tray is a hang, not a question.
+                    if (!this.IsVisible || this.WindowState == WindowState.Minimized)
+                    {
+                        this.RestoreFromTray();
+                    }
+
+                    // Exit was asked for and then interrupted; the next close starts over.
                     this.exiting = false;
+
+                    // Answer it looking at the thing that is unsaved.
+                    this.shell.Navigate(this.shell.Editor);
+                    this.shell.AskToExit();
                     return;
                 }
             }

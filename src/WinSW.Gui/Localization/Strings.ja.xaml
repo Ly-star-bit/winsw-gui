@@ -403,7 +403,6 @@
     <sys:String x:Key="M.Ph.ServiceId">myapp</sys:String>
     <sys:String x:Key="M.Ph.Filter">行を絞り込み…</sys:String>
     <sys:String x:Key="M.Editor.SaveAndApply">保存して適用</sys:String>
-    <sys:String x:Key="M.Editor.UnsavedOnExit">構成に未保存の変更があります。破棄して閉じますか?</sys:String>
     <sys:String x:Key="M.Tab.Basics">基本</sys:String>
     <sys:String x:Key="M.Tab.Process">プロセスとフック</sys:String>
     <sys:String x:Key="M.Tab.Service">サービス・アカウント・回復</sys:String>
@@ -551,5 +550,12 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">タスクを登録できませんでした。{0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">デスクトップタスクのインストール先</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">既定ではユーザーごとの場所です。デスクトップタスクは昇格なしで単一のアカウントとして動くため、ログはそのアカウントが書き込める必要があります。空欄にすると上に表示された既定値を使います。</sys:String>
+
+
+    <!-- Closing the window over unsaved changes. -->
+    <sys:String x:Key="M.Exit.Title">保存されていない変更があります</sys:String>
+    <sys:String x:Key="M.Exit.Body">エディターで開いている構成に、ディスクへ書き込まれていない変更があります。</sys:String>
+    <sys:String x:Key="M.Exit.Save">保存して終了</sys:String>
+    <sys:String x:Key="M.Exit.Discard">保存せずに終了</sys:String>
 
 </ResourceDictionary>

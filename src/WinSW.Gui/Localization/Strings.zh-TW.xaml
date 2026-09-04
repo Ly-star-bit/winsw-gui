@@ -403,7 +403,6 @@
     <sys:String x:Key="M.Ph.ServiceId">myapp</sys:String>
     <sys:String x:Key="M.Ph.Filter">篩選行…</sys:String>
     <sys:String x:Key="M.Editor.SaveAndApply">儲存並套用</sys:String>
-    <sys:String x:Key="M.Editor.UnsavedOnExit">設定有未儲存的變更。仍要關閉並捨棄嗎？</sys:String>
     <sys:String x:Key="M.Tab.Basics">基本</sys:String>
     <sys:String x:Key="M.Tab.Process">處理程序與掛勾</sys:String>
     <sys:String x:Key="M.Tab.Service">服務、帳戶與復原</sys:String>
@@ -551,5 +550,12 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">工作註冊失敗。{0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">桌面工作的安裝根目錄</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">預設放在目前使用者目錄下：桌面工作以某一個帳戶執行、不提權，記錄檔必須是這個帳戶寫得進去的。留空則使用上面顯示的預設值。</sys:String>
+
+
+    <!-- Closing the window over unsaved changes. -->
+    <sys:String x:Key="M.Exit.Title">有未儲存的修改</sys:String>
+    <sys:String x:Key="M.Exit.Body">編輯器裡開啟的設定有修改還沒有寫入磁碟。</sys:String>
+    <sys:String x:Key="M.Exit.Save">儲存並結束</sys:String>
+    <sys:String x:Key="M.Exit.Discard">不儲存直接結束</sys:String>
 
 </ResourceDictionary>

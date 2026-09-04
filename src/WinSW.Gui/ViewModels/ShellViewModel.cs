@@ -73,6 +73,7 @@ namespace WinSW.Gui.ViewModels
         private string toastText = string.Empty;
         private bool toastVisible;
         private bool toastIsError;
+        private bool exitPromptVisible;
         private readonly System.Windows.Threading.DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
 
         public ShellViewModel()
@@ -100,6 +101,10 @@ namespace WinSW.Gui.ViewModels
             };
 
             this.ToggleRailCommand = new RelayCommand(() => this.IsRailCollapsed = !this.IsRailCollapsed);
+
+            this.SaveAndExitCommand = new RelayCommand(() => this.DecideExit(save: true));
+            this.ExitWithoutSavingCommand = new RelayCommand(() => this.DecideExit(save: false));
+            this.CancelExitCommand = new RelayCommand(() => this.ExitPromptVisible = false);
             this.toastTimer.Tick += (_, _) =>
             {
                 this.toastTimer.Stop();
@@ -250,6 +255,43 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand OpenGuiUpdateCommand { get; }
 
         public RelayCommand ToggleRailCommand { get; }
+
+        // Exit prompt -------------------------------------------------------------
+
+        /// <summary>
+        /// Raised once the user has answered the unsaved-changes prompt, with true when the
+        /// configuration is to be written first. Cancelling raises nothing.
+        /// </summary>
+        public event Action<bool>? ExitDecided;
+
+        public RelayCommand SaveAndExitCommand { get; }
+
+        public RelayCommand ExitWithoutSavingCommand { get; }
+
+        public RelayCommand CancelExitCommand { get; }
+
+        /// <summary>Shown over the whole window, so it covers the page the changes are on.</summary>
+        public bool ExitPromptVisible
+        {
+            get => this.exitPromptVisible;
+            private set => this.Set(ref this.exitPromptVisible, value);
+        }
+
+        /// <summary>The file that would lose its changes; blank for one never saved.</summary>
+        public string ExitPromptFile => this.Editor.FilePath ?? string.Empty;
+
+        /// <summary>Asks what to do about the editor's unsaved changes before the window closes.</summary>
+        public void AskToExit()
+        {
+            this.Raise(nameof(this.ExitPromptFile));
+            this.ExitPromptVisible = true;
+        }
+
+        private void DecideExit(bool save)
+        {
+            this.ExitPromptVisible = false;
+            this.ExitDecided?.Invoke(save);
+        }
 
         /// <summary>Icon-only rail; remembered across sessions.</summary>
         public bool IsRailCollapsed
