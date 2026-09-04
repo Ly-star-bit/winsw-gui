@@ -45,6 +45,18 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v3
 
+    # The console embeds this executable, and embeds it only if it is already on disk.
+    # A solution-wide build gives no order between the wrapper's ILMerge step and the
+    # console's decision, so without this the console is built with nothing inside it
+    # and BundledWrapperUnpacksToARealWrapper fails — correctly. The console's own
+    # workflow builds it first for the same reason.
+    - name: Build the wrapper the console embeds
+      working-directory: ./src
+      shell: pwsh
+      run: |
+        dotnet build WinSW -c ${{ matrix.configuration }} -f net462 -p:WarningsNotAsErrors=NU1901%3BNU1902%3BNU1903%3BNU1904
+        exit $LASTEXITCODE
+
     # Execute all unit tests in the solution
     - name: Execute unit tests
       working-directory: ./src
