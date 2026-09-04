@@ -63,6 +63,12 @@
     is produced by a custom target in WinSW.csproj, after its build: the console's workflow
     builds that project first, and a developer building only the console simply gets a
     console whose wizard falls back to downloading the wrapper.
+
+    A file reference carries no build order, though, and a solution build is free to run the
+    two projects at once: ILMerge writing this file while csc reads it into the console is a
+    locked file at best and a dead MSBuild node at worst. WinSW.sln therefore declares the
+    console as depending on the wrapper, which orders solution builds without adding an
+    assembly reference here.
   -->
   <PropertyGroup>
     <BundledWrapper Condition="'$(BundledWrapper)' == ''">$(ArtifactsPublishDir)WinSW-net462.exe</BundledWrapper>

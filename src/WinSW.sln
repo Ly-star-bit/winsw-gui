@@ -14,6 +14,9 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinSW.Tasks", "WinSW.Tasks\WinSW.Tasks.csproj", "{EFDE140A-BB31-4509-A835-766520FEAEB9}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinSW.Gui", "WinSW.Gui\WinSW.Gui.csproj", "{3F1C2B6E-9A44-4C0D-8B7E-6D2F5A1E9C10}"
+	ProjectSection(ProjectDependencies) = postProject
+		{87BD4253-6957-4D83-B75D-5C4C2F114694} = {87BD4253-6957-4D83-B75D-5C4C2F114694}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WinSW.Gui.Tests", "WinSW.Gui.Tests\WinSW.Gui.Tests.csproj", "{8D2B4C7A-5E11-4F3A-9C6D-2A7F0B1E5D42}"
 EndProject

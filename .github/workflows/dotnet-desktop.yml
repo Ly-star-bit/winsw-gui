@@ -46,10 +46,14 @@ jobs:
       uses: microsoft/setup-msbuild@v3
 
     # The console embeds this executable, and embeds it only if it is already on disk.
-    # A solution-wide build gives no order between the wrapper's ILMerge step and the
-    # console's decision, so without this the console is built with nothing inside it
-    # and BundledWrapperUnpacksToARealWrapper fails — correctly. The console's own
-    # workflow builds it first for the same reason.
+    # Without this the console is built with nothing inside it and
+    # BundledWrapperUnpacksToARealWrapper fails — correctly. The console's own workflow
+    # builds it first for the same reason.
+    #
+    # What orders the build below is not this step but the dependency WinSW.sln declares
+    # from the console onto the wrapper. Before it existed the two ran at once, and the
+    # job failed at random with CS1566 on a locked WinSW-net462.exe, or with the MSBuild
+    # node that was merging it exiting outright.
     - name: Build the wrapper the console embeds
       working-directory: ./src
       shell: pwsh
@@ -93,8 +97,12 @@ jobs:
           # an aborted host, an assertion in a Debug build. Those words, and a short tail;
           # an annotation is capped at a few kilobytes and a long tail is cut off exactly
           # where the reason would have been.
+          #
+          # A line with no whitespace in it is a name, not a sentence: ILMerge lists one
+          # merged type per line, and 'System.CommandLine.DebugAssert' scrolling past has
+          # already been read once as the assertion that killed the build.
           $suspects = $lines |
-            Where-Object { $_ -match '(?i)\berror\b|aborted|assert|crash|Fatal' } |
+            Where-Object { $_ -match '(?i)\berror\b|aborted|assert|crash|Fatal' -and $_.Trim() -match '\s' } |
             Select-Object -Last 12 |
             ForEach-Object { $_.Trim() }
           $tail = ($lines | Select-Object -Last 15) -join '%0A'
