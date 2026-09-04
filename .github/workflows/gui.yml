@@ -35,7 +35,7 @@ jobs:
     steps:
       # Full history: the wrapper's file version counts the commits that touched it.
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
