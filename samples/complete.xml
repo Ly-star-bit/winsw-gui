@@ -257,6 +257,19 @@ SECTION: Environment setup
 
 
   <!--
+    OPTION: proxy
+    Hands the wrapped program the proxy settings the common runtimes read:
+    HTTP_PROXY, HTTPS_PROXY and NO_PROXY. The scheme is required, and an <env>
+    entry of the same name wins over this element.
+    The JVM ignores those variables, so java="true" additionally puts
+    -Dhttp.proxyHost and its companions in front of JAVA_TOOL_OPTIONS.
+  -->
+  <!--
+  <proxy noProxy="localhost,127.0.0.1,.internal.example.com">http://proxy.example.com:8080</proxy>
+  <proxy java="true">http://proxy.example.com:8080</proxy>
+  -->
+
+  <!--
     OPTION: download
     List of downloads to be performed by the wrapper before starting.
   -->

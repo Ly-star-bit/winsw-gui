@@ -121,6 +121,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `interactive` | ? | bool | `false` | Ignored. It is parsed and never used, and what it once did was removed from Windows in 2018. A program that needs a desktop has to be a [desktop task](desktop-tasks.md), not a service. |
 | `beeponshutdown` | ? | bool | `false` | Debug aid. |
 | `env` | * | attributes | — | `<env name="KEY" value="VALUE" />`. Both attributes are required. Values are `%VAR%`-expanded. |
+| `proxy` | ? | text + attributes | — | `<proxy noProxy="localhost,.corp" java="true">http://proxy.example.com:8080</proxy>`. Sets `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` for the child process. `java="true"` also puts `-Dhttp.proxyHost` and its companions in front of `JAVA_TOOL_OPTIONS`, since the JVM ignores the variables. The scheme is required. An `env` entry of the same name wins. |
 | `download` | * | attributes | — | See section 8. |
 | `sharedDirectoryMapping` | ? | element | — | Maps UNC paths to drive letters before start. `<map label="N:" uncpath="\\server\share" />`, repeatable. Both attributes required. |
 | `autoRefresh` | ? | bool | `true` | Re-applies install-time settings from the XML whenever the service starts, stops or restarts. |
@@ -312,7 +313,7 @@ Fetched before the main executable is launched, on every start.
 | `user` | with `basic` | — | **The attribute is `user`, not `username`.** The old `complete.xml` sample is wrong here. |
 | `password` | with `basic` | — | |
 | `unsecureAuth` | no | `false` | Required to allow `basic` over plain HTTP; the wrapper refuses otherwise. |
-| `proxy` | no | — | `http://HOST:PORT/` or `http://USER:PASS@HOST:PORT/`. |
+| `proxy` | no | — | `http://HOST:PORT/` or `http://USER:PASS@HOST:PORT/`. This one covers the download only; the top-level `<proxy>` element is what the wrapped program gets. |
 
 If the destination already exists, the wrapper sends `If-Modified-Since` and skips the
 transfer on `304 Not Modified`.

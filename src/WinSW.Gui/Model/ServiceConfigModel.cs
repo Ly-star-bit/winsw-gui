@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
+using WinSW.Configuration;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Localization;
 
@@ -119,6 +120,9 @@ namespace WinSW.Gui.Model
         private string? autoRollAtTime;
         private string? zipOlderThanNumDays;
         private string? zipDateFormat;
+        private string? proxyAddress;
+        private string? proxyNoProxy;
+        private bool proxyJava;
         private string? extensionsXml;
 
         public string? FilePath
@@ -427,6 +431,27 @@ namespace WinSW.Gui.Model
 
         // Environment --------------------------------------------------------
 
+        /// <summary>The <c>&lt;proxy&gt;</c> address, scheme included.</summary>
+        public string? ProxyAddress
+        {
+            get => this.proxyAddress;
+            set => this.Set(ref this.proxyAddress, value);
+        }
+
+        /// <summary>The hosts the wrapped program should reach without the proxy.</summary>
+        public string? ProxyNoProxy
+        {
+            get => this.proxyNoProxy;
+            set => this.Set(ref this.proxyNoProxy, value);
+        }
+
+        /// <summary>Whether the proxy is also handed to the JVM, which ignores the variables.</summary>
+        public bool ProxyJava
+        {
+            get => this.proxyJava;
+            set => this.Set(ref this.proxyJava, value);
+        }
+
         public ObservableCollection<EnvironmentVariable> EnvironmentVariables { get; } = new();
 
         public ObservableCollection<DownloadItem> Downloads { get; } = new();
@@ -575,6 +600,13 @@ namespace WinSW.Gui.Model
             foreach (XmlElement element in root.SelectNodes("depend")!.OfType<XmlElement>())
             {
                 this.Dependencies.Add(new DependencyItem { ServiceName = element.InnerText.Trim() });
+            }
+
+            if (root.SelectSingleNode("proxy") is XmlElement proxy)
+            {
+                this.proxyAddress = NullIfEmpty(proxy.InnerText.Trim());
+                this.proxyNoProxy = NullIfEmpty(proxy.GetAttribute("noProxy"));
+                this.proxyJava = ParseBool(proxy.GetAttribute("java"));
             }
 
             foreach (XmlElement element in root.SelectNodes("env")!.OfType<XmlElement>())
@@ -745,6 +777,8 @@ namespace WinSW.Gui.Model
 
             ReplaceAll(document, root, "depend", this.Dependencies, static (element, item) => element.InnerText = item.ServiceName);
 
+            this.SaveProxy(document, root);
+
             ReplaceAll(document, root, "env", this.EnvironmentVariables, static (element, item) =>
             {
                 element.SetAttribute("name", item.Name);
@@ -824,6 +858,29 @@ namespace WinSW.Gui.Model
                     parent.AppendChild(child);
                 }
             }
+        }
+
+        /// <summary>
+        /// The address is the element's text and everything else is an attribute of it, so an
+        /// empty address removes the element: an empty <c>&lt;proxy&gt;</c> is a file the
+        /// wrapper refuses to start from.
+        /// </summary>
+        private void SaveProxy(XmlDocument document, XmlElement root)
+        {
+            if (string.IsNullOrWhiteSpace(this.proxyAddress))
+            {
+                RemoveAll(root, "proxy");
+                return;
+            }
+
+            if (root.SelectSingleNode("proxy") is not XmlElement element)
+            {
+                element = (XmlElement)root.AppendChild(document.CreateElement("proxy"))!;
+            }
+
+            element.InnerText = this.proxyAddress!.Trim();
+            SetAttribute(element, "noProxy", this.proxyNoProxy?.Trim());
+            SetAttribute(element, "java", this.proxyJava ? "true" : null);
         }
 
         private void SaveSharedDirectories(XmlDocument document, XmlElement root)
@@ -994,6 +1051,20 @@ namespace WinSW.Gui.Model
                 if (string.IsNullOrWhiteSpace(variable.Name))
                 {
                     Add(nameof(this.EnvironmentVariables), Localizer.Get("M.Val.EnvName"));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(this.proxyAddress))
+            {
+                try
+                {
+                    // The wrapper's own parser, so the console refuses exactly what it refuses,
+                    // and says so before the file is written rather than at first start.
+                    _ = new ProxyConfig(this.proxyAddress, this.proxyNoProxy, this.proxyJava);
+                }
+                catch (InvalidDataException e)
+                {
+                    Add(nameof(this.ProxyAddress), Localizer.Format("M.Val.Proxy", e.Message));
                 }
             }
 

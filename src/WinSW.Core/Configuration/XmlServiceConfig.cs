@@ -622,7 +622,26 @@ namespace WinSW
                 Environment.SetEnvironmentVariable(key, value);
             }
 
+            // The proxy settings fill in only what <env> has not already spelled out, and unlike
+            // it they are not published to the wrapper's own process: they describe how the
+            // program being wrapped reaches the network, and the wrapper's own downloads carry
+            // a proxy attribute of their own.
+            this.LoadProxy()?.ApplyTo(environment);
+
             return environment;
+        }
+
+        private ProxyConfig? LoadProxy()
+        {
+            if (this.root.SelectSingleNode(Names.Proxy) is not XmlElement element)
+            {
+                return null;
+            }
+
+            return new ProxyConfig(
+                Environment.ExpandEnvironmentVariables(element.InnerText),
+                XmlHelper.SingleAttribute<string>(element, "noProxy", null),
+                XmlHelper.SingleAttribute(element, "java", false));
         }
 
         private ProcessCommand GetProcessCommand(string name)

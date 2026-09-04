@@ -558,4 +558,13 @@
     <sys:String x:Key="M.Exit.Save">Save and exit</sys:String>
     <sys:String x:Key="M.Exit.Discard">Exit without saving</sys:String>
 
+    <!-- The network proxy handed to the wrapped program. -->
+    <sys:String x:Key="M.Proxy.Title">NETWORK PROXY</sys:String>
+    <sys:String x:Key="M.Proxy.Hint">Handed to the program as HTTP_PROXY, HTTPS_PROXY and NO_PROXY. Leave it empty for a direct connection. An environment variable of the same name above wins.</sys:String>
+    <sys:String x:Key="M.Proxy.Address">Proxy address, scheme included, e.g. http://proxy.example.com:8080</sys:String>
+    <sys:String x:Key="M.Proxy.NoProxy">Hosts reached without the proxy, separated by commas</sys:String>
+    <sys:String x:Key="M.Proxy.Java">Hand it to the JVM as well</sys:String>
+    <sys:String x:Key="M.Proxy.JavaHint">Java ignores those variables, so this adds -Dhttp.proxyHost and its companions to JAVA_TOOL_OPTIONS. The JVM echoes that line to the error log at every start, credentials included.</sys:String>
+    <sys:String x:Key="M.Val.Proxy">Proxy: {0}</sys:String>
+
 </ResourceDictionary>

@@ -149,6 +149,68 @@ namespace WinSW.Gui.Tests
             Assert.Contains(@"mode=""roll-by-size""", model.ToXmlString(), StringComparison.Ordinal);
         }
 
+        [Fact]
+        public void ProxyRoundTripsThroughTheFile()
+        {
+            string path = this.Write(
+                @"<service><id>x</id><executable>x.exe</executable>" +
+                @"<proxy noProxy=""localhost,.corp"" java=""true"">http://proxy.example.com:8080</proxy></service>");
+
+            var model = ServiceConfigModel.Load(path);
+
+            Assert.Equal("http://proxy.example.com:8080", model.ProxyAddress);
+            Assert.Equal("localhost,.corp", model.ProxyNoProxy);
+            Assert.True(model.ProxyJava);
+
+            model.ProxyJava = false;
+            model.Save(path);
+
+            string text = File.ReadAllText(path);
+            Assert.Contains(@"noProxy=""localhost,.corp""", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("java=", text, StringComparison.Ordinal);
+            Assert.Contains("http://proxy.example.com:8080</proxy>", text, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The address is the element's only reason to exist, so clearing it removes the element
+        /// rather than leaving an empty one the wrapper would refuse to start from.
+        /// </summary>
+        [Fact]
+        public void ClearingTheProxyAddressRemovesTheElement()
+        {
+            string path = this.Write(
+                @"<service><id>x</id><executable>x.exe</executable>" +
+                @"<proxy>http://proxy.example.com:8080</proxy></service>");
+
+            var model = ServiceConfigModel.Load(path);
+            model.ProxyAddress = "   ";
+            model.Save(path);
+
+            Assert.DoesNotContain("<proxy", File.ReadAllText(path), StringComparison.Ordinal);
+        }
+
+        /// <summary>The console refuses what the wrapper refuses, and says so before the save.</summary>
+        [Fact]
+        public void AProxyAddressWithoutASchemeIsRejected()
+        {
+            var model = ServiceConfigModel.CreateNew();
+            model.Id = "x";
+            model.Executable = "x.exe";
+            model.ProxyAddress = "http://proxy.example.com:8080";
+            Assert.Empty(model.Validate());
+
+            model.ProxyAddress = "proxy.example.com:8080";
+            Assert.Single(model.Validate());
+            Assert.NotNull(model.FieldErrors[nameof(model.ProxyAddress)]);
+
+            // A SOCKS proxy is passed on as it is, but it has no JVM options to be turned into.
+            model.ProxyAddress = "socks5://proxy.example.com:1080";
+            Assert.Empty(model.Validate());
+
+            model.ProxyJava = true;
+            Assert.Single(model.Validate());
+        }
+
         /// <summary>The same for a failure action, whose attribute is mandatory.</summary>
         [Fact]
         public void FailureActionWithoutAnActionIsNeitherKeptNorWritten()

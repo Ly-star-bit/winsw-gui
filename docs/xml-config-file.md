@@ -219,6 +219,76 @@ This optional element can be specified multiple times if necessary to specify en
 <env name="HOME" value="c:\abc" />
 ```
 
+### proxy
+
+This optional element hands the wrapped program the proxy settings the common runtimes look for.
+It is a shorthand for writing those settings with `<env>`: the wrapper starts a child process, it
+cannot intercept that child's connections, so a program that reads neither the variables below nor
+the JVM options is unaffected by this element.
+
+```xml
+<proxy>http://proxy.example.com:8080</proxy>
+```
+
+The scheme has to be spelled out; `http`, `https` and the `socks` family are accepted, and the
+address is passed on as written, credentials included.
+
+```xml
+<proxy noProxy="localhost,127.0.0.1,.internal.example.com">http://user:pass@proxy.example.com:8080</proxy>
+```
+
+The element sets these variables for the service process and for the `prestart`, `poststart`,
+`prestop` and `poststop` hooks:
+
+| Variable | Value |
+| --- | --- |
+| `HTTP_PROXY` | the address |
+| `HTTPS_PROXY` | the address |
+| `NO_PROXY` | the `noProxy` list, if one is given |
+
+Node.js, Python, curl, Go, and .NET 5 and later read these. An `<env>` entry of the same name always
+wins, which is also how to serve a program that insists on the lowercase spelling: Windows resolves
+environment variables case-insensitively, but MSYS2 and Cygwin builds do not.
+
+```xml
+<proxy>http://proxy.example.com:8080</proxy>
+<env name="http_proxy" value="http://proxy.example.com:8080" />
+```
+
+The variables reach the child process only. They are not published to the wrapper's own process, and
+the wrapper's downloads are unaffected: `<download>` carries a `proxy` attribute of its own.
+
+#### `java`
+
+The JVM ignores `HTTP_PROXY`. With `java="true"` the same address is also expressed as JVM options,
+placed in front of `JAVA_TOOL_OPTIONS`.
+
+```xml
+<proxy java="true" noProxy="localhost,.internal.example.com">http://proxy.example.com:8080</proxy>
+```
+
+gives the child:
+
+```text
+JAVA_TOOL_OPTIONS=-Dhttp.proxyHost=proxy.example.com -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy.example.com -Dhttps.proxyPort=8080 -Dhttp.nonProxyHosts=localhost|*.internal.example.com
+```
+
+followed by whatever `JAVA_TOOL_OPTIONS` already held, from this configuration or from the machine.
+The JVM takes the last `-D` of a kind, so an existing setting still wins.
+
+Four things are worth knowing before turning it on:
+
+* The JVM prints `Picked up JAVA_TOOL_OPTIONS: ...` to stderr at every start, so **a password in the
+  address ends up in the error log**. Prefer a proxy that needs no credentials, or pass them another way.
+* `http.proxyUser` and `http.proxyPassword` are emitted when the address carries credentials. They are
+  the convention Gradle, Ant, Maven and many libraries read; the JDK's own `HttpURLConnection` wants an
+  `Authenticator` instead, and since 8u111 it refuses Basic authentication to an HTTPS tunnel unless
+  `jdk.http.auth.tunneling.disabledSchemes` is cleared.
+* `NO_PROXY` and `http.nonProxyHosts` do not share a syntax, so the list is translated: entries are
+  separated by `|`, and a leading dot becomes `*.`. The JVM's own default list is not added back.
+* Only `http` and `https` proxies have an equivalent here. `java="true"` on a `socks` address is
+  refused when the configuration is read; pass `-DsocksProxyHost` in `<arguments>` instead.
+
 ### hidewindow
 
 **Optional**

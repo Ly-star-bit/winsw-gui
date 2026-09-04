@@ -117,6 +117,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `interactive` | ? | 布尔 | `false` | 无效。它被解析后就没人读，而它当年依赖的机制已在 2018 年从 Windows 中移除。需要桌面的程序只能做成[桌面任务](desktop-tasks.zh-CN.md)，不能做成服务。 |
 | `beeponshutdown` | ? | 布尔 | `false` | 调试用，关机时蜂鸣。 |
 | `env` | * | 属性 | — | `<env name="KEY" value="VALUE" />`，两个属性都必填，值会做 `%VAR%` 展开。 |
+| `proxy` | ? | 文本 + 属性 | — | `<proxy noProxy="localhost,.corp" java="true">http://proxy.example.com:8080</proxy>`。给子进程设置 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`。JVM 不认这几个变量，所以 `java="true"` 会再把 `-Dhttp.proxyHost` 等选项放到 `JAVA_TOOL_OPTIONS` 最前面。协议头必须写。同名的 `env` 优先。 |
 | `download` | * | 属性 | — | 见第 8 节。 |
 | `sharedDirectoryMapping` | ? | 元素 | — | 启动前把 UNC 路径映射成盘符：`<map label="N:" uncpath="\\server\share" />`，可重复，两个属性都必填。 |
 | `autoRefresh` | ? | 布尔 | `true` | 服务每次启动/停止/重启时，自动把 XML 里的安装期设置重新应用一遍。 |
@@ -307,7 +308,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 | `user` | 用 `basic` 时必填 | — | **属性名是 `user`，不是 `username`。** 仓库里旧的 `complete.xml` 示例在这一点上是错的。 |
 | `password` | 用 `basic` 时必填 | — | |
 | `unsecureAuth` | 否 | `false` | 想在明文 HTTP 上用 `basic` 就必须打开，否则包装器直接拒绝。 |
-| `proxy` | 否 | — | `http://HOST:PORT/` 或 `http://USER:PASS@HOST:PORT/`。 |
+| `proxy` | 否 | — | `http://HOST:PORT/` 或 `http://USER:PASS@HOST:PORT/`。它只管这一次下载；被包装的程序走哪个代理由顶层的 `<proxy>` 元素决定。 |
 
 如果目标文件已存在，包装器会带上 `If-Modified-Since` 请求头，服务端返回 `304 Not Modified`
 时跳过下载。

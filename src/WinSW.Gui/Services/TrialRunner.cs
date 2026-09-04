@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using WinSW.Configuration;
 using WinSW.Gui.Model;
 
 namespace WinSW.Gui.Services
@@ -63,12 +64,35 @@ namespace WinSW.Gui.Services
                 CreateNoWindow = true,
             };
 
+            // Assembled on the side rather than straight into startInfo.Environment, which
+            // already carries this process's own variables: <proxy> has to lose to an <env>
+            // entry and win over whatever the machine happens to have set, and only a
+            // dictionary holding the configuration alone can tell those two apart.
+            var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var variable in model.EnvironmentVariables)
             {
                 if (!string.IsNullOrWhiteSpace(variable.Name))
                 {
-                    startInfo.Environment[variable.Name] = Expand(variable.Value) ?? string.Empty;
+                    environment[variable.Name] = Expand(variable.Value) ?? string.Empty;
                 }
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.ProxyAddress))
+            {
+                try
+                {
+                    new ProxyConfig(Expand(model.ProxyAddress), Expand(model.ProxyNoProxy), model.ProxyJava)
+                        .ApplyTo(environment);
+                }
+                catch (InvalidDataException e)
+                {
+                    throw new InvalidOperationException(e.Message, e);
+                }
+            }
+
+            foreach (var pair in environment)
+            {
+                startInfo.Environment[pair.Key] = pair.Value;
             }
 
             if (configPath != null)

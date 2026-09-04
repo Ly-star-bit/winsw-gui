@@ -455,6 +455,20 @@
                                     </ItemsControl>
                                     <Button HorizontalAlignment="Left" Margin="0,0,0,24" Padding="12,6" Content="{DynamicResource S.AddVariable}" Command="{Binding DataContext.AddEnvironmentVariableCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
 
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Proxy.Title}" />
+                                        <Button Style="{StaticResource HelpButton}" Margin="8,0,0,10" Padding="4,0" Command="{Binding DataContext.OpenHelpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="proxy" />
+                                    </StackPanel>
+                                    <TextBlock Margin="0,0,0,10" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Proxy.Hint}" />
+                                    <StackPanel Style="{StaticResource Field}">
+                                        <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Proxy.Address}" />
+                                        <TextBox Style="{StaticResource ValidatedTextBox}" Tag="{Binding FieldErrors[ProxyAddress]}" Text="{Binding ProxyAddress, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Margin="0,10,0,4" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Proxy.NoProxy}" />
+                                        <TextBox Text="{Binding ProxyNoProxy, UpdateSourceTrigger=PropertyChanged}" />
+                                        <CheckBox Margin="0,10,0,0" Content="{DynamicResource M.Proxy.Java}" IsChecked="{Binding ProxyJava}" />
+                                        <TextBlock Margin="0,4,0,0" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Proxy.JavaHint}" />
+                                    </StackPanel>
+
                                     <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource S.DownloadsBeforeStart}" />
                                     <ItemsControl ItemsSource="{Binding Downloads}">
                                         <ItemsControl.ItemTemplate>

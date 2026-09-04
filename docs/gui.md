@@ -181,7 +181,10 @@ translate the values (keep the keys and the `{n}` placeholders), and add the cod
 - The GUI does not reference `WinSW.Core`. `XmlServiceConfig`'s constructor sets process-wide
   environment variables (`BASE`, `SERVICE_ID`, every `<env>` entry), which would leak between
   the many configurations a GUI loads. `WinSW.Gui/Model/ServiceConfigModel.cs` mirrors the
-  parser's element names instead and must be kept in step with it.
+  parser's element names instead and must be kept in step with it. The one exception is
+  `WinSW.Core/Configuration/ProxyConfig.cs`, compiled into the GUI as a linked source file: a
+  `<proxy>` element has to expand into exactly the same variables on both sides, and that type
+  is deliberately free of side effects and of dependencies on the rest of the wrapper.
 - Log files are discovered by scanning the log directory for `<logname>*.log`, not by
   reproducing each appender's naming, because the naming differs by mode.
 - Every user-visible string is a keyed resource in `Localization/Strings.<code>.xaml`. XAML uses

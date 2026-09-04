@@ -558,4 +558,13 @@
     <sys:String x:Key="M.Exit.Save">保存して終了</sys:String>
     <sys:String x:Key="M.Exit.Discard">保存せずに終了</sys:String>
 
+    <!-- ラップされたプログラムに渡すネットワークプロキシ。 -->
+    <sys:String x:Key="M.Proxy.Title">ネットワークプロキシ</sys:String>
+    <sys:String x:Key="M.Proxy.Hint">HTTP_PROXY、HTTPS_PROXY、NO_PROXY としてプログラムに渡します。空欄なら直接接続します。上にある同名の環境変数が優先されます。</sys:String>
+    <sys:String x:Key="M.Proxy.Address">プロキシのアドレス。スキームが必要です。例: http://proxy.example.com:8080</sys:String>
+    <sys:String x:Key="M.Proxy.NoProxy">プロキシを通さないホスト。カンマ区切り</sys:String>
+    <sys:String x:Key="M.Proxy.Java">JVM にも渡す</sys:String>
+    <sys:String x:Key="M.Proxy.JavaHint">Java はこれらの変数を読まないため、-Dhttp.proxyHost などを JAVA_TOOL_OPTIONS に追加します。JVM は起動のたびにその内容をエラーログへ出力します。資格情報も含まれます。</sys:String>
+    <sys:String x:Key="M.Val.Proxy">プロキシ: {0}</sys:String>
+
 </ResourceDictionary>

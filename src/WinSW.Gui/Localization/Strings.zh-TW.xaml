@@ -558,4 +558,13 @@
     <sys:String x:Key="M.Exit.Save">儲存並結束</sys:String>
     <sys:String x:Key="M.Exit.Discard">不儲存直接結束</sys:String>
 
+    <!-- 傳給被包裝程式的網路代理。 -->
+    <sys:String x:Key="M.Proxy.Title">網路代理</sys:String>
+    <sys:String x:Key="M.Proxy.Hint">以 HTTP_PROXY、HTTPS_PROXY、NO_PROXY 傳給程式。留空表示直連。上面同名的環境變數優先。</sys:String>
+    <sys:String x:Key="M.Proxy.Address">代理位址，必須帶通訊協定，例如 http://proxy.example.com:8080</sys:String>
+    <sys:String x:Key="M.Proxy.NoProxy">不走代理的主機，以逗號分隔</sys:String>
+    <sys:String x:Key="M.Proxy.Java">同時傳給 JVM</sys:String>
+    <sys:String x:Key="M.Proxy.JavaHint">Java 不認那幾個變數，所以這裡會把 -Dhttp.proxyHost 等選項加進 JAVA_TOOL_OPTIONS。JVM 每次啟動都會把這行寫進錯誤記錄，密碼也在裡面。</sys:String>
+    <sys:String x:Key="M.Val.Proxy">代理：{0}</sys:String>
+
 </ResourceDictionary>

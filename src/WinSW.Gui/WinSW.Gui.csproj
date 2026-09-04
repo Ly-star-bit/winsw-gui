@@ -74,6 +74,16 @@
 
   <ItemGroup>
     <!--
+      The one piece of the wrapper the console shares as source rather than as a binary. A
+      <proxy> element has to expand into exactly the same variables on both sides, and the
+      console deliberately references no WinSW assembly it could ask instead: see the remarks
+      on ServiceConfigModel. The file is written to stand alone for this reason.
+    -->
+    <Compile Include="..\WinSW.Core\Configuration\ProxyConfig.cs" Link="Model\ProxyConfig.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
       The configuration cheat sheet is embedded so it is readable on machines with no
       network, and so it always matches the wrapper version shipped beside it.
     -->
