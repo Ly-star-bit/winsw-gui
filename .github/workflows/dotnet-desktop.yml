@@ -89,6 +89,14 @@ jobs:
           Write-Host "::error::$detail"
         }
         else {
-          $tail = ($lines | Select-Object -Last 60) -join '%0A'
-          Write-Host "::error::No test failed; the step failed before or after the run.%0A$tail"
+          # No test reported a failure, so the run died around one instead: a build error,
+          # an aborted host, an assertion in a Debug build. Those words, and a short tail;
+          # an annotation is capped at a few kilobytes and a long tail is cut off exactly
+          # where the reason would have been.
+          $suspects = $lines |
+            Where-Object { $_ -match '(?i)\berror\b|aborted|assert|crash|Fatal' } |
+            Select-Object -Last 12 |
+            ForEach-Object { $_.Trim() }
+          $tail = ($lines | Select-Object -Last 15) -join '%0A'
+          Write-Host "::error::No test reported a failure; the run ended around one.%0A%0A$($suspects -join '%0A')%0A%0A-- tail --%0A$tail"
         }
