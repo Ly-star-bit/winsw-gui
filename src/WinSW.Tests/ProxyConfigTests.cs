@@ -43,9 +43,8 @@ namespace WinSW.Tests
         [Fact]
         public void AnEnvironmentEntryOutranksTheElement()
         {
-            var environment = Load(
-                $"<proxy>{Address}</proxy>" +
-                @"<env name=""HTTP_PROXY"" value=""http://explicit.test.invalid:3128"" />");
+            var environment = Configured("HTTP_PROXY", "http://explicit.test.invalid:3128");
+            new ProxyConfig(Address).ApplyTo(environment);
 
             Assert.Equal("http://explicit.test.invalid:3128", environment["HTTP_PROXY"]);
             Assert.Equal(Address, environment["HTTPS_PROXY"]);
@@ -58,9 +57,8 @@ namespace WinSW.Tests
         [Fact]
         public void TheCaseOfAnEnvironmentEntryDoesNotMatter()
         {
-            var environment = Load(
-                $"<proxy>{Address}</proxy>" +
-                @"<env name=""http_proxy"" value=""http://explicit.test.invalid:3128"" />");
+            var environment = Configured("http_proxy", "http://explicit.test.invalid:3128");
+            new ProxyConfig(Address).ApplyTo(environment);
 
             Assert.Equal("http://explicit.test.invalid:3128", environment["http_proxy"]);
             Assert.False(environment.ContainsKey("HTTP_PROXY"));
@@ -113,9 +111,8 @@ namespace WinSW.Tests
         [Fact]
         public void ExistingJavaToolOptionsSurviveInFront()
         {
-            var environment = Load(
-                $@"<proxy java=""true"">{Address}</proxy>" +
-                @"<env name=""JAVA_TOOL_OPTIONS"" value=""-Dfile.encoding=UTF-8"" />");
+            var environment = Configured("JAVA_TOOL_OPTIONS", "-Dfile.encoding=UTF-8");
+            new ProxyConfig(Address, null, true).ApplyTo(environment);
 
             Assert.EndsWith(" -Dfile.encoding=UTF-8", environment["JAVA_TOOL_OPTIONS"], StringComparison.Ordinal);
             Assert.StartsWith("-Dhttp.proxyHost=", environment["JAVA_TOOL_OPTIONS"], StringComparison.Ordinal);
@@ -142,6 +139,19 @@ namespace WinSW.Tests
         public void NothingIsAddedWithoutTheElement() =>
             Assert.Empty(Load(string.Empty));
 
+        /// <summary>
+        /// What the wrapper hands to <see cref="ProxyConfig.ApplyTo"/>: the configuration's own
+        /// &lt;env&gt; entries and nothing else, in a dictionary with the ordinal comparer that
+        /// <see cref="XmlServiceConfig"/> gives it.
+        /// </summary>
+        private static Dictionary<string, string> Configured(string name, string value) =>
+            new() { [name] = value };
+
+        /// <summary>
+        /// Deliberately never given an &lt;env&gt; entry: loading one publishes it to this
+        /// process, and an HTTP_PROXY here would send the download tests through a proxy that
+        /// does not exist. Anything about &lt;env&gt; is tested against <see cref="Configured"/>.
+        /// </summary>
         private static Dictionary<string, string> Load(string elements)
         {
             var config = XmlServiceConfig.FromXml(
