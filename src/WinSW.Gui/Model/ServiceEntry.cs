@@ -4,7 +4,6 @@ using System.IO;
 using System.ServiceProcess;
 using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
-using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.Model
 {

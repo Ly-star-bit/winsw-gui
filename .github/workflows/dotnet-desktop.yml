@@ -11,6 +11,9 @@ jobs:
   build:
 
     strategy:
+      # Both configurations report. Cancelling one because the other failed hides
+      # whether a failure belongs to the configuration or to the test.
+      fail-fast: false
       matrix:
         configuration: [Debug, Release]
 
@@ -45,4 +48,35 @@ jobs:
     # Execute all unit tests in the solution
     - name: Execute unit tests
       working-directory: ./src
-      run: dotnet test
+      shell: pwsh
+      run: |
+        dotnet test -c ${{ matrix.configuration }} --logger "console;verbosity=normal" 2>&1 | Tee-Object -FilePath ../test.log
+        exit $LASTEXITCODE
+
+    # Without this the job says only "exit code 1". A compiler error becomes an
+    # annotation on its own; a failing test does not, and the log that holds the reason
+    # is readable to repository administrators and to nobody else.
+    - name: Report failing tests
+      if: failure()
+      working-directory: ./src
+      shell: pwsh
+      run: |
+        if (-not (Test-Path ../test.log)) { exit 0 }
+        $lines = Get-Content ../test.log
+
+        foreach ($line in $lines | Where-Object { $_ -match '^\s*Failed\s+\S' }) {
+          Write-Host "::error::$($line.Trim())"
+        }
+
+        # The name alone rarely says why. Everything from the first failure onward,
+        # capped, goes out as one annotation with the newlines escaped.
+        $first = $lines | Select-String -Pattern '^\s*Failed\s+\S' | Select-Object -First 1
+        if ($first) {
+          $last = [Math]::Min($lines.Count - 1, $first.LineNumber + 120)
+          $detail = ($lines[($first.LineNumber - 1)..$last] -join '%0A')
+          Write-Host "::error::$detail"
+        }
+        else {
+          $tail = ($lines | Select-Object -Last 60) -join '%0A'
+          Write-Host "::error::No test failed; the step failed before or after the run.%0A$tail"
+        }
