@@ -258,6 +258,12 @@ environment variables case-insensitively, but MSYS2 and Cygwin builds do not.
 The variables reach the child process only. They are not published to the wrapper's own process, and
 the wrapper's downloads are unaffected: `<download>` carries a `proxy` attribute of its own.
 
+The [console](gui.md)'s Environment tab has a Test button beside these fields, which asks the proxy
+for a URL of your choosing and reports whether the address is reachable at all and whether a request
+through it comes back. It runs as the signed-in user, so it answers whether the proxy works, not
+whether the service account may reach it, and it ignores `noProxy`: the request goes through the
+proxy whatever the target, which is the question the button exists to answer.
+
 #### `java`
 
 The JVM ignores `HTTP_PROXY`. With `java="true"` the same address is also expressed as JVM options,

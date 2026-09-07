@@ -567,4 +567,16 @@
     <sys:String x:Key="M.Proxy.JavaHint">Java はこれらの変数を読まないため、-Dhttp.proxyHost などを JAVA_TOOL_OPTIONS に追加します。JVM は起動のたびにその内容をエラーログへ出力します。資格情報も含まれます。</sys:String>
     <sys:String x:Key="M.Val.Proxy">プロキシ: {0}</sys:String>
 
+    <!-- プロキシ欄の横にある自己診断。 -->
+    <sys:String x:Key="M.Proxy.Test">テスト</sys:String>
+    <sys:String x:Key="M.Proxy.TestTarget">プロキシ経由で取得する URL</sys:String>
+    <sys:String x:Key="M.Proxy.Testing">問い合わせ中…</sys:String>
+    <sys:String x:Key="M.Proxy.TestOk">成功: プロキシ経由で {0} に到達しました。HTTP {1}、{2} ms。</sys:String>
+    <sys:String x:Key="M.Proxy.TestNoAddress">先にプロキシのアドレスを入力してください。</sys:String>
+    <sys:String x:Key="M.Proxy.TestBadAddress">このアドレスは使えません: {0}</sys:String>
+    <sys:String x:Key="M.Proxy.TestBadTarget">'{0}' は http または https の URL ではありません。</sys:String>
+    <sys:String x:Key="M.Proxy.TestUnreachable">{0} から応答がありません: {1}。プロキシが起動していないか、自分のマシンだけで待ち受けている可能性があります。</sys:String>
+    <sys:String x:Key="M.Proxy.TestRefused">{0} は応答しましたが、{1} まで要求を運べませんでした: {2}</sys:String>
+    <sys:String x:Key="M.Proxy.TestHint">現在サインインしているアカウントでテストします。サービスは通常別のアカウントで動き、ネットワークが異なることがあります。直接接続リストはこのテストには適用されず、要求は必ずプロキシを通ります。</sys:String>
+
 </ResourceDictionary>

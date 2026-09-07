@@ -40,6 +40,9 @@ namespace WinSW.Gui.ViewModels
         private readonly TrialRunner trial = new();
         private bool isTrialRunning;
         private string trialStatus = string.Empty;
+        private string proxyTestTarget = ProxyProbe.DefaultTarget;
+        private string proxyTestStatus = string.Empty;
+        private bool proxyTestFailed;
 
         public ConfigEditorViewModel()
         {
@@ -138,6 +141,7 @@ namespace WinSW.Gui.ViewModels
             this.CancelXmlEditCommand = new RelayCommand(() => this.IsXmlEditing = false);
 
             this.StartTrialCommand = new RelayCommand(this.StartTrial, () => !this.isTrialRunning);
+            this.TestProxyCommand = new AsyncRelayCommand(this.TestProxyAsync);
             this.StopTrialCommand = new RelayCommand(() => this.trial.Stop(), () => this.isTrialRunning);
             this.ClearTrialCommand = new RelayCommand(() => this.TrialOutput.Clear());
 
@@ -265,6 +269,8 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand ClearTrialCommand { get; }
 
+        public AsyncRelayCommand TestProxyCommand { get; }
+
         /// <summary>Machine-specific findings from <see cref="ServiceConfigModel.ValidateEnvironment"/>; never block saving.</summary>
         public ObservableCollection<string> Warnings { get; } = new();
 
@@ -306,6 +312,31 @@ namespace WinSW.Gui.ViewModels
         {
             get => this.trialStatus;
             private set => this.Set(ref this.trialStatus, value);
+        }
+
+        // Proxy check ------------------------------------------------------------
+
+        /// <summary>
+        /// What the probe asks for through the proxy. Not part of the configuration: it is a
+        /// question about the network, and the answer differs by what you are trying to reach.
+        /// </summary>
+        public string ProxyTestTarget
+        {
+            get => this.proxyTestTarget;
+            set => this.Set(ref this.proxyTestTarget, value);
+        }
+
+        public string ProxyTestStatus
+        {
+            get => this.proxyTestStatus;
+            private set => this.Set(ref this.proxyTestStatus, value);
+        }
+
+        /// <summary>Colours the result; a probe that got nowhere should not read as good news.</summary>
+        public bool ProxyTestFailed
+        {
+            get => this.proxyTestFailed;
+            private set => this.Set(ref this.proxyTestFailed, value);
         }
 
         public string[] StartModes => ServiceConfigModel.StartModes;
@@ -797,6 +828,52 @@ namespace WinSW.Gui.ViewModels
             catch (InvalidDataException e)
             {
                 this.StatusMessage = Localizer.Format("M.Editor.XmlInvalid", e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Asks the configured proxy for the target, and says which of the two ways it can go
+        /// wrong actually happened: a proxy nothing answers at, or one that answers and cannot
+        /// deliver. The probe runs as this user, which the hint beside the button spells out —
+        /// a service usually runs as another.
+        /// </summary>
+        private async Task TestProxyAsync()
+        {
+            string? address = this.Model.ProxyAddress;
+            if (!string.IsNullOrWhiteSpace(address))
+            {
+                // %BASE% and the rest reach the wrapper expanded, so they reach the probe
+                // expanded too, or a templated address would fail here and nowhere else.
+                address = this.filePath != null
+                    ? ConfigPaths.Expand(address!, this.filePath)
+                    : Environment.ExpandEnvironmentVariables(address!);
+            }
+
+            this.ProxyTestFailed = false;
+            this.ProxyTestStatus = Localizer.Get("M.Proxy.Testing");
+
+            // A button whose only job is to report what went wrong is the one place a blanket
+            // catch belongs: there is nothing it could throw that the user would rather have
+            // as a crash than as a line of text.
+            try
+            {
+                var result = await ProxyProbe.RunAsync(address, this.proxyTestTarget);
+
+                this.ProxyTestFailed = result.Outcome != ProxyProbeOutcome.Ok;
+                this.ProxyTestStatus = result.Outcome switch
+                {
+                    ProxyProbeOutcome.Ok => Localizer.Format("M.Proxy.TestOk", result.Target, result.Status, result.Elapsed),
+                    ProxyProbeOutcome.NoAddress => Localizer.Get("M.Proxy.TestNoAddress"),
+                    ProxyProbeOutcome.BadAddress => Localizer.Format("M.Proxy.TestBadAddress", result.Detail),
+                    ProxyProbeOutcome.BadTarget => Localizer.Format("M.Proxy.TestBadTarget", result.Target),
+                    ProxyProbeOutcome.ProxyUnreachable => Localizer.Format("M.Proxy.TestUnreachable", result.Endpoint, result.Detail),
+                    _ => Localizer.Format("M.Proxy.TestRefused", result.Endpoint, result.Target, result.Detail),
+                };
+            }
+            catch (Exception e)
+            {
+                this.ProxyTestFailed = true;
+                this.ProxyTestStatus = e.Message;
             }
         }
 

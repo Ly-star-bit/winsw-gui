@@ -567,4 +567,16 @@
     <sys:String x:Key="M.Proxy.JavaHint">Java 不認那幾個變數，所以這裡會把 -Dhttp.proxyHost 等選項加進 JAVA_TOOL_OPTIONS。JVM 每次啟動都會把這行寫進錯誤記錄，密碼也在裡面。</sys:String>
     <sys:String x:Key="M.Val.Proxy">代理：{0}</sys:String>
 
+    <!-- 代理欄位旁邊的自我檢查。 -->
+    <sys:String x:Key="M.Proxy.Test">測試</sys:String>
+    <sys:String x:Key="M.Proxy.TestTarget">透過代理請求的 URL</sys:String>
+    <sys:String x:Key="M.Proxy.Testing">正在請求…</sys:String>
+    <sys:String x:Key="M.Proxy.TestOk">通了：經代理取得 {0}，HTTP {1}，耗時 {2} ms。</sys:String>
+    <sys:String x:Key="M.Proxy.TestNoAddress">請先填代理位址。</sys:String>
+    <sys:String x:Key="M.Proxy.TestBadAddress">這個位址不能用：{0}</sys:String>
+    <sys:String x:Key="M.Proxy.TestBadTarget">'{0}' 不是 http 或 https 位址。</sys:String>
+    <sys:String x:Key="M.Proxy.TestUnreachable">{0} 沒有回應：{1}。代理可能沒在執行，或只監聽它自己那台機器。</sys:String>
+    <sys:String x:Key="M.Proxy.TestRefused">{0} 有回應，但沒能把請求送到 {1}：{2}</sys:String>
+    <sys:String x:Key="M.Proxy.TestHint">以你目前登入的帳戶測試。服務通常跑在另一個帳戶下，那邊的網路可能不同。直連名單不參與測試：無論目標是什麼，請求都走代理。</sys:String>
+
 </ResourceDictionary>

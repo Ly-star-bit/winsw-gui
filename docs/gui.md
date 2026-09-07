@@ -39,6 +39,11 @@ Across the pages:
   where a try run and a service run differ (account, environment, mapped drives, desktop),
   which is where most first starts fail; **Install as a service** on the same page is the
   step after it.
+- **Proxy check**: the Environment tab probes the configured `<proxy>` against a URL you name,
+  in two steps — whether anything answers at the proxy's host and port, and whether a request
+  through it comes back — because a proxy that is not running and a proxy that will not carry
+  the request want different fixes. It runs as the signed-in user, which the hint beside it
+  says: a service usually runs as another account, whose network can differ.
 - **Full configuration coverage**: lifecycle hooks (`prestart` … `poststop`), network drive
   mappings, and the `<extensions>` element as raw XML. The preview pane can also be switched
   to a raw XML editor and applied back to the form.

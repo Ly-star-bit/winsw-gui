@@ -567,4 +567,16 @@
     <sys:String x:Key="M.Proxy.JavaHint">Java ignores those variables, so this adds -Dhttp.proxyHost and its companions to JAVA_TOOL_OPTIONS. The JVM echoes that line to the error log at every start, credentials included.</sys:String>
     <sys:String x:Key="M.Val.Proxy">Proxy: {0}</sys:String>
 
+    <!-- The proxy self-check beside those fields. -->
+    <sys:String x:Key="M.Proxy.Test">Test</sys:String>
+    <sys:String x:Key="M.Proxy.TestTarget">URL to fetch through the proxy</sys:String>
+    <sys:String x:Key="M.Proxy.Testing">Asking…</sys:String>
+    <sys:String x:Key="M.Proxy.TestOk">Reached {0} through the proxy: HTTP {1}, {2} ms.</sys:String>
+    <sys:String x:Key="M.Proxy.TestNoAddress">Fill in the proxy address first.</sys:String>
+    <sys:String x:Key="M.Proxy.TestBadAddress">The address cannot be used: {0}</sys:String>
+    <sys:String x:Key="M.Proxy.TestBadTarget">'{0}' is not an http or https URL.</sys:String>
+    <sys:String x:Key="M.Proxy.TestUnreachable">Nothing answered at {0}: {1}. The proxy may not be running, or may be listening only on its own machine.</sys:String>
+    <sys:String x:Key="M.Proxy.TestRefused">{0} answered, but did not carry the request to {1}: {2}</sys:String>
+    <sys:String x:Key="M.Proxy.TestHint">Tested as the account you are signed in with. A service usually runs as another one, whose network can differ. The direct list is not applied: the request goes through the proxy whatever the target.</sys:String>
+
 </ResourceDictionary>
