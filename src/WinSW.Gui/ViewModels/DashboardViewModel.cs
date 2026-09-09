@@ -37,6 +37,7 @@ namespace WinSW.Gui.ViewModels
         private string statusMessage = string.Empty;
         private bool isBusy;
         private bool isScanning;
+        private bool polling;
         private ProcessNode? processTree;
         private bool confirmVisible;
         private string confirmTitle = string.Empty;
@@ -56,9 +57,9 @@ namespace WinSW.Gui.ViewModels
             this.ServicesView.Filter = this.MatchesSearch;
             if (this.ServicesView is ICollectionViewLiveShaping live)
             {
-                // Rows move as their state changes when sorting by status, without a manual refresh.
+                // Rows move as their state changes when sorting by status, without a manual
+                // refresh. Whether it is switched on is ApplySort's decision, not this one.
                 live.LiveSortingProperties.Add(nameof(ServiceEntry.SortRank));
-                live.IsLiveSorting = true;
             }
 
             this.ApplySort();
@@ -111,7 +112,17 @@ namespace WinSW.Gui.ViewModels
             this.UpgradeWrapperCommand = new AsyncRelayCommand(this.UpgradeWrapperAsync, () => this.WrapperUpdateAvailable);
 
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
-            this.statusTimer.Tick += (_, _) => this.RefreshStatuses();
+            this.statusTimer.Tick += async (_, _) =>
+            {
+                // A reading that outlasts the interval must not have another started on top of
+                // it. The explicit refreshes elsewhere are deliberately not gated: they are
+                // what makes the panel answer at once after an operation, and overlapping is
+                // harmless because every write happens on this thread.
+                if (!this.polling)
+                {
+                    await this.RefreshStatusesAsync().ConfigureAwait(true);
+                }
+            };
 
             // Services installed by other tools, or by a second copy of this GUI, appear
             // without the user having to remember the rescan button.
@@ -289,7 +300,7 @@ namespace WinSW.Gui.ViewModels
                 {
                     this.ProcessTree = null;
                     this.RefreshCommandStates();
-                    this.RefreshStatuses();
+                    _ = this.RefreshStatusesAsync();
                     this.RaiseWrapperUpdate();
                 }
             }
@@ -474,7 +485,7 @@ namespace WinSW.Gui.ViewModels
                     added++;
                 }
 
-                this.RefreshStatuses();
+                await this.RefreshStatusesAsync().ConfigureAwait(true);
 
                 if (selected != null && this.SelectedService is null && byName.ContainsKey(selected))
                 {
@@ -582,7 +593,7 @@ namespace WinSW.Gui.ViewModels
                         this.RaiseWrapperUpdate();
                     }
 
-                    this.RefreshStatuses();
+                    await this.RefreshStatusesAsync().ConfigureAwait(true);
                 }
 
                 // The two outcomes that deserve a follow-up question rather than a message.
@@ -630,12 +641,91 @@ namespace WinSW.Gui.ViewModels
             return WinSwCli.DefaultTimeout;
         }
 
-        private void RefreshStatuses()
+        /// <summary>
+        /// Re-reads every service's state and the selected one's process tree.
+        /// </summary>
+        /// <remarks>
+        /// The reading happens on a worker; only the writing happens here. It used to be all
+        /// one pass on the UI thread, and on a machine with a dozen wrapped services that was
+        /// some fifty round trips to the service control manager, a process opened and asked
+        /// for its counters per running service, and a snapshot of every process on the
+        /// machine for the tree — every two seconds, on the thread that is also drawing.
+        /// <para>
+        /// What comes back is plain values. Applying them, raising the counts and touching the
+        /// tree all stay here, which is what keeps ServiceEntry's bindings and the tray
+        /// notification on the thread they require.
+        /// </para>
+        /// </remarks>
+        private async Task RefreshStatusesAsync()
         {
-            foreach (var entry in this.Services)
-            {
-                ServiceDiscovery.RefreshStatus(entry);
+            // Read on the UI thread: Services can be rebuilt by a rescan while this awaits,
+            // and the tree is wanted for whatever was selected when the reading started.
+            var entries = this.Services.ToArray();
+            var selectedAtStart = this.selectedService;
+            int selectedIndex = selectedAtStart is null ? -1 : Array.IndexOf(entries, selectedAtStart);
 
+            this.polling = true;
+            ServiceSample[] samples;
+            ProcessNode? tree;
+            try
+            {
+                (samples, tree) = await Task.Run(() =>
+                {
+                    var read = new ServiceSample[entries.Length];
+                    for (int i = 0; i < read.Length; i++)
+                    {
+                        read[i] = ServiceDiscovery.Sample(entries[i].ServiceName);
+                    }
+
+                    // Built from the reading just taken rather than from the entry, so a
+                    // service that started this tick shows its tree this tick.
+                    var node = selectedIndex >= 0 && read[selectedIndex].ProcessId > 0
+                        ? ProcessTreeProvider.Build(read[selectedIndex].ProcessId)
+                        : null;
+
+                    return (read, node);
+                }).ConfigureAwait(true);
+            }
+            finally
+            {
+                this.polling = false;
+            }
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                ServiceDiscovery.Apply(entries[i], samples[i]);
+            }
+
+            this.AnnounceUnexpectedStops(entries);
+
+            this.RaiseCounts();
+            this.RefreshCommandStates();
+
+            // The selection may have moved while the reading was in flight, in which case this
+            // tree belongs to a service the panel is no longer showing.
+            if (!ReferenceEquals(this.selectedService, selectedAtStart))
+            {
+                return;
+            }
+
+            if (tree is null)
+            {
+                this.ProcessTree = null;
+            }
+            else if (!ProcessTreeProvider.SameShape(tree, this.processTree))
+            {
+                this.ProcessTree = tree;
+            }
+        }
+
+        /// <summary>
+        /// Raises <see cref="UnexpectedStop"/> for anything that stopped without being asked.
+        /// Runs on the UI thread, which the tray icon that listens to it requires.
+        /// </summary>
+        private void AnnounceUnexpectedStops(IReadOnlyList<ServiceEntry> entries)
+        {
+            foreach (var entry in entries)
+            {
                 var health = entry.Health;
                 if (this.lastHealth.TryGetValue(entry.ServiceName, out var previous)
                     && previous == ServiceHealth.Running
@@ -659,22 +749,6 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 this.lastHealth[entry.ServiceName] = health;
-            }
-
-            this.RaiseCounts();
-            this.RefreshCommandStates();
-
-            var selected = this.selectedService;
-            if (selected is null || selected.ProcessId <= 0)
-            {
-                this.ProcessTree = null;
-                return;
-            }
-
-            var fresh = ProcessTreeProvider.Build(selected.ProcessId);
-            if (!ProcessTreeProvider.SameShape(fresh, this.processTree))
-            {
-                this.ProcessTree = fresh;
             }
         }
 
@@ -708,7 +782,7 @@ namespace WinSW.Gui.ViewModels
                 this.StatusMessage = result.Cancelled
                     ? Localizer.Get("M.Common.ElevationDeclined")
                     : Localizer.Format("M.Dash.RanMany", command, targets.Count);
-                this.RefreshStatuses();
+                await this.RefreshStatusesAsync().ConfigureAwait(true);
             }
             finally
             {
@@ -896,6 +970,15 @@ namespace WinSW.Gui.ViewModels
 
         private void ApplySort()
         {
+            // Only worth having while status is part of the ordering. Left on regardless, the
+            // view watches SortRank on every row and re-evaluates the placement of each one
+            // whose status changes — which, with a two-second poll over every service on the
+            // machine, is work done to arrive back where it started.
+            if (this.ServicesView is ICollectionViewLiveShaping live)
+            {
+                live.IsLiveSorting = this.sortByStatus;
+            }
+
             using (this.ServicesView.DeferRefresh())
             {
                 this.ServicesView.SortDescriptions.Clear();

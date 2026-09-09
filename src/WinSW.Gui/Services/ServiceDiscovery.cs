@@ -11,6 +11,39 @@ using WinSW.Gui.Localization;
 namespace WinSW.Gui.Services
 {
     /// <summary>
+    /// One point-in-time reading of a service and the process hosting it.
+    /// </summary>
+    /// <remarks>
+    /// Plain values, and deliberately not a <see cref="ServiceEntry"/>: this is what crosses
+    /// back from the sampling thread, and an entry carries bindings that may only be touched
+    /// on the UI thread. <see cref="ServiceDiscovery.Apply"/> is where the two meet.
+    /// </remarks>
+    public readonly struct ServiceSample
+    {
+        /// <summary>False when the service could not be queried at all — usually uninstalled.</summary>
+        public bool Queried { get; init; }
+
+        public ServiceControllerStatus Status { get; init; }
+
+        /// <summary>The hosting process, or 0 when the service is not running.</summary>
+        public int ProcessId { get; init; }
+
+        public int LastExitCode { get; init; }
+
+        /// <summary>False when the process could not be opened, so the metrics below are unset.</summary>
+        public bool HasProcess { get; init; }
+
+        public TimeSpan ProcessorTime { get; init; }
+
+        public long WorkingSet { get; init; }
+
+        public int Handles { get; init; }
+
+        /// <summary>Null when the right to ask a LocalSystem process this is not held.</summary>
+        public DateTime? StartedAt { get; init; }
+    }
+
+    /// <summary>
     /// Finds the installed services that are hosted by a WinSW wrapper.
     /// </summary>
     /// <remarks>
@@ -98,35 +131,42 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// Refreshes the volatile parts of an entry: state, hosting process, exit code and
-        /// the process metrics shown in the detail panel.
+        /// Reads the volatile state of one service and its hosting process.
         /// </summary>
-        public static void RefreshStatus(ServiceEntry entry)
+        /// <remarks>
+        /// Split from <see cref="Apply"/> so the reading can be done off the UI thread. Every
+        /// call here is a round trip: four to the service control manager, and for a running
+        /// service several more to open its process and ask for its counters. Multiplied by
+        /// the services on the machine and repeated every two seconds, that is not something
+        /// to do on the thread that is also drawing.
+        /// </remarks>
+        public static ServiceSample Sample(string serviceName)
         {
-            if (!NativeMethods.TryQueryServiceStatus(entry.ServiceName, out var status))
+            if (!NativeMethods.TryQueryServiceStatus(serviceName, out var status))
             {
-                // The service was uninstalled between the scan and this refresh.
-                entry.Status = null;
-                entry.ProcessId = 0;
-                entry.ClearSample();
-                return;
+                // The service was uninstalled between the scan and this reading.
+                return default;
             }
 
-            entry.Status = (ServiceControllerStatus)status.CurrentState;
-            entry.ProcessId = entry.Status == ServiceControllerStatus.Running ? status.ProcessId : 0;
-            entry.LastExitCode = status.Win32ExitCode == NativeMethods.ERROR_SERVICE_SPECIFIC_ERROR
-                ? status.ServiceSpecificExitCode
-                : status.Win32ExitCode;
-
-            if (entry.ProcessId <= 0)
+            var state = (ServiceControllerStatus)status.CurrentState;
+            var sample = new ServiceSample
             {
-                entry.ClearSample();
-                return;
+                Queried = true,
+                Status = state,
+                ProcessId = state == ServiceControllerStatus.Running ? status.ProcessId : 0,
+                LastExitCode = status.Win32ExitCode == NativeMethods.ERROR_SERVICE_SPECIFIC_ERROR
+                    ? status.ServiceSpecificExitCode
+                    : status.Win32ExitCode,
+            };
+
+            if (sample.ProcessId <= 0)
+            {
+                return sample;
             }
 
             try
             {
-                using var process = Process.GetProcessById(entry.ProcessId);
+                using var process = Process.GetProcessById(sample.ProcessId);
                 DateTime? started;
                 try
                 {
@@ -138,12 +178,49 @@ namespace WinSW.Gui.Services
                     started = null;
                 }
 
-                entry.Sample(process.TotalProcessorTime, process.WorkingSet64, process.HandleCount, started);
+                return sample with
+                {
+                    HasProcess = true,
+                    ProcessorTime = process.TotalProcessorTime,
+                    WorkingSet = process.WorkingSet64,
+                    Handles = process.HandleCount,
+                    StartedAt = started,
+                };
             }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
             {
-                entry.ClearSample();
+                // The process went away between being named and being opened, or it belongs to
+                // an account this one cannot look into.
+                return sample;
             }
+        }
+
+        /// <summary>
+        /// Writes a reading onto its entry. Must run on the UI thread: every property here
+        /// raises PropertyChanged, and <see cref="ServiceEntry.Sample"/> keeps the running CPU
+        /// history that the sparkline is bound to.
+        /// </summary>
+        public static void Apply(ServiceEntry entry, in ServiceSample sample)
+        {
+            if (!sample.Queried)
+            {
+                entry.Status = null;
+                entry.ProcessId = 0;
+                entry.ClearSample();
+                return;
+            }
+
+            entry.Status = sample.Status;
+            entry.ProcessId = sample.ProcessId;
+            entry.LastExitCode = sample.LastExitCode;
+
+            if (!sample.HasProcess)
+            {
+                entry.ClearSample();
+                return;
+            }
+
+            entry.Sample(sample.ProcessorTime, sample.WorkingSet, sample.Handles, sample.StartedAt);
         }
 
         /// <summary>

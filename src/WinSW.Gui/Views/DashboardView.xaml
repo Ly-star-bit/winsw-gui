@@ -223,6 +223,7 @@
                     ItemContainerStyle="{StaticResource ServiceItem}"
                     ItemTemplate="{StaticResource ServiceRow}"
                     ItemsSource="{Binding ServicesView}"
+                    VirtualizingPanel.VirtualizationMode="Recycling"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     SelectedItem="{Binding SelectedService}"
                     MouseDoubleClick="OnServiceDoubleClick"

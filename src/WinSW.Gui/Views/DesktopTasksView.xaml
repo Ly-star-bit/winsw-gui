@@ -161,6 +161,7 @@
                     ItemContainerStyle="{StaticResource ServiceItem}"
                     ItemTemplate="{StaticResource TaskRow}"
                     ItemsSource="{Binding TasksView}"
+                    VirtualizingPanel.VirtualizationMode="Recycling"
                     MouseDoubleClick="OnTaskDoubleClick"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     SelectedItem="{Binding SelectedTask}" />
