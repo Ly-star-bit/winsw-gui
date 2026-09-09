@@ -432,14 +432,28 @@ namespace WinSW.Gui.ViewModels
 
                 // Merge rather than clear-and-refill so the selection, scroll position and
                 // per-row health history survive a background rescan.
+                //
+                // An entry whose executable or configuration file has changed is dropped here
+                // rather than merged: the name is the same, but what is installed under it is
+                // not, and the history recorded against the row describes the old one. It
+                // comes back in the pass below as a new row, which is why the selection is
+                // noted first and put back afterwards.
+                string? selected = this.SelectedService?.ServiceName;
+
                 for (int i = this.Services.Count - 1; i >= 0; i--)
                 {
-                    if (!byName.ContainsKey(this.Services[i].ServiceName))
+                    var row = this.Services[i];
+                    if (byName.TryGetValue(row.ServiceName, out var fresh) && row.IsSameInstallationAs(fresh))
                     {
-                        this.lastHealth.Remove(this.Services[i].ServiceName);
-                        this.Services.RemoveAt(i);
-                        removed++;
+                        // Everything the registry sweep can see and the status poll cannot:
+                        // start mode, account, description, dependencies, wrapper version.
+                        row.MergeMetadataFrom(fresh);
+                        continue;
                     }
+
+                    this.lastHealth.Remove(row.ServiceName);
+                    this.Services.RemoveAt(i);
+                    removed++;
                 }
 
                 var existing = new HashSet<string>(this.Services.Select(s => s.ServiceName), StringComparer.OrdinalIgnoreCase);
@@ -461,6 +475,11 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 this.RefreshStatuses();
+
+                if (selected != null && this.SelectedService is null && byName.ContainsKey(selected))
+                {
+                    this.SelectByName(selected);
+                }
 
                 if (this.pendingServiceName is { } wanted)
                 {

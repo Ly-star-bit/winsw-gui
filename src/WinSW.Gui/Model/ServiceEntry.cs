@@ -24,6 +24,11 @@ namespace WinSW.Gui.Model
         private const int HistoryLength = 40;
 
         private string wrapperVersion = string.Empty;
+        private string description = string.Empty;
+        private string startMode = string.Empty;
+        private string account = string.Empty;
+        private IReadOnlyList<string> dependsOn = Array.Empty<string>();
+        private IReadOnlyList<string> dependedBy = Array.Empty<string>();
         private ServiceControllerStatus? status;
         private int processId;
         private string? problem;
@@ -58,11 +63,26 @@ namespace WinSW.Gui.Model
         /// </summary>
         public string? ConfigPath { get; }
 
-        public string Description { get; init; } = string.Empty;
+        // Settable rather than init-only: a background rescan finds an entry that already
+        // exists and has to be able to bring these forward. Another tool — services.msc, sc
+        // config, a reinstall — can change any of them under a running console.
+        public string Description
+        {
+            get => this.description;
+            set => this.Set(ref this.description, value);
+        }
 
-        public string StartMode { get; init; } = string.Empty;
+        public string StartMode
+        {
+            get => this.startMode;
+            set => this.Set(ref this.startMode, value);
+        }
 
-        public string Account { get; init; } = string.Empty;
+        public string Account
+        {
+            get => this.account;
+            set => this.Set(ref this.account, value);
+        }
 
         /// <summary>
         /// File version of the wrapper executable, e.g. 3.0.0.96. Settable rather than
@@ -76,14 +96,105 @@ namespace WinSW.Gui.Model
         }
 
         /// <summary>Services that must be running before this one starts.</summary>
-        public IReadOnlyList<string> DependsOn { get; init; } = Array.Empty<string>();
+        /// <remarks>
+        /// Compared by content, not by reference. Every rescan hands over a fresh array, and
+        /// the default comparer would call each one a change and repaint the detail panel
+        /// twice a minute for nothing.
+        /// </remarks>
+        public IReadOnlyList<string> DependsOn
+        {
+            get => this.dependsOn;
+            set
+            {
+                if (!Same(this.dependsOn, value))
+                {
+                    this.dependsOn = value;
+                    this.Raise();
+                    this.Raise(nameof(this.DependsOnText));
+                }
+            }
+        }
 
-        /// <summary>Services that will be stopped if this one stops.</summary>
-        public IReadOnlyList<string> DependedBy { get; init; } = Array.Empty<string>();
+        /// <summary>Services that will be stopped if this one stops. Compared by content.</summary>
+        public IReadOnlyList<string> DependedBy
+        {
+            get => this.dependedBy;
+            set
+            {
+                if (!Same(this.dependedBy, value))
+                {
+                    this.dependedBy = value;
+                    this.Raise();
+                    this.Raise(nameof(this.DependedByText));
+                }
+            }
+        }
+
+        private static bool Same(IReadOnlyList<string> left, IReadOnlyList<string> right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true;
+            }
+
+            if (left.Count != right.Count)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < left.Count; i++)
+            {
+                if (!string.Equals(left[i], right[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         public string DependsOnText => this.DependsOn.Count == 0 ? "—" : string.Join(", ", this.DependsOn);
 
         public string DependedByText => this.DependedBy.Count == 0 ? "—" : string.Join(", ", this.DependedBy);
+
+        /// <summary>
+        /// True when <paramref name="other"/> describes the same service well enough that its
+        /// values can be merged into this entry instead of replacing it.
+        /// </summary>
+        /// <remarks>
+        /// The name is the identity as far as the service control manager is concerned, but a
+        /// service pointed at a different executable or a different configuration file is a
+        /// different thing wearing the same name, and its history — the CPU trace, the crash
+        /// count — no longer describes what is running now.
+        /// </remarks>
+        public bool IsSameInstallationAs(ServiceEntry other) =>
+            string.Equals(this.WrapperPath, other.WrapperPath, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(this.ConfigPath, other.ConfigPath, StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Brings forward everything a rescan can see that the status poll does not.
+        /// </summary>
+        /// <remarks>
+        /// The rescan merges into the existing entries rather than replacing them, so that a
+        /// selection, a scroll position and the per-row health history survive it. Without
+        /// this the merge kept the stale values too: a start mode or a service account changed
+        /// by services.msc did not appear until the console was restarted.
+        /// <para>
+        /// Only what <see cref="Services.ServiceDiscovery.Discover"/> fills in belongs here.
+        /// The live metrics are the status poll's, and copying them from a freshly discovered
+        /// entry — which has none — would blank them twice a minute.
+        /// </para>
+        /// </remarks>
+        public void MergeMetadataFrom(ServiceEntry other)
+        {
+            this.Description = other.Description;
+            this.StartMode = other.StartMode;
+            this.Account = other.Account;
+            this.WrapperVersion = other.WrapperVersion;
+            this.DependsOn = other.DependsOn;
+            this.DependedBy = other.DependedBy;
+            this.Problem = other.Problem;
+        }
 
         // Live metrics --------------------------------------------------------
 
