@@ -41,6 +41,16 @@ jobs:
           7.0.x
           8.0.x
 
+    # Every run restored every package from nuget.org, twice over because of the
+    # Debug/Release matrix. There are no packages.lock.json files here, so the key is a
+    # hash of the project files rather than setup-dotnet's own cache input.
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('src/**/*.csproj', 'Directory.Build.props') }}
+        restore-keys: ${{ runner.os }}-nuget-
+
     # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v3

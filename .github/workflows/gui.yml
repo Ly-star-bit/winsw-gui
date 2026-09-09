@@ -24,6 +24,11 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
+# Both are for steps that only run on a push or a tag: the release, and the issue filed
+# when a build fails. A pull request build needs neither, but Actions has no way to vary
+# permissions by event within one job — narrowing them would mean splitting the release
+# into a job of its own, which is a bigger change than it is worth here. The steps that
+# use them are gated on the event instead.
 permissions:
   contents: write
   issues: write
@@ -47,6 +52,16 @@ jobs:
           dotnet-version: |
             7.0.x
             8.0.x
+
+      # Neither workflow cached anything, so every run restored every package from
+      # nuget.org. There are no packages.lock.json files here, so setup-dotnet's own
+      # cache input has nothing to hash and the project files are used instead.
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('src/**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: ${{ runner.os }}-nuget-
 
       # The version comes from the tag (gui-v1.2.3 → 1.2.3); other builds are 0.0.0-ci.<run>.
       - name: Resolve version
@@ -125,7 +140,11 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64
 
+      # Skipped on a pull request, where these two are self-contained WPF publishes that
+      # nobody downloads; a push to main still produces every artifact. The x64 build
+      # above runs everywhere, so a publish that breaks is still caught on the branch.
       - name: Publish (x64, framework-dependent)
+        if: github.event_name != 'pull_request'
         working-directory: ./src
         run: >
           dotnet publish WinSW.Gui -c Release -r win-x64 --no-self-contained
@@ -133,7 +152,11 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64-fdd
 
+      # Skipped on a pull request, where these two are self-contained WPF publishes that
+      # nobody downloads; a push to main still produces every artifact. The x64 build
+      # above runs everywhere, so a publish that breaks is still caught on the branch.
       - name: Publish (arm64, self-contained, single file)
+        if: github.event_name != 'pull_request'
         working-directory: ./src
         run: >
           dotnet publish WinSW.Gui -c Release -r win-arm64 --self-contained
@@ -150,6 +173,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload arm64 build
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: WinSW.Gui-win-arm64
@@ -157,6 +181,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload framework-dependent build
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: WinSW.Gui-win-x64-framework-dependent
@@ -212,7 +237,7 @@ jobs:
       # Job logs are only readable when signed in. On any failure, file the compiler and test
       # errors as an issue so they can be read (and fixed) without an authenticated session.
       - name: Report build errors as an issue
-        if: failure()
+        if: failure() && github.event_name != 'pull_request'
         shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
