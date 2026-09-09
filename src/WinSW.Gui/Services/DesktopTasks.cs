@@ -195,23 +195,35 @@ namespace WinSW.Gui.Services
                 return results;
             }
 
+            object? folder = null;
+            object? tasks = null;
+
             try
             {
                 dynamic service = connection;
-                dynamic folder = service.GetFolder(FolderPath);
+                folder = service.GetFolder(FolderPath);
 
                 // 1 is TASK_ENUM_HIDDEN: a task someone marked hidden is still ours to show.
                 // The collection is walked by index rather than with foreach, because how a
                 // late-bound COM collection presents itself to an enumerator is not something
                 // to rely on, while Count and Item are plain dispatch members.
-                dynamic tasks = folder.GetTasks(1);
-                int count = (int)tasks.Count;
+                tasks = ((dynamic)folder).GetTasks(1);
+
+                dynamic collection = tasks;
+                int count = (int)collection.Count;
                 for (int i = 1; i <= count; i++)
                 {
-                    object task = tasks.Item(i);
-                    if (Describe(task) is { } info)
+                    object task = collection.Item(i);
+                    try
                     {
-                        results.Add(info);
+                        if (Describe(task) is { } info)
+                        {
+                            results.Add(info);
+                        }
+                    }
+                    finally
+                    {
+                        Release(task);
                     }
                 }
             }
@@ -221,6 +233,8 @@ namespace WinSW.Gui.Services
             }
             finally
             {
+                Release(tasks);
+                Release(folder);
                 Release(connection);
             }
 
@@ -236,11 +250,14 @@ namespace WinSW.Gui.Services
                 return null;
             }
 
+            object? folder = null;
+            object? task = null;
+
             try
             {
                 dynamic service = connection;
-                dynamic folder = service.GetFolder(FolderPath);
-                object task = folder.GetTask(name);
+                folder = service.GetFolder(FolderPath);
+                task = ((dynamic)folder).GetTask(name);
                 return Describe(task);
             }
             catch (Exception e) when (IsMissing(e))
@@ -249,6 +266,8 @@ namespace WinSW.Gui.Services
             }
             finally
             {
+                Release(task);
+                Release(folder);
                 Release(connection);
             }
         }
@@ -396,30 +415,58 @@ namespace WinSW.Gui.Services
         /// <param name="graceTimeout">How long to let a clean shutdown take before terminating.</param>
         public static void Stop(string name, string serviceId, TimeSpan graceTimeout)
         {
-            if (RequestStop(serviceId))
-            {
-                var deadline = DateTime.UtcNow + graceTimeout;
-                while (DateTime.UtcNow < deadline)
-                {
-                    Thread.Sleep(250);
-                    if (Find(name) is not { State: DesktopTaskState.Running })
-                    {
-                        return;
-                    }
-                }
-            }
-
             object connection = Connect() ?? throw Unavailable();
+
+            object? folder = null;
+            object? task = null;
 
             try
             {
                 dynamic service = connection;
-                dynamic task = service.GetFolder(FolderPath).GetTask(name);
-                task.Stop(0);
+                folder = service.GetFolder(FolderPath);
+                task = ((dynamic)folder).GetTask(name);
+
+                if (RequestStop(serviceId))
+                {
+                    // One connection for the whole wait. Asking Find() each time round meant
+                    // creating a Schedule.Service object, connecting it, opening the folder and
+                    // reading the task's entire XML definition — four times a second, a hundred
+                    // and twenty times over a thirty-second grace period — to read one integer.
+                    var deadline = DateTime.UtcNow + graceTimeout;
+                    while (DateTime.UtcNow < deadline)
+                    {
+                        Thread.Sleep(250);
+                        if (!IsRunning(task))
+                        {
+                            return;
+                        }
+                    }
+                }
+
+                ((dynamic)task).Stop(0);
             }
             finally
             {
+                Release(task);
+                Release(folder);
                 Release(connection);
+            }
+        }
+
+        /// <summary>
+        /// Whether a registered task is running, read straight off the live object. Anything
+        /// the call throws means the answer can no longer be had, and a task that cannot be
+        /// asked is not one worth waiting for.
+        /// </summary>
+        private static bool IsRunning(object task)
+        {
+            try
+            {
+                return (DesktopTaskState)(int)((dynamic)task).State == DesktopTaskState.Running;
+            }
+            catch (Exception e) when (IsComFailure(e) || e is Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+            {
+                return false;
             }
         }
 
@@ -683,16 +730,40 @@ namespace WinSW.Gui.Services
             }
 
             object connection = Activator.CreateInstance(type)!;
-            dynamic service = connection;
-            service.Connect();
+            try
+            {
+                dynamic service = connection;
+                service.Connect();
+            }
+            catch
+            {
+                // Connect can fail — the service is stopped, RPC is unreachable, the account
+                // is denied. The object was created before that, and letting it go without
+                // releasing leaves the caller's finally with nothing to release.
+                Release(connection);
+                throw;
+            }
+
             return connection;
         }
 
-        private static void Release(object? service)
+        /// <summary>
+        /// Releases one COM object, if that is what it is.
+        /// </summary>
+        /// <remarks>
+        /// Every late-bound call that returns something — a folder, a task collection, a task
+        /// — hands back a runtime callable wrapper of its own, and each one holds an interface
+        /// on the task scheduler until it is released. Garbage collection would get there
+        /// eventually, but "eventually" is the wrong schedule for something a four-second poll
+        /// creates several of. The polled paths release theirs; the one-shot paths, where a
+        /// registration touches a dozen intermediate objects once per user action, are left to
+        /// the collector rather than made unreadable.
+        /// </remarks>
+        private static void Release(object? com)
         {
-            if (service != null && Marshal.IsComObject(service))
+            if (com != null && Marshal.IsComObject(com))
             {
-                _ = Marshal.ReleaseComObject(service);
+                _ = Marshal.ReleaseComObject(com);
             }
         }
 
