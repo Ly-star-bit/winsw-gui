@@ -7,9 +7,8 @@
     <IsPackable>false</IsPackable>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
 
-    <!-- The assembly under test is a WPF/WinForms application; its types need both frameworks resolvable. -->
+    <!-- The assembly under test is a WPF application; its types need the framework resolvable. -->
     <UseWPF>true</UseWPF>
-    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>

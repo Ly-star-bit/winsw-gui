@@ -270,6 +270,7 @@
     <sys:String x:Key="M.Cli.PathNotUsable">无法使用“{0}”：路径中的 %NAME% 会先被命令解释器替换掉，包装器拿到的已不是该路径。请把文件移到不含百分号的位置。</sys:String>
     <sys:String x:Key="M.Tray.Open">打开 WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">退出</sys:String>
+    <sys:String x:Key="M.Tray.Tip">WinSW — Windows 服务包装器控制台</sys:String>
     <sys:String x:Key="M.Dash.DependentsTitle">连同依赖服务一起停止？</sys:String>
     <sys:String x:Key="M.Dash.DependentsBody">有其它服务依赖“{0}”。停止它会一并停止那些服务。</sys:String>
     <sys:String x:Key="M.Dash.DependentsAction">全部停止</sys:String>

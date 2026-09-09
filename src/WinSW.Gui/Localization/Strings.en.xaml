@@ -270,6 +270,7 @@
     <sys:String x:Key="M.Cli.PathNotUsable">'{0}' cannot be used: a %NAME% in a path is replaced by the command interpreter before the wrapper sees it. Move the file somewhere without a percent sign.</sys:String>
     <sys:String x:Key="M.Tray.Open">Open WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">Exit</sys:String>
+    <sys:String x:Key="M.Tray.Tip">WinSW — Windows Service Wrapper Console</sys:String>
     <sys:String x:Key="M.Dash.DependentsTitle">Stop dependent services too?</sys:String>
     <sys:String x:Key="M.Dash.DependentsBody">Other services depend on '{0}'. Stopping it will stop them as well.</sys:String>
     <sys:String x:Key="M.Dash.DependentsAction">Stop all</sys:String>

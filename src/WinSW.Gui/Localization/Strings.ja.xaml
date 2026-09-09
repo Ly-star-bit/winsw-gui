@@ -270,6 +270,7 @@
     <sys:String x:Key="M.Cli.PathNotUsable">「{0}」は使用できません: パス内の %NAME% はコマンド インタープリターによって先に置換され、ラッパーには別のパスが渡ります。パーセント記号を含まない場所にファイルを移動してください。</sys:String>
     <sys:String x:Key="M.Tray.Open">WinSW を開く</sys:String>
     <sys:String x:Key="M.Tray.Exit">終了</sys:String>
+    <sys:String x:Key="M.Tray.Tip">WinSW — Windows サービス ラッパー コンソール</sys:String>
     <sys:String x:Key="M.Dash.DependentsTitle">依存するサービスも停止しますか?</sys:String>
     <sys:String x:Key="M.Dash.DependentsBody">'{0}' に依存する他のサービスがあります。停止するとそれらも停止します。</sys:String>
     <sys:String x:Key="M.Dash.DependentsAction">すべて停止</sys:String>

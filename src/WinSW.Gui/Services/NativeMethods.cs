@@ -138,5 +138,111 @@ namespace WinSW.Gui.Services
 
         /// <summary>ERROR_SERVICE_SPECIFIC_ERROR: the real code is in ServiceSpecificExitCode.</summary>
         internal const int ERROR_SERVICE_SPECIFIC_ERROR = 1066;
+
+        // Notification area ---------------------------------------------------
+        //
+        // WPF has no tray control. Windows Forms has one, and using it cost the whole
+        // Windows Forms framework — about 15 MB of the self-contained build — for a single
+        // class. Shell_NotifyIcon is what that class calls.
+
+        internal const int NIM_ADD = 0x0;
+        internal const int NIM_MODIFY = 0x1;
+        internal const int NIM_DELETE = 0x2;
+        internal const int NIM_SETVERSION = 0x4;
+
+        internal const int NIF_MESSAGE = 0x1;
+        internal const int NIF_ICON = 0x2;
+        internal const int NIF_TIP = 0x4;
+        internal const int NIF_INFO = 0x10;
+
+        internal const int NIIF_INFO = 0x1;
+        internal const int NIIF_ERROR = 0x3;
+
+        /// <summary>
+        /// Version 4 reports the cursor position with the message and sends NIN_SELECT and
+        /// NIN_BALLOONUSERCLICK rather than raw mouse messages, which is the difference
+        /// between reading the notification and guessing at it.
+        /// </summary>
+        internal const int NOTIFYICON_VERSION_4 = 4;
+
+        internal const int WM_APP = 0x8000;
+
+        /// <summary>The private message the icon reports through. Any WM_APP + n will do.</summary>
+        internal const int WM_TRAYICON = WM_APP + 1;
+
+        // The notifications that arrive in lParam are WM_USER-based, not WM_APP-based, and
+        // the two bases are nowhere near each other. They share the message space with
+        // WM_TRAYICON above but never the same position: WM_TRAYICON is the message, these
+        // are what it carries.
+        internal const int WM_USER = 0x0400;
+
+        internal const int NIN_SELECT = WM_USER + 0;
+        internal const int NIN_KEYSELECT = WM_USER + 1;
+        internal const int NIN_BALLOONTIMEOUT = WM_USER + 4;
+        internal const int NIN_BALLOONUSERCLICK = WM_USER + 5;
+
+        internal const int WM_LBUTTONDBLCLK = 0x203;
+        internal const int WM_RBUTTONUP = 0x205;
+        internal const int WM_CONTEXTMENU = 0x7B;
+
+        internal const int SM_CXSMICON = 49;
+
+        /// <summary>WS_CHILD. A message-only window is parented and never shown.</summary>
+        internal const int WS_CHILD = unchecked((int)0x40000000);
+
+        /// <summary>A message-only window: it has a queue but is never shown or enumerated.</summary>
+        internal static readonly IntPtr HWND_MESSAGE = new(-3);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        internal struct NOTIFYICONDATA
+        {
+            public int Size;
+            public IntPtr Window;
+            public int Id;
+            public int Flags;
+            public int CallbackMessage;
+            public IntPtr Icon;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string Tip;
+
+            public int State;
+            public int StateMask;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string Info;
+
+            /// <summary>Overlaps uTimeout, which is ignored from Vista on.</summary>
+            public int Version;
+
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            public string InfoTitle;
+
+            public int InfoFlags;
+            public Guid ItemGuid;
+            public IntPtr BalloonIcon;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool Shell_NotifyIconW(int message, ref NOTIFYICONDATA data);
+
+        /// <summary>
+        /// Explorer broadcasts this when the taskbar is created, which includes every time it
+        /// restarts. An icon added before that is gone and has to be added again.
+        /// </summary>
+        [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        internal static extern int RegisterWindowMessageW(string message);
+
+        /// <summary>
+        /// A menu opened from a tray icon stays up after a click elsewhere unless its owner
+        /// is the foreground window first.
+        /// </summary>
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool SetForegroundWindow(IntPtr window);
+
+        [DllImport("user32.dll")]
+        internal static extern int GetSystemMetrics(int index);
     }
 }

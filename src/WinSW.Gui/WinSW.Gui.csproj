@@ -5,12 +5,6 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
 
-    <!--
-      Only for the tray icon: WPF has no NotifyIcon of its own. The folder picker used to
-      need Windows Forms too, until .NET 8 gave WPF a native OpenFolderDialog. Dropping this
-      is worth about 15 MB of the self-contained build and needs Shell_NotifyIcon by hand.
-    -->
-    <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -45,6 +39,17 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.1.1" />
+
+    <!--
+      The tray icon, and nothing else. Windows Forms used to be referenced for its NotifyIcon
+      — the whole framework, about 15 MB of the self-contained build, for one class in one
+      file — and TrayIcon now calls Shell_NotifyIcon itself. System.Drawing is what remains
+      of that: it decodes the multi-resolution .ico and picks the frame matching the
+      notification area's size, which follows the display scaling.
+
+      It came in with Windows Forms before and so was never referenced by name.
+    -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
 
     <!-- Neither is in the shared framework; both track the target framework's major. -->
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
