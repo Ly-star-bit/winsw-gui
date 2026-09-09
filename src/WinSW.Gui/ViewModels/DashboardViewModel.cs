@@ -664,12 +664,13 @@ namespace WinSW.Gui.ViewModels
             var selectedAtStart = this.selectedService;
             int selectedIndex = selectedAtStart is null ? -1 : Array.IndexOf(entries, selectedAtStart);
 
+            // Held across the writing as well as the reading. Dropped after the await, the
+            // next tick could start a second reading while this one was still applying the
+            // first — which is the pile-up the flag is here to prevent.
             this.polling = true;
-            ServiceSample[] samples;
-            ProcessNode? tree;
             try
             {
-                (samples, tree) = await Task.Run(() =>
+                var (samples, tree) = await Task.Run(() =>
                 {
                     var read = new ServiceSample[entries.Length];
                     for (int i = 0; i < read.Length; i++)
@@ -685,36 +686,36 @@ namespace WinSW.Gui.ViewModels
 
                     return (read, node);
                 }).ConfigureAwait(true);
+
+                for (int i = 0; i < entries.Length; i++)
+                {
+                    ServiceDiscovery.Apply(entries[i], samples[i]);
+                }
+
+                this.AnnounceUnexpectedStops(entries);
+
+                this.RaiseCounts();
+                this.RefreshCommandStates();
+
+                // The selection may have moved while the reading was in flight, in which case
+                // this tree belongs to a service the panel is no longer showing.
+                if (!ReferenceEquals(this.selectedService, selectedAtStart))
+                {
+                    return;
+                }
+
+                if (tree is null)
+                {
+                    this.ProcessTree = null;
+                }
+                else if (!ProcessTreeProvider.SameShape(tree, this.processTree))
+                {
+                    this.ProcessTree = tree;
+                }
             }
             finally
             {
                 this.polling = false;
-            }
-
-            for (int i = 0; i < entries.Length; i++)
-            {
-                ServiceDiscovery.Apply(entries[i], samples[i]);
-            }
-
-            this.AnnounceUnexpectedStops(entries);
-
-            this.RaiseCounts();
-            this.RefreshCommandStates();
-
-            // The selection may have moved while the reading was in flight, in which case this
-            // tree belongs to a service the panel is no longer showing.
-            if (!ReferenceEquals(this.selectedService, selectedAtStart))
-            {
-                return;
-            }
-
-            if (tree is null)
-            {
-                this.ProcessTree = null;
-            }
-            else if (!ProcessTreeProvider.SameShape(tree, this.processTree))
-            {
-                this.ProcessTree = tree;
             }
         }
 
