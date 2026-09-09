@@ -50,6 +50,19 @@ namespace WinSW.Gui.Mvvm
         {
         }
 
+        /// <summary>
+        /// Raised when a command's operation throws.
+        /// </summary>
+        /// <remarks>
+        /// <see cref="Execute"/> has to be <c>async void</c> — that is the signature
+        /// <see cref="ICommand"/> gives it — and an exception escaping an <c>async void</c>
+        /// method is posted to the synchronization context, where it becomes an unhandled
+        /// dispatcher exception. Catching it here instead is what lets the button be
+        /// re-enabled and the failure be reported as itself, rather than as a crash the
+        /// application happened to survive.
+        /// </remarks>
+        public static event Action<Exception>? UnhandledException;
+
         public event EventHandler? CanExecuteChanged;
 
         public bool CanExecute(object? parameter) =>
@@ -62,6 +75,19 @@ namespace WinSW.Gui.Mvvm
             try
             {
                 await this.execute(parameter);
+            }
+            catch (Exception e)
+            {
+                var handler = UnhandledException;
+                if (handler is null)
+                {
+                    // Nobody is listening. Rethrowing on the dispatcher restores exactly what
+                    // would have happened without this catch — the failure must not be
+                    // swallowed just because the command wrapper is the one holding it.
+                    throw;
+                }
+
+                handler(e);
             }
             finally
             {

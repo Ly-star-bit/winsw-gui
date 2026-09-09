@@ -154,6 +154,10 @@
     <sys:String x:Key="M.Status.Unknown">未知</sys:String>
     <sys:String x:Key="M.Discovery.NoConfig">無法為「{0}」解析出設定檔。</sys:String>
     <sys:String x:Key="M.Discovery.ConfigMissing">設定檔「{0}」不存在，或不是 WinSW 設定。</sys:String>
+    <sys:String x:Key="M.App.CrashTitle">WinSW — 意外錯誤</sys:String>
+    <sys:String x:Key="M.App.CrashMessage">發生了問題。主控台仍在執行，但你要求的操作並未完成。</sys:String>
+    <sys:String x:Key="M.App.CrashFatal">發生嚴重錯誤，主控台必須關閉。</sys:String>
+    <sys:String x:Key="M.App.CrashUnknown">沒有更多細節。</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">包裝器執行檔「{0}」已不存在。</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">無法啟動包裝器處理程序。</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">服務已在執行。</sys:String>

@@ -154,6 +154,10 @@
     <sys:String x:Key="M.Status.Unknown">未知</sys:String>
     <sys:String x:Key="M.Discovery.NoConfig">无法为“{0}”解析出配置文件。</sys:String>
     <sys:String x:Key="M.Discovery.ConfigMissing">配置文件“{0}”不存在，或不是 WinSW 配置。</sys:String>
+    <sys:String x:Key="M.App.CrashTitle">WinSW — 意外错误</sys:String>
+    <sys:String x:Key="M.App.CrashMessage">出现了问题。控制台仍在运行，但你请求的操作没有完成。</sys:String>
+    <sys:String x:Key="M.App.CrashFatal">发生了严重错误，控制台必须关闭。</sys:String>
+    <sys:String x:Key="M.App.CrashUnknown">没有更多细节。</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">包装器可执行文件“{0}”已不存在。</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">无法启动包装器进程。</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">服务已在运行。</sys:String>

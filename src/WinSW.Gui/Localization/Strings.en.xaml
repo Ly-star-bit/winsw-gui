@@ -154,6 +154,10 @@
     <sys:String x:Key="M.Status.Unknown">Unknown</sys:String>
     <sys:String x:Key="M.Discovery.NoConfig">No configuration file could be resolved for '{0}'.</sys:String>
     <sys:String x:Key="M.Discovery.ConfigMissing">Configuration file '{0}' is missing or is not a WinSW configuration.</sys:String>
+    <sys:String x:Key="M.App.CrashTitle">WinSW — unexpected error</sys:String>
+    <sys:String x:Key="M.App.CrashMessage">Something went wrong. The console is still running; the operation you asked for did not finish.</sys:String>
+    <sys:String x:Key="M.App.CrashFatal">A fatal error occurred and the console has to close.</sys:String>
+    <sys:String x:Key="M.App.CrashUnknown">No further detail is available.</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">The wrapper executable '{0}' no longer exists.</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">The wrapper process could not be started.</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">The service is already running.</sys:String>
