@@ -148,7 +148,11 @@ namespace WinSW.Gui.ViewModels
         public ObservableCollection<LogFileEntry> Files { get; } = new();
 
         /// <summary>The lines currently shown, after filtering.</summary>
-        public ObservableCollection<string> Lines { get; } = new();
+        /// <summary>
+        /// The lines currently shown, which is the buffer with the filter applied. Bulk so
+        /// that re-filtering announces itself once rather than once per line.
+        /// </summary>
+        public BulkObservableCollection<string> Lines { get; } = new();
 
         public ObservableCollection<ServiceEvent> Events { get; } = new();
 
@@ -512,13 +516,15 @@ namespace WinSW.Gui.ViewModels
 
         private void RebuildVisibleLines()
         {
-            this.Lines.Clear();
+            // Built to one side and handed over whole. This runs on every keystroke in the
+            // filter box, against a buffer of up to five thousand lines.
             int errors = 0;
+            var visible = new List<string>(this.history.Count);
             foreach (string line in this.history)
             {
                 if (this.IsVisible(line))
                 {
-                    this.Lines.Add(line);
+                    visible.Add(line);
                     if (LogSeverity.IsError(line))
                     {
                         errors++;
@@ -526,6 +532,7 @@ namespace WinSW.Gui.ViewModels
                 }
             }
 
+            this.Lines.ReplaceAll(visible);
             this.ErrorCount = errors;
             this.lastJumpIndex = -1;
             this.LinesAppended?.Invoke();
