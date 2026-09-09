@@ -166,7 +166,7 @@ jobs:
           -o ../artifacts/gui/win-arm64
 
       - name: Upload self-contained build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: WinSW.Gui-win-x64
           path: artifacts/gui/win-x64/WinSW.Gui.exe
@@ -174,7 +174,7 @@ jobs:
 
       - name: Upload arm64 build
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: WinSW.Gui-win-arm64
           path: artifacts/gui/win-arm64/WinSW.Gui.exe
@@ -182,7 +182,7 @@ jobs:
 
       - name: Upload framework-dependent build
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: WinSW.Gui-win-x64-framework-dependent
           path: artifacts/gui/win-x64-fdd/WinSW.Gui.exe
