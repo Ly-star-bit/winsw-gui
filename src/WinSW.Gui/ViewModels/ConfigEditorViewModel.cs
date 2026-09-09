@@ -536,29 +536,29 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            string staging = Path.Combine(Path.GetTempPath(), "WinSW.Gui", Path.GetFileName(path));
+            CommandResult result;
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(staging)!);
-                this.Model.Save(staging);
+                result = await StagedWrite.ElevatedAsync(this.Model, path).ConfigureAwait(true);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", staging, e.Message);
+                this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", path, e.Message);
                 return;
             }
 
-            var result = await WinSwCli.CopyElevatedAsync(staging, path).ConfigureAwait(true);
-
             if (result.Succeeded)
             {
-                // Re-read from the real location so the model's FilePath and backing document
-                // point at what is on disk rather than at the staging copy.
+                // Which service this configuration belongs to has to be caught before the
+                // reload, because Load clears it. Read afterwards, as it was, the field was
+                // always null and the association was silently dropped: an elevated save left
+                // the editor offering to install a service that was already installed.
+                var installed = this.installedService;
+
+                // Re-read from the real location so the model's backing document is what is on
+                // disk rather than what was sent there.
                 this.Load(path);
-                if (this.installedService != null)
-                {
-                    this.InstalledService = this.installedService;
-                }
+                this.InstalledService = installed;
 
                 this.StatusMessage = Localizer.Format("M.Editor.SavedElevated", path);
             }

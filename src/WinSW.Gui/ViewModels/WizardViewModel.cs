@@ -987,11 +987,10 @@ namespace WinSW.Gui.ViewModels
                 return false;
             }
 
-            string staging = Path.Combine(Path.GetTempPath(), "WinSW.Gui", Path.GetFileName(configPath));
+            CommandResult copy;
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(staging)!);
-                model.Save(staging);
+                copy = await StagedWrite.ElevatedAsync(model, configPath).ConfigureAwait(true);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -999,7 +998,6 @@ namespace WinSW.Gui.ViewModels
                 return false;
             }
 
-            var copy = await WinSwCli.CopyElevatedAsync(staging, configPath).ConfigureAwait(true);
             if (copy.Succeeded)
             {
                 return true;
