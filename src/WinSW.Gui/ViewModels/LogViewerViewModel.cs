@@ -73,7 +73,7 @@ namespace WinSW.Gui.ViewModels
     /// configured patterns — so scanning is both simpler and correct for rolled files such as
     /// <c>service.1.log</c>.
     /// </remarks>
-    public sealed class LogViewerViewModel : ObservableObject
+    public sealed class LogViewerViewModel : ObservableObject, IDisposable
     {
         private const int MaxLines = 5000;
         private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(600);
@@ -458,6 +458,14 @@ namespace WinSW.Gui.ViewModels
             this.reader = new LogTailReader(this.selectedFile.Path, this.selectedEncoding.Choice);
             this.timer.Start();
             this.Pump();
+        }
+
+        /// <summary>Closes the handle on the log being tailed.</summary>
+        public void Dispose()
+        {
+            this.timer.Stop();
+            this.reader?.Dispose();
+            this.reader = null;
         }
 
         private void Pump()

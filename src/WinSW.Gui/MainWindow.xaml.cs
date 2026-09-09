@@ -170,6 +170,7 @@ namespace WinSW.Gui
         protected override void OnClosed(EventArgs e)
         {
             this.tray.Dispose();
+            this.shell.Dispose();
             base.OnClosed(e);
         }
     }

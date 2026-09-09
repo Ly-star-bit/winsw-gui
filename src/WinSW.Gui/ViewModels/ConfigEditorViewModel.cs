@@ -17,7 +17,7 @@ namespace WinSW.Gui.ViewModels
     /// Graphical editor over a WinSW configuration file, with live validation and a preview
     /// of exactly what will be written.
     /// </summary>
-    public sealed class ConfigEditorViewModel : ObservableObject
+    public sealed class ConfigEditorViewModel : ObservableObject, IDisposable
     {
         /// <summary>
         /// The preview and validation are recomputed on a short idle delay rather than on
@@ -482,6 +482,26 @@ namespace WinSW.Gui.ViewModels
         {
             await this.SaveAsync().ConfigureAwait(true);
             return !this.IsDirty;
+        }
+
+        /// <summary>
+        /// Ends a trial run that is still going.
+        /// </summary>
+        /// <remarks>
+        /// A trial run is an ordinary child process, and Windows does not end one because its
+        /// parent did. Closing the console while a program was under trial left it running,
+        /// with no window and nothing left on screen that knew about it — the stray process
+        /// this application exists to prevent.
+        /// <para>
+        /// This covers closing, not crashing. Surviving the console being killed outright
+        /// would need the child in a job object, which is a great deal of machinery for the
+        /// rarer half of the problem.
+        /// </para>
+        /// </remarks>
+        public void Dispose()
+        {
+            this.recomputeTimer.Stop();
+            this.trial.Dispose();
         }
 
         private async Task SaveAsync()

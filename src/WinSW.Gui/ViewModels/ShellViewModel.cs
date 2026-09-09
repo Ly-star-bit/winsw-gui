@@ -61,7 +61,7 @@ namespace WinSW.Gui.ViewModels
     /// Owns the four pages and moves between them. Pages hand off to each other through
     /// events so no page needs a reference to another.
     /// </summary>
-    public sealed class ShellViewModel : ObservableObject
+    public sealed class ShellViewModel : ObservableObject, IDisposable
     {
         private NavigationItem? selectedItem;
         private object? currentPage;
@@ -241,6 +241,16 @@ namespace WinSW.Gui.ViewModels
         }
 
         public DashboardViewModel Dashboard { get; }
+
+        /// <summary>
+        /// Releases what the pages hold outside this process: the trial run's child process,
+        /// and the handle on the log being tailed.
+        /// </summary>
+        public void Dispose()
+        {
+            this.Editor.Dispose();
+            this.Logs.Dispose();
+        }
 
         public ConfigEditorViewModel Editor { get; }
 
