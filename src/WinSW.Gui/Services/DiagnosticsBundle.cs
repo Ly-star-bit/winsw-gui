@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -27,7 +28,7 @@ namespace WinSW.Gui.Services
 
             if (entry.ConfigPath != null && File.Exists(entry.ConfigPath))
             {
-                zip.CreateEntryFromFile(entry.ConfigPath, "config/" + Path.GetFileName(entry.ConfigPath));
+                AddRedactedConfig(zip, entry.ConfigPath);
 
                 try
                 {
@@ -59,6 +60,58 @@ namespace WinSW.Gui.Services
             }
 
             AddText(zip, "events.txt", text.Length == 0 ? "(no events)" : text.ToString());
+        }
+
+        /// <summary>
+        /// Adds the configuration with its secrets masked, and beside it the list of what was
+        /// masked. A bundle is collected in order to be sent to somebody, and the file it is
+        /// built around is allowed to hold a service account's password.
+        /// </summary>
+        private static void AddRedactedConfig(ZipArchive zip, string configPath)
+        {
+            string name = Path.GetFileName(configPath);
+
+            string redacted;
+            IReadOnlyList<string> removed;
+            try
+            {
+                redacted = ConfigRedactor.Redact(File.ReadAllText(configPath), out removed);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                AddText(zip, "config/README.txt", "The configuration could not be read: " + e.Message);
+                return;
+            }
+
+            AddText(zip, "config/" + name, redacted);
+
+            var note = new StringBuilder();
+            note.AppendLine("This bundle is meant to be sent to somebody, so " + name + " was rewritten");
+            note.AppendLine("before it was added: passwords are replaced with " + ConfigRedactor.Mask + ", and");
+            note.AppendLine("credentials in front of a URL's host are removed.");
+            note.AppendLine();
+
+            if (removed.Count == 0)
+            {
+                note.AppendLine("Nothing needed masking.");
+            }
+            else
+            {
+                note.AppendLine("Masked:");
+                foreach (string item in removed)
+                {
+                    note.AppendLine("  " + item);
+                }
+            }
+
+            note.AppendLine();
+            note.AppendLine("An <env> value is masked when its name looks like a secret (PASSWORD, TOKEN,");
+            note.AppendLine("SECRET, KEY and so on). One holding a secret under a name that does not say");
+            note.AppendLine("so is still in the file above — check it before sending this on.");
+            note.AppendLine();
+            note.AppendLine("The logs in this bundle are the program's own output and are NOT redacted.");
+
+            AddText(zip, "config/REDACTED.txt", note.ToString());
         }
 
         private static string Summary(ServiceEntry entry)
