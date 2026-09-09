@@ -359,7 +359,7 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ProgressBar Grid.Column="0" Width="90" Height="4" Margin="0,0,12,0" VerticalAlignment="Center" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+            <ProgressBar Grid.Column="0" Width="90" Height="4" Margin="0,0,12,0" VerticalAlignment="Center" IsIndeterminate="{Binding IsBusy}" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
             <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
 
             <StackPanel Grid.Column="2" Orientation="Horizontal">
