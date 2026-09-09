@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -38,6 +39,8 @@ namespace WinSW.Gui.ViewModels
         private string xmlEditorText = string.Empty;
         private int recomputeGeneration;
         private readonly TrialRunner trial = new();
+        private readonly List<string> pendingTrialLines = new();
+        private bool trialFlushScheduled;
         private bool isTrialRunning;
         private string trialStatus = string.Empty;
         private string proxyTestTarget = ProxyProbe.DefaultTarget;
@@ -145,11 +148,12 @@ namespace WinSW.Gui.ViewModels
             this.StopTrialCommand = new RelayCommand(() => this.trial.Stop(), () => this.isTrialRunning);
             this.ClearTrialCommand = new RelayCommand(() => this.TrialOutput.Clear());
 
-            this.trial.Output += (line, isError) =>
-                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => this.AppendTrial(isError ? "[stderr] " + line : line));
+            this.trial.Output += (line, isError) => this.QueueTrialLine(isError ? "[stderr] " + line : line);
             this.trial.Exited += code =>
                 System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
+                    // Whatever is still queued goes in ahead of the exit line.
+                    this.FlushTrialLines();
                     this.AppendTrial(Localizer.Format("M.Trial.Exited", code));
                     this.TrialStatus = Localizer.Format("M.Trial.Exited", code);
                     this.IsTrialRunning = false;
@@ -913,6 +917,65 @@ namespace WinSW.Gui.ViewModels
                 this.TrialStatus = Localizer.Format("M.Trial.Failed", e.Message);
                 this.AppendTrial(this.TrialStatus);
                 this.IsTrialRunning = false;
+            }
+        }
+
+        /// <summary>
+        /// Takes one line of trial output off the process's reader thread and schedules a
+        /// flush if one is not already waiting.
+        /// </summary>
+        /// <remarks>
+        /// One dispatcher callback per line, which is what this was, makes a program that
+        /// prints in a tight loop a program that floods the UI thread: thousands of queued
+        /// callbacks, each adding one row and each followed by a layout pass. Lines are
+        /// gathered here and added in a batch instead, inside a single callback, so layout
+        /// runs once per flush however many lines arrived. Not a Reset — that would rebuild
+        /// three thousand rows — just many Adds with no layout between them.
+        /// </remarks>
+        private void QueueTrialLine(string line)
+        {
+            bool schedule;
+            lock (this.pendingTrialLines)
+            {
+                this.pendingTrialLines.Add(line);
+                schedule = !this.trialFlushScheduled;
+                this.trialFlushScheduled = true;
+            }
+
+            if (!schedule)
+            {
+                return;
+            }
+
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher is null)
+            {
+                // No UI to show it on. Drop the batch rather than leave the flag set forever.
+                lock (this.pendingTrialLines)
+                {
+                    this.pendingTrialLines.Clear();
+                    this.trialFlushScheduled = false;
+                }
+
+                return;
+            }
+
+            dispatcher.BeginInvoke(this.FlushTrialLines);
+        }
+
+        private void FlushTrialLines()
+        {
+            string[] lines;
+            lock (this.pendingTrialLines)
+            {
+                lines = this.pendingTrialLines.ToArray();
+                this.pendingTrialLines.Clear();
+                this.trialFlushScheduled = false;
+            }
+
+            foreach (string line in lines)
+            {
+                this.AppendTrial(line);
             }
         }
 
