@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace WinSW.Gui.Services
@@ -11,6 +13,10 @@ namespace WinSW.Gui.Services
     /// <summary>A published release with its downloadable assets.</summary>
     public sealed class ReleaseInfo
     {
+        /// <summary>The version in a tag: what follows the last 'v' that starts a version.</summary>
+        private static readonly Regex VersionInTag = new(
+            @"v(\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.\-]+)?)$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
         public ReleaseInfo(string tag, string url, IReadOnlyDictionary<string, string> assets)
         {
             this.Tag = tag;
@@ -25,14 +31,20 @@ namespace WinSW.Gui.Services
         /// <summary>Asset file name → download URL.</summary>
         public IReadOnlyDictionary<string, string> Assets { get; }
 
-        /// <summary>"3.0.0" from "v3.0.0" or "gui-v0.4.0".</summary>
+        /// <summary>
+        /// "3.0.0" from "v3.0.0" or "gui-v0.4.0", and "3.0.0-alpha.11" from "v3.0.0-alpha.11".
+        /// </summary>
+        /// <remarks>
+        /// Matched rather than cut at the last 'v'. Every tag published so far happens to have
+        /// no other 'v' in it, but "v3.1.0-preview" — one letter away from tags that do exist —
+        /// would have yielded "iew".
+        /// </remarks>
         public string Version
         {
             get
             {
-                string tag = this.Tag;
-                int v = tag.LastIndexOf('v');
-                return v >= 0 ? tag.Substring(v + 1) : tag;
+                var match = VersionInTag.Match(this.Tag);
+                return match.Success ? match.Groups[1].Value : this.Tag;
             }
         }
     }
@@ -79,11 +91,17 @@ namespace WinSW.Gui.Services
         {
             return Version.TryParse(Normalize(candidate), out var a) && Version.TryParse(Normalize(current), out var b) && a > b;
 
+            // Padded to four components rather than merely to two. System.Version treats a
+            // component that was not written as -1, not as 0, so an unpadded "3.0.0" compares
+            // as older than "3.0.0.0" — and the wrapper stamps a four-part FileVersion while
+            // a release tag carries three, which is exactly that comparison.
             static string Normalize(string value)
             {
-                int dash = value.IndexOfAny(new[] { '-', '+' });
-                string core = dash > 0 ? value.Substring(0, dash) : value;
-                return core.Count(c => c == '.') == 0 ? core + ".0" : core;
+                int suffix = value.IndexOfAny(new[] { '-', '+' });
+                string core = suffix > 0 ? value.Substring(0, suffix) : value;
+
+                int parts = core.Count(c => c == '.') + 1;
+                return parts >= 4 ? core : core + string.Concat(Enumerable.Repeat(".0", 4 - parts));
             }
         }
 
@@ -94,7 +112,10 @@ namespace WinSW.Gui.Services
                 Directory.CreateDirectory(destinationDirectory);
                 string file = Path.Combine(destinationDirectory, Path.GetFileName(new Uri(url).AbsolutePath));
 
-                using var response = await Http.GetAsync(url).ConfigureAwait(false);
+                // ResponseHeadersRead: without it the whole asset is buffered in memory
+                // before a byte reaches the disk, and a self-contained wrapper build is
+                // tens of megabytes.
+                using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
                 response.EnsureSuccessStatusCode();
 
                 await using var output = new FileStream(file, FileMode.Create, FileAccess.Write);
@@ -164,23 +185,6 @@ namespace WinSW.Gui.Services
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WinSW-GUI/" + CurrentGuiVersion);
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             return client;
-        }
-    }
-
-    internal static class StringCountExtensions
-    {
-        public static int Count(this string value, Func<char, bool> predicate)
-        {
-            int count = 0;
-            foreach (char c in value)
-            {
-                if (predicate(c))
-                {
-                    count++;
-                }
-            }
-
-            return count;
         }
     }
 }

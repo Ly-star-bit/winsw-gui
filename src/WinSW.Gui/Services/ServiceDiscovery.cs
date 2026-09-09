@@ -38,6 +38,12 @@ namespace WinSW.Gui.Services
                 return results;
             }
 
+            // Services installed under one install root share a single wrapper executable by
+            // design, so the same file would otherwise be opened once per service on a sweep
+            // that already runs every thirty seconds. Scoped to this sweep, not static: the
+            // point of the next one is to notice that the file has changed.
+            var versions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
             var controllers = new Dictionary<string, ServiceController>(StringComparer.OrdinalIgnoreCase);
             foreach (var controller in ServiceController.GetServices())
             {
@@ -71,7 +77,7 @@ namespace WinSW.Gui.Services
                         StartMode = DescribeStartMode(key),
                         Account = key.GetValue("ObjectName") as string ?? "LocalSystem",
                         Problem = problem,
-                        WrapperVersion = ReadVersion(wrapperPath),
+                        WrapperVersion = VersionOf(versions, wrapperPath),
                         DependsOn = Names(() => controller.ServicesDependedOn),
                         DependedBy = Names(() => controller.DependentServices),
                     };
@@ -146,6 +152,18 @@ namespace WinSW.Gui.Services
         /// tick would be work for a value that changes only when the file is replaced.
         /// </summary>
         public static void RefreshWrapperVersion(ServiceEntry entry) => entry.WrapperVersion = ReadVersion(entry.WrapperPath);
+
+        /// <summary>The wrapper's file version, read once per distinct path per sweep.</summary>
+        private static string VersionOf(Dictionary<string, string> cache, string path)
+        {
+            if (!cache.TryGetValue(path, out string? version))
+            {
+                version = ReadVersion(path);
+                cache[path] = version;
+            }
+
+            return version;
+        }
 
         private static string ReadVersion(string path)
         {
