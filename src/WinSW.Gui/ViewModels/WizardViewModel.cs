@@ -21,6 +21,14 @@ namespace WinSW.Gui.ViewModels
 
         private int step = 1;
         private string wrapperPath = string.Empty;
+
+        /// <summary>
+        /// Whether <see cref="WrapperPath"/> names a file, read when the path changes rather
+        /// than every time Next asks whether it may be enabled. CanExecute runs on every
+        /// RaiseCanExecuteChanged, and File.Exists against a share that is not answering is
+        /// an SMB timeout on the UI thread for each of them.
+        /// </summary>
+        private bool wrapperExists;
         private string targetPath = string.Empty;
         private string arguments = string.Empty;
         private string workingDirectory = string.Empty;
@@ -407,6 +415,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.wrapperPath, value))
                 {
+                    this.wrapperExists = File.Exists(value);
                     this.Raise(nameof(this.InstallDirectory));
                     this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
@@ -645,7 +654,7 @@ namespace WinSW.Gui.ViewModels
 
         private bool CanLeaveCurrentStep() => this.step switch
         {
-            1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || File.Exists(this.wrapperPath)),
+            1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || this.wrapperExists),
             2 => !string.IsNullOrWhiteSpace(this.serviceId) && !this.IdInUse,
             _ => true,
         };
@@ -708,6 +717,10 @@ namespace WinSW.Gui.ViewModels
 
                 this.UseBundledWrapper = false;
                 this.WrapperPath = final;
+
+                // The download may have landed on the path already chosen, in which case the
+                // setter saw no change and did not re-read; the file exists now either way.
+                this.wrapperExists = File.Exists(final);
                 this.StatusMessage = Localizer.Format("M.Wiz.WrapperDownloaded", latest.Version, final);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
