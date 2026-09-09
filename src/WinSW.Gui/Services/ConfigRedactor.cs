@@ -55,9 +55,30 @@ namespace WinSW.Gui.Services
             "credential", "auth", "private", "cert", "signature",
         };
 
+        /// <summary>
+        /// Elements holding a command line, where a secret is one argument among many and the
+        /// rest is the most useful thing in the bundle.
+        /// </summary>
+        private static readonly string[] CommandLineValued = { "arguments", "startarguments", "stoparguments" };
+
         /// <summary>The <c>user:password@</c> of a URL's authority, if it has one.</summary>
         private static readonly Regex UserInfo = new(
             @"(?<=//)[^/@\s]*:[^/@\s]*@", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// A secret passed as <c>name=value</c> on a command line: <c>-Dpassword=x</c>,
+        /// <c>--api-key x</c>, <c>/PWD:x</c>. The name is kept and the value replaced, so the
+        /// argument is still recognisable as the one that was there.
+        /// </summary>
+        /// <remarks>
+        /// Both separators are accepted: <c>-Dpassword=x</c> and <c>--api-key x</c> are equally
+        /// common. The space form can take one argument too many — <c>--token --verbose</c>
+        /// masks the switch after it — and that is the direction to err in: masking something
+        /// that was not a secret costs a line of the bundle, missing one costs the secret.
+        /// </remarks>
+        private static readonly Regex CommandLineSecret = new(
+            @"(?<name>(?:password|passwd|pwd|secret|token|apikey|api[-_]?key|credential|accesskey)(?:\s*[=:]\s*|\s+))(?<value>""[^""]*""|'[^']*'|\S+)",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Returns <paramref name="xml"/> with its secrets masked.
@@ -119,6 +140,14 @@ namespace WinSW.Gui.Services
                     report.Add(Path(element) + " (credentials in the URL)");
                 }
             }
+            else if (Matches(element.LocalName, CommandLineValued) && HasText(element))
+            {
+                if (MaskCommandLineSecrets(element.InnerText) is { } masked)
+                {
+                    element.InnerText = masked;
+                    report.Add(Path(element) + " (a secret passed as an argument)");
+                }
+            }
 
             foreach (var child in element.ChildNodes)
             {
@@ -156,6 +185,27 @@ namespace WinSW.Gui.Services
                     report.Add(Describe(element, item) + " (credentials in the URL)");
                 }
             }
+        }
+
+        /// <summary>
+        /// Masks the value of any argument that names itself a secret, or null if there is
+        /// none to mask.
+        /// </summary>
+        /// <remarks>
+        /// A guess, and known to be one. A command line cannot be parsed into arguments
+        /// reliably enough to do better, and blanking the whole element would take away the
+        /// single most useful line in the bundle — the arguments are what a service usually
+        /// failed to start on. A secret passed positionally, or under a name that does not
+        /// say so, is not found; the note beside the file says as much.
+        /// </remarks>
+        private static string? MaskCommandLineSecrets(string value)
+        {
+            if (!CommandLineSecret.IsMatch(value))
+            {
+                return null;
+            }
+
+            return CommandLineSecret.Replace(value, m => m.Groups["name"].Value + Mask);
         }
 
         /// <summary>Removes <c>user:password@</c> from a URL, or null if there is none.</summary>

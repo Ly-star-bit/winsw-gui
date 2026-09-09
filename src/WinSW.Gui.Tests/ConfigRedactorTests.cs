@@ -93,6 +93,56 @@ namespace WinSW.Gui.Tests
             Assert.Empty(removed);
         }
 
+        [Theory]
+        [InlineData("-Dpassword=hunter2")]
+        [InlineData("--api-key hunter2")]
+        [InlineData("-Dspring.datasource.password=hunter2")]
+        [InlineData("/TOKEN:hunter2")]
+        [InlineData("--secret \"hunter2\"")]
+        public void AnArgumentThatNamesItselfASecretIsMasked(string argument)
+        {
+            string xml = Redact($"<service><arguments>-jar app.jar {argument} --verbose</arguments></service>", out var removed);
+
+            Assert.DoesNotContain("hunter2", xml);
+
+            // The rest of the command line is the most useful thing in the bundle.
+            Assert.Contains("-jar app.jar", xml);
+            Assert.Contains("--verbose", xml);
+            Assert.NotEmpty(removed);
+        }
+
+        [Theory]
+        [InlineData("startarguments")]
+        [InlineData("stoparguments")]
+        public void TheOtherArgumentElementsAreCheckedToo(string element)
+        {
+            string xml = Redact($"<service><{element}>--token=hunter2</{element}></service>", out _);
+
+            Assert.DoesNotContain("hunter2", xml);
+        }
+
+        /// <summary>
+        /// The masking keeps the argument's name, so the reader can still see which switch
+        /// was passed — only its value is gone.
+        /// </summary>
+        [Fact]
+        public void MaskingAnArgumentLeavesItRecognisable()
+        {
+            string xml = Redact("<service><arguments>-Dpassword=hunter2</arguments></service>", out _);
+
+            Assert.Contains("-Dpassword=" + ConfigRedactor.Mask, xml);
+        }
+
+        [Fact]
+        public void OrdinaryArgumentsAreLeftAlone()
+        {
+            string xml = Redact(@"<service><arguments>-classpath c:\app\out test.Main --port 8080</arguments></service>", out var removed);
+
+            Assert.Contains("--port 8080", xml);
+            Assert.Contains(@"-classpath c:\app\out", xml);
+            Assert.Empty(removed);
+        }
+
         /// <summary>
         /// A file this code cannot read is a file whose secrets it cannot find. Passing it
         /// through unread is the one outcome that must not happen.

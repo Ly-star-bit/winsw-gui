@@ -105,9 +105,14 @@ namespace WinSW.Gui.Services
             }
 
             note.AppendLine();
-            note.AppendLine("An <env> value is masked when its name looks like a secret (PASSWORD, TOKEN,");
-            note.AppendLine("SECRET, KEY and so on). One holding a secret under a name that does not say");
-            note.AppendLine("so is still in the file above — check it before sending this on.");
+            note.AppendLine("Two of those rules are guesses, so check the file before sending this on:");
+            note.AppendLine();
+            note.AppendLine("  * An <env> value is masked when its NAME looks like a secret (PASSWORD,");
+            note.AppendLine("    TOKEN, SECRET, KEY and so on). One holding a secret under a name that");
+            note.AppendLine("    does not say so is still there.");
+            note.AppendLine("  * In <arguments>, <startarguments> and <stoparguments>, only an argument");
+            note.AppendLine("    that names itself — '-Dpassword=x', '--api-key x' — is masked. A secret");
+            note.AppendLine("    passed positionally, or inside a connection string, is still there.");
             note.AppendLine();
             note.AppendLine("The logs in this bundle are the program's own output and are NOT redacted.");
 
