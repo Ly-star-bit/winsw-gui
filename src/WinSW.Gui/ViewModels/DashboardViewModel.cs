@@ -28,6 +28,16 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(2);
 
+        /// <summary>
+        /// The poll rate for a short while after an operation. A start or stop moves the
+        /// service through pending states over a few seconds, and at two seconds a tick the
+        /// row could sit on the old state for a whole cycle per transition — long enough to
+        /// look as though the click had done nothing.
+        /// </summary>
+        private static readonly TimeSpan BurstInterval = TimeSpan.FromMilliseconds(400);
+
+        private static readonly TimeSpan BurstLength = TimeSpan.FromSeconds(10);
+
         private readonly DispatcherTimer statusTimer;
         private readonly DispatcherTimer rescanTimer;
         private readonly Dictionary<string, ServiceHealth> lastHealth = new(StringComparer.OrdinalIgnoreCase);
@@ -38,6 +48,7 @@ namespace WinSW.Gui.ViewModels
         private bool isBusy;
         private bool isScanning;
         private bool polling;
+        private DateTime burstUntil;
         private ProcessNode? processTree;
         private bool confirmVisible;
         private string confirmTitle = string.Empty;
@@ -121,6 +132,11 @@ namespace WinSW.Gui.ViewModels
                 if (!this.polling)
                 {
                     await this.RefreshStatusesAsync().ConfigureAwait(true);
+                }
+
+                if (this.burstUntil != default && DateTime.UtcNow > this.burstUntil)
+                {
+                    this.EndBurst();
                 }
             };
 
@@ -417,7 +433,29 @@ namespace WinSW.Gui.ViewModels
         /// Only the status poll pauses when the page is hidden; the slow rescan and the
         /// crash detection it feeds keep running so notifications still arrive.
         /// </summary>
-        public void Deactivate() => this.statusTimer.Stop();
+        public void Deactivate()
+        {
+            this.statusTimer.Stop();
+
+            // A page that comes back later should not come back polling at the burst rate.
+            this.EndBurst();
+        }
+
+        /// <summary>
+        /// Polls quickly for a few seconds, so the row follows the service through its
+        /// pending states as they happen rather than at the next scheduled tick.
+        /// </summary>
+        private void BurstPolling()
+        {
+            this.burstUntil = DateTime.UtcNow + BurstLength;
+            this.statusTimer.Interval = BurstInterval;
+        }
+
+        private void EndBurst()
+        {
+            this.burstUntil = default;
+            this.statusTimer.Interval = PollInterval;
+        }
 
         /// <summary>Called by the shell when the window is in the tray, so watching continues.</summary>
         public void KeepWatching() => this.statusTimer.Start();
@@ -617,6 +655,7 @@ namespace WinSW.Gui.ViewModels
             finally
             {
                 this.IsBusy = false;
+                this.BurstPolling();
             }
         }
 
@@ -788,6 +827,7 @@ namespace WinSW.Gui.ViewModels
             finally
             {
                 this.IsBusy = false;
+                this.BurstPolling();
             }
         }
 
