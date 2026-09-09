@@ -263,6 +263,7 @@
 
     <sys:String x:Key="M.Cli.TimedOut">winsw {0} 在 {1} 秒內未完成，服務可能已卡住。</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">有其他服務相依於此服務。</sys:String>
+    <sys:String x:Key="M.Cli.PathNotUsable">無法使用「{0}」：路徑中的 %NAME% 會先被命令直譯器取代，包裝程式拿到的已不是該路徑。請把檔案移到不含百分比符號的位置。</sys:String>
     <sys:String x:Key="M.Tray.Open">開啟 WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">結束</sys:String>
     <sys:String x:Key="M.Dash.DependentsTitle">連同相依服務一起停止？</sys:String>
@@ -319,6 +320,7 @@
     <sys:String x:Key="M.Dash.WrapperCurrent">不低於內建的 {0}</sys:String>
     <sys:String x:Key="M.Dash.SelectedCount">已選取 {0} 個服務</sys:String>
     <sys:String x:Key="M.Dash.RunningMany">正在對 {1} 個服務執行 winsw {0}…</sys:String>
+    <sys:String x:Key="M.Dash.RunningManyPrompts">正在對 {1} 個服務執行「{0}」——共 {2} 次提升權限提示，因為一條命令列放不下。</sys:String>
     <sys:String x:Key="M.Dash.RanMany">已對 {1} 個服務執行 winsw {0}，結果請見各列狀態。</sys:String>
     <sys:String x:Key="M.Dlg.ExportFolder">選擇安裝套件的輸出資料夾</sys:String>
     <sys:String x:Key="M.Dash.Exported">已匯出。請在目標機器上以系統管理員身分執行 {0}。</sys:String>

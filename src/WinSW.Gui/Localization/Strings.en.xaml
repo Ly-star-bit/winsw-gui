@@ -263,6 +263,7 @@
 
     <sys:String x:Key="M.Cli.TimedOut">'winsw {0}' did not finish within {1} seconds. The service may be stuck.</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">Other services depend on this one.</sys:String>
+    <sys:String x:Key="M.Cli.PathNotUsable">'{0}' cannot be used: a %NAME% in a path is replaced by the command interpreter before the wrapper sees it. Move the file somewhere without a percent sign.</sys:String>
     <sys:String x:Key="M.Tray.Open">Open WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">Exit</sys:String>
     <sys:String x:Key="M.Dash.DependentsTitle">Stop dependent services too?</sys:String>
@@ -319,6 +320,7 @@
     <sys:String x:Key="M.Dash.WrapperCurrent">not older than the bundled {0}</sys:String>
     <sys:String x:Key="M.Dash.SelectedCount">{0} services selected</sys:String>
     <sys:String x:Key="M.Dash.RunningMany">Running 'winsw {0}' on {1} services…</sys:String>
+    <sys:String x:Key="M.Dash.RunningManyPrompts">Running '{0}' on {1} services — {2} elevation prompts, because they do not fit on one command line.</sys:String>
     <sys:String x:Key="M.Dash.RanMany">'winsw {0}' ran on {1} services; see each row for the result.</sys:String>
     <sys:String x:Key="M.Dlg.ExportFolder">Choose a folder for the install package</sys:String>
     <sys:String x:Key="M.Dash.Exported">Exported. Run {0} on the target machine as administrator.</sys:String>

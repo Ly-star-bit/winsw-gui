@@ -4,6 +4,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using WinSW.Gui.Localization;
@@ -105,20 +107,29 @@ namespace WinSW.Gui.Services
         /// </summary>
         public static Task<CommandResult> RunOnManyAsync(string command, IEnumerable<(string Wrapper, string ConfigPath)> services)
         {
-            var steps = services.Select(s => $"{Quote(s.Wrapper)} {command} {Quote(s.ConfigPath)} --no-elevate").ToList();
-            if (steps.Count == 0)
+            var list = services.ToList();
+            if (list.Count == 0)
             {
                 return Task.FromResult(CommandResult.Ok());
             }
 
-            string script = string.Join(" & ", steps);
-            return RunElevatedAsync("cmd.exe", $"/d /c \"{script}\"", null, DefaultTimeout, command);
+            if (RejectExpandablePaths(list.SelectMany(s => new[] { s.Wrapper, s.ConfigPath })) is { } refusal)
+            {
+                return Task.FromResult(refusal);
+            }
+
+            var steps = list.Select(s => $"{Quote(s.Wrapper)} {command} {Quote(s.ConfigPath)} --no-elevate").ToList();
+            return RunElevatedScriptAsync(steps, null, DefaultTimeout, command);
         }
 
         /// <summary>
-        /// Replaces a wrapper executable with a newer build under one prompt: stop (failure
-        /// tolerated: it may not be running), copy over, start.
+        /// How many elevation prompts <see cref="RunOnManyAsync"/> will raise for this many
+        /// services, so the confirmation can say so rather than surprising the user with a
+        /// second one halfway through.
         /// </summary>
+        public static int PromptCountFor(string command, IEnumerable<(string Wrapper, string ConfigPath)> services) =>
+            Chunk(services.Select(s => $"{Quote(s.Wrapper)} {command} {Quote(s.ConfigPath)} --no-elevate").ToList()).Count;
+
         /// <summary>
         /// Replaces a wrapper executable and brings back the services that run from it. Under
         /// the install root that is every service at once, because they share one file.
@@ -132,6 +143,11 @@ namespace WinSW.Gui.Services
         /// </remarks>
         public static Task<CommandResult> UpgradeWrapperAsync(string wrapper, string newExecutable, IReadOnlyList<(string ConfigPath, bool WasRunning)> services)
         {
+            if (RejectExpandablePaths(services.Select(s => s.ConfigPath).Concat(new[] { wrapper, newExecutable })) is { } refusal)
+            {
+                return Task.FromResult(refusal);
+            }
+
             var steps = new List<string>(services.Count * 2 + 1);
 
             foreach (var service in services)
@@ -149,7 +165,8 @@ namespace WinSW.Gui.Services
                 }
             }
 
-            return RunElevatedAsync("cmd.exe", $"/d /c \"{string.Join(" & ", steps)}\"", Path.GetDirectoryName(wrapper), DefaultTimeout, "upgrade");
+            // Chunks run in order, so the copy still falls between every stop and every start.
+            return RunElevatedScriptAsync(steps, Path.GetDirectoryName(wrapper), DefaultTimeout, "upgrade");
         }
 
         /// <summary>
@@ -166,7 +183,13 @@ namespace WinSW.Gui.Services
             var startInfo = new ProcessStartInfo(wrapper)
             {
                 UseShellExecute = false,
-                RedirectStandardOutput = true,
+
+                // Not redirected. A redirected pipe that nobody drains fills after a few
+                // kilobytes and blocks the child inside its own write, and this method reads
+                // only standard error — so redirecting output as well would be a deadlock
+                // waiting for a chatty build of the wrapper. Where both streams are wanted,
+                // they have to be read as they arrive: see TrialRunner.
+                RedirectStandardOutput = false,
                 RedirectStandardError = true,
                 CreateNoWindow = true,
                 WorkingDirectory = Path.GetDirectoryName(wrapper) ?? Environment.CurrentDirectory,
@@ -185,8 +208,21 @@ namespace WinSW.Gui.Services
                     return CommandResult.Failed(Localizer.Get("M.Cli.CannotStart"));
                 }
 
-                string error = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                await process.WaitForExitAsync().ConfigureAwait(false);
+                using var cancellation = new CancellationTokenSource(QuickTimeout);
+
+                string error;
+                try
+                {
+                    error = await process.StandardError.ReadToEndAsync(cancellation.Token).ConfigureAwait(false);
+                    await process.WaitForExitAsync(cancellation.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Unelevated and ours, so unlike the elevated commands this one can be
+                    // stopped rather than merely reported.
+                    Terminate(process);
+                    return new CommandResult(-1, false, true, Localizer.Format("M.Cli.TimedOut", "customize", (int)QuickTimeout.TotalSeconds));
+                }
 
                 return process.ExitCode == 0
                     ? CommandResult.Ok()
@@ -204,9 +240,127 @@ namespace WinSW.Gui.Services
         /// </summary>
         public static Task<CommandResult> CopyElevatedAsync(string source, string destination)
         {
+            if (RejectExpandablePaths(new[] { source, destination }) is { } refusal)
+            {
+                return Task.FromResult(refusal);
+            }
+
             string script = $"copy /y {Quote(source)} {Quote(destination)}";
             return RunElevatedAsync("cmd.exe", $"/d /c \"{script}\"", Path.GetDirectoryName(destination), QuickTimeout, "copy");
         }
+
+        /// <summary>
+        /// The most a chained script may be, in characters. cmd refuses a command line longer
+        /// than 8191 and does not say so usefully; the margin covers <c>cmd.exe /d /c ""</c>
+        /// and leaves room for one more step than fits exactly.
+        /// </summary>
+        internal const int MaxScriptLength = 7500;
+
+        /// <summary>
+        /// A <c>%NAME%</c> pair, which cmd substitutes even inside double quotes. Percent is a
+        /// legal character in a Windows path, and there is no way to escape it on a command
+        /// line — only inside a batch file, which is not something to write and then run
+        /// elevated on a standard user's behalf.
+        /// </summary>
+        private static readonly Regex ExpandablePath =
+            new(@"%[A-Za-z_][A-Za-z0-9_]*%", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Splits chained steps into scripts short enough for cmd to accept. Every batch here
+        /// grows with the number of services, and thirty of them under one install root is an
+        /// ordinary amount, so the limit is reachable.
+        /// </summary>
+        /// <remarks>
+        /// A single step longer than the budget is still emitted on its own: cmd will refuse
+        /// it, but splitting a command in half would be worse than letting it be refused.
+        /// </remarks>
+        internal static IReadOnlyList<string> Chunk(IReadOnlyList<string> steps)
+        {
+            var scripts = new List<string>();
+            var current = new StringBuilder();
+
+            foreach (string step in steps)
+            {
+                if (current.Length > 0 && current.Length + Separator.Length + step.Length > MaxScriptLength)
+                {
+                    scripts.Add(current.ToString());
+                    current.Clear();
+                }
+
+                if (current.Length > 0)
+                {
+                    current.Append(Separator);
+                }
+
+                current.Append(step);
+            }
+
+            if (current.Length > 0)
+            {
+                scripts.Add(current.ToString());
+            }
+
+            return scripts;
+        }
+
+        /// <summary>
+        /// Refuses paths cmd would rewrite, rather than running a command against a path that
+        /// is not the one the user chose.
+        /// </summary>
+        internal static CommandResult? RejectExpandablePaths(IEnumerable<string> paths)
+        {
+            foreach (string path in paths)
+            {
+                if (ExpandablePath.IsMatch(path))
+                {
+                    return CommandResult.Failed(Localizer.Format("M.Cli.PathNotUsable", path));
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Runs chained steps elevated, in as few prompts as cmd's command line allows.
+        /// </summary>
+        private static async Task<CommandResult> RunElevatedScriptAsync(
+            IReadOnlyList<string> steps, string? workingDirectory, TimeSpan timeout, string label)
+        {
+            CommandResult? firstFailure = null;
+
+            foreach (string script in Chunk(steps))
+            {
+                var result = await RunElevatedAsync("cmd.exe", $"/d /c \"{script}\"", workingDirectory, timeout, label).ConfigureAwait(false);
+
+                // A dismissed prompt means the user has changed their mind about the whole
+                // operation, not just about this chunk of it.
+                if (result.Cancelled)
+                {
+                    return result;
+                }
+
+                // The remaining chunks still run — the steps were chained with '&' precisely
+                // so that one failure does not strand the rest — but it is the first failure
+                // that gets reported, not whatever the last chunk happened to return.
+                firstFailure ??= result.Succeeded ? null : result;
+            }
+
+            return firstFailure ?? CommandResult.Ok();
+        }
+
+        /// <summary>Kills a process and the tree under it, ignoring one that has already gone.</summary>
+        private static void Terminate(Process process)
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (Exception e) when (e is InvalidOperationException or Win32Exception or NotSupportedException)
+            {
+            }
+        }
+
+        private const string Separator = " & ";
 
         private static string Line(string command, string configPath, string? extra = null) =>
             extra is null ? $"{command} {Quote(configPath)}" : $"{command} {Quote(configPath)} {extra}";
@@ -233,6 +387,13 @@ namespace WinSW.Gui.Services
                 {
                     return Task.FromResult(CommandResult.Failed(Localizer.Format("M.Cli.WrapperMissing", step.Wrapper)));
                 }
+            }
+
+            // The command line already carries the quoted configuration path, so it is checked
+            // alongside the executable rather than the caller having to pass the path twice.
+            if (RejectExpandablePaths(steps.SelectMany(s => new[] { s.Wrapper, s.CommandLine })) is { } refusal)
+            {
+                return Task.FromResult(refusal);
             }
 
             string script = string.Join(" && ", steps.Select(s => $"{Quote(s.Wrapper)} {s.CommandLine} --no-elevate"));

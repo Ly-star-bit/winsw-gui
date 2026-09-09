@@ -263,6 +263,7 @@
 
     <sys:String x:Key="M.Cli.TimedOut">'winsw {0}' は {1} 秒以内に完了しませんでした。サービスが停止している可能性があります。</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">このサービスに依存する他のサービスがあります。</sys:String>
+    <sys:String x:Key="M.Cli.PathNotUsable">「{0}」は使用できません: パス内の %NAME% はコマンド インタープリターによって先に置換され、ラッパーには別のパスが渡ります。パーセント記号を含まない場所にファイルを移動してください。</sys:String>
     <sys:String x:Key="M.Tray.Open">WinSW を開く</sys:String>
     <sys:String x:Key="M.Tray.Exit">終了</sys:String>
     <sys:String x:Key="M.Dash.DependentsTitle">依存するサービスも停止しますか?</sys:String>
@@ -319,6 +320,7 @@
     <sys:String x:Key="M.Dash.WrapperCurrent">同梱の {0} 以上</sys:String>
     <sys:String x:Key="M.Dash.SelectedCount">{0} 件のサービスを選択</sys:String>
     <sys:String x:Key="M.Dash.RunningMany">{1} 件のサービスに winsw {0} を実行中…</sys:String>
+    <sys:String x:Key="M.Dash.RunningManyPrompts">{1} 個のサービスに '{0}' を実行しています — 1 つのコマンド ラインに収まらないため、昇格の確認は {2} 回表示されます。</sys:String>
     <sys:String x:Key="M.Dash.RanMany">{1} 件のサービスに winsw {0} を実行しました。結果は各行を確認してください。</sys:String>
     <sys:String x:Key="M.Dlg.ExportFolder">インストール パッケージの出力先フォルダーを選択</sys:String>
     <sys:String x:Key="M.Dash.Exported">エクスポートしました。対象マシンで管理者として {0} を実行してください。</sys:String>

@@ -674,8 +674,15 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            // Normally one prompt covers the whole batch. Past what cmd will accept on one
+            // command line it cannot, and a second prompt appearing unannounced looks like
+            // something has gone wrong, so the count is said up front instead.
+            int prompts = WinSwCli.PromptCountFor(command, targets);
+
             this.IsBusy = true;
-            this.StatusMessage = Localizer.Format("M.Dash.RunningMany", command, targets.Count);
+            this.StatusMessage = prompts > 1
+                ? Localizer.Format("M.Dash.RunningManyPrompts", command, targets.Count, prompts)
+                : Localizer.Format("M.Dash.RunningMany", command, targets.Count);
             try
             {
                 var result = await WinSwCli.RunOnManyAsync(command, targets).ConfigureAwait(true);
