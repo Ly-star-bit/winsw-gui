@@ -41,13 +41,25 @@
     <PackageReference Include="WPF-UI" Version="3.1.1" />
 
     <!--
-      The tray icon, and nothing else. Windows Forms used to be referenced for its NotifyIcon
-      — the whole framework, about 15 MB of the self-contained build, for one class in one
-      file — and TrayIcon now calls Shell_NotifyIcon itself. System.Drawing is what remains
-      of that: it decodes the multi-resolution .ico and picks the frame matching the
-      notification area's size, which follows the display scaling.
+      The tray icon, and nothing else. TrayIcon calls Shell_NotifyIcon itself rather than
+      using the Windows Forms NotifyIcon, and System.Drawing is what remains of that: it
+      decodes the multi-resolution .ico and picks the frame matching the notification area's
+      size, which follows the display scaling. It came in with Windows Forms before and so
+      was never referenced by name.
 
-      It came in with Windows Forms before and so was never referenced by name.
+      Dropping UseWindowsForms was expected to be worth about 15 MB of the self-contained
+      build. It was worth nothing, and this reference is why the smallest build grew:
+
+        gui-v0.11.0 -> gui-v0.12.0, release assets, bytes
+          x64 self-contained         68,702,026 -> 68,712,333
+          arm64 self-contained       64,897,020 -> 64,907,326
+          x64 framework-dependent     7,694,865 ->  8,330,407
+
+      UseWPF already brings in the Microsoft.WindowsDesktop.App runtime pack, and that pack
+      carries Windows Forms alongside WPF. A self-contained publish with no trimming — and
+      WPF cannot be trimmed — ships all of it either way, so the switch only ever governed
+      what this project compiled against. Size work here has to target the runtime pack, not
+      individual framework references.
     -->
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
 
