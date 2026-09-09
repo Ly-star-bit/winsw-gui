@@ -4,7 +4,6 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
-    xmlns:views="clr-namespace:WinSW.Gui.Views"
     StartupUri="MainWindow.xaml">
 
     <Application.Resources>
@@ -21,30 +20,6 @@
                 <!-- UI strings. Localizer swaps this entry at runtime for the chosen language. -->
                 <ResourceDictionary Source="Localization/Strings.en.xaml" />
             </ResourceDictionary.MergedDictionaries>
-
-            <!-- View model → view. The shell's ContentControl resolves pages through these. -->
-            <DataTemplate DataType="{x:Type vm:DashboardViewModel}">
-                <views:DashboardView />
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:ConfigEditorViewModel}">
-                <views:ConfigEditorView />
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:DesktopTasksViewModel}">
-                <views:DesktopTasksView />
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:LogViewerViewModel}">
-                <views:LogViewerView />
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:WizardViewModel}">
-                <views:WizardView />
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:RemoteViewModel}">
-                <views:RemoteView />
-            </DataTemplate>
-            <!-- The settings page edits the shell's own preferences, so it binds to the shell. -->
-            <DataTemplate DataType="{x:Type vm:ShellViewModel}">
-                <views:SettingsView />
-            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

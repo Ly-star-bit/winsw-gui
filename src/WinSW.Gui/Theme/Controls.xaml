@@ -18,6 +18,7 @@
     <local:EqualityToBooleanConverter x:Key="EqualityToBoolean" />
     <local:SparklineConverter x:Key="Sparkline" />
     <local:NotNullToBooleanConverter x:Key="NotNullToBool" />
+    <local:PageViewConverter x:Key="PageView" />
     <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
 
     <!-- Typography -->

@@ -157,9 +157,13 @@
                 </Grid>
             </Border>
 
-            <!-- Page host: DataTemplates in App.xaml map each view model to its view. -->
+            <!--
+                Page host. The converter maps each view model to its view and keeps the view,
+                so returning to a page shows the one already built — with its scroll position
+                and selection — rather than constructing it again. See PageViewConverter.
+            -->
             <Grid Grid.Column="1">
-                <ContentControl Content="{Binding CurrentPage}" />
+                <ContentControl Content="{Binding CurrentPage, Converter={StaticResource PageView}}" />
 
                 <!-- Transient notice for the outcome of an action; sits where the eye already is. -->
                 <Border

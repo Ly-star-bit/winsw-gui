@@ -2,8 +2,11 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Collections.Generic;
 using System.Windows.Media;
 using WinSW.Gui.Model;
+using WinSW.Gui.ViewModels;
+using WinSW.Gui.Views;
 
 namespace WinSW.Gui
 {
@@ -152,6 +155,65 @@ namespace WinSW.Gui
     {
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             value is string text ? text.Length > 0 : value != null;
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Resolves a page's view model to its view, and keeps the view.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The shell used to reach its pages through DataTemplates, and a ContentControl
+    /// instantiates a template every time its content changes: each visit to a page built
+    /// that page's view from scratch and threw the previous one away. The services page is
+    /// five hundred lines of XAML, so a switch cost tens of milliseconds of construction and
+    /// layout — and, worse than the hitch, the view's own state went with it: the scroll
+    /// position, the selected tab, the caret in a filter box.
+    /// </para>
+    /// <para>
+    /// One view per view model, made on first visit and reused after. The mapping is the one
+    /// the templates spelled out, kept explicit here so that a page without a view fails in
+    /// plain sight rather than silently showing nothing. The bound content becomes an
+    /// element rather than a model, which WPF displays as-is; the Loaded trigger that plays
+    /// the entrance animation fires on every attach, so a cached page still slides in.
+    /// </para>
+    /// </remarks>
+    public sealed class PageViewConverter : IValueConverter
+    {
+        private readonly Dictionary<object, FrameworkElement> views = new();
+
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        {
+            if (value is null)
+            {
+                return null;
+            }
+
+            if (!this.views.TryGetValue(value, out var view))
+            {
+                view = value switch
+                {
+                    DashboardViewModel => new DashboardView(),
+                    ConfigEditorViewModel => new ConfigEditorView(),
+                    DesktopTasksViewModel => new DesktopTasksView(),
+                    LogViewerViewModel => new LogViewerView(),
+                    WizardViewModel => new WizardView(),
+                    RemoteViewModel => new RemoteView(),
+
+                    // The settings page edits the shell's own preferences, so it binds to the shell.
+                    ShellViewModel => new SettingsView(),
+
+                    _ => throw new NotSupportedException("No view is registered for " + value.GetType().Name),
+                };
+
+                view.DataContext = value;
+                this.views[value] = view;
+            }
+
+            return view;
+        }
 
         public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
             throw new NotSupportedException();
