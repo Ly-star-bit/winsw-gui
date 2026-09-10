@@ -1,8 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
-using System.Collections.Generic;
 using System.Windows.Media;
 using WinSW.Gui.Model;
 using WinSW.Gui.ViewModels;
@@ -184,11 +184,11 @@ namespace WinSW.Gui
     {
         private readonly Dictionary<object, FrameworkElement> views = new();
 
-        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is null)
             {
-                return null;
+                return DependencyProperty.UnsetValue;
             }
 
             if (!this.views.TryGetValue(value, out var view))

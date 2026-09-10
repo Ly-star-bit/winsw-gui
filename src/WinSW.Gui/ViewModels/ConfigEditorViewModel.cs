@@ -433,6 +433,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var loaded = ServiceConfigModel.Load(path);
+                this.Detach(this.Model);
                 this.Attach(loaded);
                 this.Model = loaded;
                 this.FilePath = loaded.FilePath;
@@ -450,6 +451,7 @@ namespace WinSW.Gui.ViewModels
         public void NewConfiguration()
         {
             var fresh = ServiceConfigModel.CreateNew();
+            this.Detach(this.Model);
             this.Attach(fresh);
             this.Model = fresh;
             this.FilePath = null;
@@ -764,6 +766,41 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>
+        /// Undoes <see cref="Attach"/>, so a model the editor has moved off stops driving it.
+        /// </summary>
+        /// <remarks>
+        /// Opening a second configuration used to leave the first one wired to this editor.
+        /// The subscription runs model to editor, so the editor was never held alive by it and
+        /// nothing leaked — but a discarded model that something else still touched would have
+        /// restarted the debounce and recomputed the preview of the document now on screen.
+        /// </remarks>
+        private void Detach(ServiceConfigModel target)
+        {
+            target.PropertyChanged -= this.OnModelChanged;
+
+            Unwatch(target.EnvironmentVariables);
+            Unwatch(target.Downloads);
+            Unwatch(target.FailureActions);
+            Unwatch(target.Dependencies);
+            Unwatch(target.SharedDirectories);
+
+            target.Prestart.PropertyChanged -= this.OnModelChanged;
+            target.Poststart.PropertyChanged -= this.OnModelChanged;
+            target.Prestop.PropertyChanged -= this.OnModelChanged;
+            target.Poststop.PropertyChanged -= this.OnModelChanged;
+
+            void Unwatch<T>(ObservableCollection<T> collection)
+                where T : ObservableObject
+            {
+                collection.CollectionChanged -= this.OnCollectionChanged;
+                foreach (var item in collection)
+                {
+                    item.PropertyChanged -= this.OnModelChanged;
+                }
+            }
+        }
+
         private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             // Rows are edited in place, so each new row needs its own subscription for the
@@ -842,6 +879,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var replacement = ServiceConfigModel.FromXml(this.xmlEditorText, this.filePath);
+                this.Detach(this.Model);
                 this.Attach(replacement);
                 this.Model = replacement;
                 this.IsDirty = true;
