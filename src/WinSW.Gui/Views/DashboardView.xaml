@@ -484,6 +484,7 @@
                                     <ContextMenu>
                                         <MenuItem Command="{Binding RefreshConfigCommand}" Header="{DynamicResource S.ApplyConfig}" ToolTip="{DynamicResource S.ReApplyTheConfigurationFileTo}" />
                                         <MenuItem Command="{Binding OpenFolderCommand}" Header="{DynamicResource S.Reveal}" />
+                                        <MenuItem Command="{Binding OpenWorkingDirectoryCommand}" Header="{DynamicResource M.Dash.OpenWorkingDirectory}" ToolTip="{DynamicResource M.Dash.OpenWorkingDirectoryTip}" />
                                         <MenuItem Command="{Binding ExportScriptCommand}" Header="{DynamicResource M.Dash.Export}" ToolTip="{DynamicResource M.Dash.ExportTip}" />
                                         <MenuItem Command="{Binding DiagnosticsCommand}" Header="{DynamicResource M.Dash.Diagnostics}" ToolTip="{DynamicResource M.Dash.DiagnosticsTip}" />
                                         <Separator />

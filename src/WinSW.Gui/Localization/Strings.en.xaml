@@ -344,6 +344,9 @@
     <sys:String x:Key="M.Dash.ExportTip">Copy wrapper + configuration + install.ps1 to a folder</sys:String>
     <sys:String x:Key="M.Dash.Diagnostics">Diagnostics</sys:String>
     <sys:String x:Key="M.Dash.DiagnosticsTip">Zip the configuration, log tails, events and versions</sys:String>
+    <sys:String x:Key="M.Dash.OpenWorkingDirectory">Open working directory</sys:String>
+    <sys:String x:Key="M.Dash.OpenWorkingDirectoryTip">Open the folder the service runs in, which is not always the folder its configuration is in</sys:String>
+    <sys:String x:Key="M.Dash.ConfigUnreadable">Could not read the configuration: {0}</sys:String>
     <sys:String x:Key="M.Hook.Tab">Hooks</sys:String>
     <sys:String x:Key="M.Hook.Hint">Programs the wrapper runs around the service's lifecycle. Each is optional; leave the executable empty to disable it.</sys:String>
     <sys:String x:Key="M.Hook.Prestart">BEFORE START</sys:String>

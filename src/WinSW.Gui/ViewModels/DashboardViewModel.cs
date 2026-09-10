@@ -107,6 +107,9 @@ namespace WinSW.Gui.ViewModels
 
             this.OpenFolderCommand = new RelayCommand(this.OpenContainingFolder, () => this.selectedService != null);
 
+            // Unlike Reveal, this one has to read the configuration to know where to go.
+            this.OpenWorkingDirectoryCommand = new RelayCommand(this.OpenWorkingDirectory, () => this.selectedService?.ConfigPath != null);
+
             this.ConfirmCommand = new AsyncRelayCommand(this.ExecuteConfirmedAsync);
             this.CancelConfirmCommand = new RelayCommand(() => this.ConfirmVisible = false);
 
@@ -251,6 +254,8 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand ViewLogsCommand { get; }
 
         public RelayCommand OpenFolderCommand { get; }
+
+        public RelayCommand OpenWorkingDirectoryCommand { get; }
 
         public AsyncRelayCommand ConfirmCommand { get; }
 
@@ -1046,6 +1051,7 @@ namespace WinSW.Gui.ViewModels
             this.EditConfigCommand.RaiseCanExecuteChanged();
             this.ViewLogsCommand.RaiseCanExecuteChanged();
             this.OpenFolderCommand.RaiseCanExecuteChanged();
+            this.OpenWorkingDirectoryCommand.RaiseCanExecuteChanged();
         }
 
         private void ApplySort()
@@ -1136,6 +1142,49 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{target}\"") { UseShellExecute = true });
+            }
+            catch (Exception e)
+            {
+                this.StatusMessage = Localizer.Format("M.Common.ExplorerFailed", e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Opens the directory the service's own process runs in, which is not always the one
+        /// holding the configuration: <c>&lt;workingdirectory&gt;</c> overrides it, and that is
+        /// where the program's own files — its data, its own logs — are to be found.
+        /// </summary>
+        private void OpenWorkingDirectory()
+        {
+            string? configPath = this.selectedService?.ConfigPath;
+            if (configPath is null || !File.Exists(configPath))
+            {
+                this.StatusMessage = Localizer.Get("M.Dash.NothingToReveal");
+                return;
+            }
+
+            string directory;
+            try
+            {
+                directory = ConfigPaths.ResolveWorkingDirectory(ServiceConfigModel.Load(configPath), configPath);
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                this.StatusMessage = Localizer.Format("M.Dash.ConfigUnreadable", e.Message);
+                return;
+            }
+
+            if (!Directory.Exists(directory))
+            {
+                this.StatusMessage = Localizer.Format("M.Warn.WorkingDirectoryMissing", directory);
+                return;
+            }
+
+            try
+            {
+                // The path itself rather than an explorer.exe command line: a directory ending
+                // in a backslash would put one in front of the closing quote and take it with it.
+                Process.Start(new ProcessStartInfo(directory) { UseShellExecute = true });
             }
             catch (Exception e)
             {

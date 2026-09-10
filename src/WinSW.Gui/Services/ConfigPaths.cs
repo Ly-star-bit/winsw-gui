@@ -50,6 +50,39 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// The directory the service's process runs in: <c>&lt;workingdirectory&gt;</c> when
+        /// set, otherwise the directory holding the configuration file, which is the
+        /// wrapper's own fallback and the one <see cref="TrialRunner"/> uses.
+        /// </summary>
+        /// <remarks>
+        /// A bare relative path is a guess rather than a reading. The wrapper assigns the
+        /// value straight to <see cref="Environment.CurrentDirectory"/> without ever setting
+        /// one of its own, so a service resolves it against <c>system32</c> — never what
+        /// anybody meant. It is combined with the configuration's directory instead, which is
+        /// the same guess <see cref="ResolveLogDirectory"/> makes and the only one that can
+        /// open a folder somebody wants to look at.
+        /// </remarks>
+        public static string ResolveWorkingDirectory(ServiceConfigModel model, string configPath)
+        {
+            string fallback = Path.GetDirectoryName(Path.GetFullPath(configPath))!;
+
+            if (string.IsNullOrWhiteSpace(model.WorkingDirectory))
+            {
+                return fallback;
+            }
+
+            try
+            {
+                string resolved = Expand(model.WorkingDirectory!, configPath);
+                return Path.IsPathRooted(resolved) ? resolved : Path.Combine(fallback, resolved);
+            }
+            catch (ArgumentException)
+            {
+                return fallback;
+            }
+        }
+
+        /// <summary>
         /// The stem every log file for this service starts with: <c>&lt;logname&gt;</c> when
         /// set, otherwise the configuration file's base name.
         /// </summary>

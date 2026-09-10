@@ -344,6 +344,9 @@
     <sys:String x:Key="M.Dash.ExportTip">ラッパー、構成、install.ps1 をフォルダーにコピー</sys:String>
     <sys:String x:Key="M.Dash.Diagnostics">診断</sys:String>
     <sys:String x:Key="M.Dash.DiagnosticsTip">構成、ログ末尾、イベント、バージョンを Zip にまとめる</sys:String>
+    <sys:String x:Key="M.Dash.OpenWorkingDirectory">作業ディレクトリを開く</sys:String>
+    <sys:String x:Key="M.Dash.OpenWorkingDirectoryTip">サービスが実行されるフォルダーを開きます。構成ファイルのあるフォルダーとは限りません</sys:String>
+    <sys:String x:Key="M.Dash.ConfigUnreadable">構成ファイルを読み取れません: {0}</sys:String>
     <sys:String x:Key="M.Hook.Tab">フック</sys:String>
     <sys:String x:Key="M.Hook.Hint">サービスのライフサイクル前後にラッパーが実行するプログラム。すべて任意で、実行ファイルを空にすると無効になります。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">開始前</sys:String>

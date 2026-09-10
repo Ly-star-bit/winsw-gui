@@ -344,6 +344,9 @@
     <sys:String x:Key="M.Dash.ExportTip">將 wrapper、設定和 install.ps1 複製到資料夾</sys:String>
     <sys:String x:Key="M.Dash.Diagnostics">診斷套件</sys:String>
     <sys:String x:Key="M.Dash.DiagnosticsTip">打包設定、記錄尾端、事件和版本資訊</sys:String>
+    <sys:String x:Key="M.Dash.OpenWorkingDirectory">開啟工作目錄</sys:String>
+    <sys:String x:Key="M.Dash.OpenWorkingDirectoryTip">開啟服務執行所在的目錄；它不一定是設定檔所在的目錄</sys:String>
+    <sys:String x:Key="M.Dash.ConfigUnreadable">無法讀取設定檔：{0}</sys:String>
     <sys:String x:Key="M.Hook.Tab">掛勾</sys:String>
     <sys:String x:Key="M.Hook.Hint">wrapper 在服務生命週期前後執行的程式。均為選填，執行檔留白即停用。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">啟動前</sys:String>
