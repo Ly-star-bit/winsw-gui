@@ -93,6 +93,7 @@ namespace WinSW.Gui.ViewModels
         private bool autoScroll = true;
         private bool isPaused;
         private bool isLoadingEvents;
+        private string filterNeedle = string.Empty;
         private bool useRegex;
         private bool wrapLines = AppSettings.Current.LogWrapLines;
         private double fontSize = AppSettings.Current.LogFontSize;
@@ -551,6 +552,10 @@ namespace WinSW.Gui.ViewModels
             this.filterRegex = null;
             this.FilterInvalid = false;
 
+            // Trimmed once here rather than once per line inside IsVisible, which the plain
+            // substring path called for every line in the buffer on every keystroke.
+            this.filterNeedle = this.filter.Trim();
+
             if (!this.useRegex || string.IsNullOrWhiteSpace(this.filter))
             {
                 return;
@@ -593,7 +598,7 @@ namespace WinSW.Gui.ViewModels
                 }
             }
 
-            return line.Contains(this.filter.Trim(), StringComparison.OrdinalIgnoreCase);
+            return line.Contains(this.filterNeedle, StringComparison.OrdinalIgnoreCase);
         }
 
         private void JumpToNextError()
