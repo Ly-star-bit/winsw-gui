@@ -37,6 +37,15 @@ jobs:
   build:
     runs-on: windows-latest
 
+    env:
+      # MSBuild keeps its worker processes alive between invocations so the next build can
+      # reuse them. On a runner that is discarded after the job there is nothing to reuse,
+      # and a worker that was left in a bad state by the previous invocation is what surfaces
+      # as "MSB4166: child node exited prematurely" — which this workflow has hit more than
+      # once, unrelated to the commit that happened to be building. Nothing to gain here,
+      # so it is switched off.
+      MSBUILDDISABLENODEREUSE: 1
+
     steps:
       # Full history: the wrapper's file version counts the commits that touched it.
       - name: Checkout
