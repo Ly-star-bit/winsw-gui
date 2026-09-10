@@ -316,7 +316,11 @@ namespace WinSW.Gui.ViewModels
                 {
                     this.ProcessTree = null;
                     this.RefreshCommandStates();
-                    _ = this.RefreshStatusesAsync();
+
+                    // Only the tree. Moving down the list with the arrow keys used to re-read
+                    // every service on the machine for each keypress — the panel needs one
+                    // process tree, and the states on screen are at most one tick old.
+                    _ = this.RefreshProcessTreeAsync();
                     this.RaiseWrapperUpdate();
                 }
             }
@@ -755,6 +759,41 @@ namespace WinSW.Gui.ViewModels
             finally
             {
                 this.polling = false;
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds the process tree for the selected service, and nothing else.
+        /// </summary>
+        /// <remarks>
+        /// The snapshot it takes covers every process on the machine, so it stays off the UI
+        /// thread like the rest of the sampling. A tree that comes back for a service the
+        /// selection has since moved off is dropped.
+        /// </remarks>
+        private async Task RefreshProcessTreeAsync()
+        {
+            var selected = this.selectedService;
+            int processId = selected?.ProcessId ?? 0;
+            if (selected is null || processId <= 0)
+            {
+                this.ProcessTree = null;
+                return;
+            }
+
+            var tree = await Task.Run(() => ProcessTreeProvider.Build(processId)).ConfigureAwait(true);
+
+            if (!ReferenceEquals(this.selectedService, selected))
+            {
+                return;
+            }
+
+            if (tree is null)
+            {
+                this.ProcessTree = null;
+            }
+            else if (!ProcessTreeProvider.SameShape(tree, this.processTree))
+            {
+                this.ProcessTree = tree;
             }
         }
 
