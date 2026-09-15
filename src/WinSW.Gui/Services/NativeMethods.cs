@@ -184,6 +184,37 @@ namespace WinSW.Gui.Services
         [DllImport("ntdll.dll")]
         internal static extern int NtQuerySystemInformation(int informationClass, IntPtr buffer, int bufferLength, out int returnLength);
 
+        // Window resize border ------------------------------------------------
+        //
+        // What WindowResizeBorder answers WM_NCHITTEST with. The codes are the window
+        // manager's own: it reads the answer and starts the matching resize drag.
+
+        internal const int WM_NCHITTEST = 0x0084;
+
+        internal const int HTNOWHERE = 0;
+        internal const int HTLEFT = 10;
+        internal const int HTRIGHT = 11;
+        internal const int HTTOP = 12;
+        internal const int HTTOPLEFT = 13;
+        internal const int HTTOPRIGHT = 14;
+        internal const int HTBOTTOM = 15;
+        internal const int HTBOTTOMLEFT = 16;
+        internal const int HTBOTTOMRIGHT = 17;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        /// <summary>The window's outer rectangle in screen pixels.</summary>
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetWindowRect(IntPtr window, out RECT rect);
+
         // Notification area ---------------------------------------------------
         //
         // WPF has no tray control. Windows Forms has one, and using it cost the whole

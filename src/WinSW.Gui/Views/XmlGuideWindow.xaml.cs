@@ -24,6 +24,7 @@ namespace WinSW.Gui.Views
         private readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
         private IReadOnlyList<GuideHeading> headings = Array.Empty<GuideHeading>();
         private string? currentXml;
+        private bool resizeBorderAttached;
 
         private XmlGuideWindow()
         {
@@ -68,6 +69,18 @@ namespace WinSW.Gui.Views
             if (open.WindowState == WindowState.Minimized)
             {
                 open.WindowState = WindowState.Normal;
+            }
+        }
+
+        /// <summary>Same title bar, same covered border, same answer as the main window.</summary>
+        protected override void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+
+            if (!this.resizeBorderAttached)
+            {
+                this.resizeBorderAttached = true;
+                WindowResizeBorder.Attach(this);
             }
         }
 

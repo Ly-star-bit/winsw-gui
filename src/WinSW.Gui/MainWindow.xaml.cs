@@ -13,6 +13,7 @@ namespace WinSW.Gui
         private readonly TrayIcon tray;
         private bool exiting;
         private bool closeConfirmed;
+        private bool resizeBorderAttached;
 
         public MainWindow()
         {
@@ -47,6 +48,21 @@ namespace WinSW.Gui
             if (App.StartupConfigPath is { } startupPath)
             {
                 this.shell.OpenStartupPath(startupPath);
+            }
+        }
+
+        /// <summary>
+        /// Puts the resize border back under the title bar. After the base call, which is what
+        /// raises the event the title bar installs its own hook on; see WindowResizeBorder.
+        /// </summary>
+        protected override void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+
+            if (!this.resizeBorderAttached)
+            {
+                this.resizeBorderAttached = true;
+                WindowResizeBorder.Attach(this);
             }
         }
 
