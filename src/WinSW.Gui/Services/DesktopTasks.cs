@@ -86,6 +86,17 @@ namespace WinSW.Gui.Services
 
         public string ConfigPath { get; init; } = string.Empty;
 
+        /// <summary>
+        /// Whether <see cref="ConfigPath"/> and <see cref="WrapperPath"/> named a file when the
+        /// task was read. Answered here, on the thread that read the task, rather than by the
+        /// entry on the UI thread every time a reading is applied to it: a path on a share
+        /// that is not answering makes File.Exists an SMB timeout, and the folder is re-read
+        /// every four seconds.
+        /// </summary>
+        public bool ConfigExists { get; init; }
+
+        public bool WrapperExists { get; init; }
+
         public string UserId { get; init; } = string.Empty;
 
         public bool RunElevated { get; init; }
@@ -604,6 +615,8 @@ namespace WinSW.Gui.Services
                 Description = parsed.Description,
                 WrapperPath = parsed.Command,
                 ConfigPath = parsed.ConfigPath ?? string.Empty,
+                ConfigExists = File.Exists(parsed.ConfigPath),
+                WrapperExists = File.Exists(parsed.Command),
                 UserId = parsed.UserId,
                 RunElevated = parsed.RunElevated,
                 Enabled = enabled,

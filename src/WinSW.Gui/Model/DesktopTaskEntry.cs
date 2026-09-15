@@ -35,7 +35,11 @@ namespace WinSW.Gui.Model
             this.Description = info.Description;
             this.displayName = info.Name;
             this.Apply(info);
-            this.ReadConfiguration();
+
+            if (info.ConfigExists)
+            {
+                this.ReadConfiguration();
+            }
         }
 
         /// <summary>The registered task name, which is the configuration's service ID.</summary>
@@ -163,7 +167,10 @@ namespace WinSW.Gui.Model
         public string? DefaultLogDirectory =>
             string.IsNullOrEmpty(this.ConfigPath) ? null : Path.GetDirectoryName(this.ConfigPath);
 
-        /// <summary>Folds a fresh reading from the task scheduler into this entry.</summary>
+        /// <summary>
+        /// Folds a fresh reading from the task scheduler into this entry. Runs on the UI
+        /// thread, so it decides from what the reading found and touches no file itself.
+        /// </summary>
         public void Apply(DesktopTaskInfo info)
         {
             this.State = info.State;
@@ -173,8 +180,8 @@ namespace WinSW.Gui.Model
 
             this.Problem =
                 string.IsNullOrEmpty(info.ConfigPath) ? Localizer.Format("M.Task.NoConfig", info.Name) :
-                !File.Exists(info.ConfigPath) ? Localizer.Format("M.Discovery.ConfigMissing", info.ConfigPath) :
-                !File.Exists(info.WrapperPath) ? Localizer.Format("M.Cli.WrapperMissing", info.WrapperPath) :
+                !info.ConfigExists ? Localizer.Format("M.Discovery.ConfigMissing", info.ConfigPath) :
+                !info.WrapperExists ? Localizer.Format("M.Cli.WrapperMissing", info.WrapperPath) :
                 null;
         }
 
@@ -197,11 +204,6 @@ namespace WinSW.Gui.Model
 
         private void ReadConfiguration()
         {
-            if (string.IsNullOrEmpty(this.ConfigPath) || !File.Exists(this.ConfigPath))
-            {
-                return;
-            }
-
             try
             {
                 var model = ServiceConfigModel.Load(this.ConfigPath);
