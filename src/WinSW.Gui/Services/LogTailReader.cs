@@ -39,6 +39,16 @@ namespace WinSW.Gui.Services
         /// <summary>How much history to show when a file is opened.</summary>
         private const int InitialTailBytes = 128 * 1024;
 
+        /// <summary>
+        /// The most the reader catches up on in one call. Left unbounded, a viewer that had
+        /// been paused, or whose page had been out of sight, for an afternoon read the whole
+        /// afternoon's output in one go on the UI thread, and then handed every line over to
+        /// be appended one notification at a time to a buffer that keeps the last five
+        /// thousand. A megabyte is more lines than that buffer holds, so skipping to it loses
+        /// nothing the viewer could have shown.
+        /// </summary>
+        internal const int MaxCatchUpBytes = 1024 * 1024;
+
         private static readonly Encoding StrictUtf8 = new UTF8Encoding(false, true);
         private static readonly Encoding LenientUtf8 = new UTF8Encoding(false, false);
 
@@ -61,6 +71,12 @@ namespace WinSW.Gui.Services
 
         /// <summary>Set when the file was rolled or truncated since the last read.</summary>
         public bool Restarted { get; private set; }
+
+        /// <summary>
+        /// Bytes passed over unread by the last call, because the file had grown by more than
+        /// <see cref="MaxCatchUpBytes"/> since the call before. Zero otherwise.
+        /// </summary>
+        public long SkippedBytes { get; private set; }
 
         /// <summary>The encoding in use, or null while auto-detection has only seen ASCII.</summary>
         public Encoding? Encoding => this.encoding;
@@ -91,6 +107,7 @@ namespace WinSW.Gui.Services
         public IReadOnlyList<string> ReadNewLines()
         {
             this.Restarted = false;
+            this.SkippedBytes = 0;
             var lines = new List<string>();
 
             try
@@ -116,13 +133,7 @@ namespace WinSW.Gui.Services
                     if (this.position > 0)
                     {
                         // Starting mid-file: skip to the next line so the first line shown is whole.
-                        this.stream.Position = this.position;
-                        int b;
-                        while ((b = this.stream.ReadByte()) >= 0 && b != '\n')
-                        {
-                        }
-
-                        this.position = this.stream.Position;
+                        this.position = this.StartOfNextLine(this.position);
                     }
                 }
 
@@ -137,6 +148,18 @@ namespace WinSW.Gui.Services
                     this.pending.SetLength(0);
                     this.Restarted = true;
                     this.DetectFromPreamble();
+                }
+
+                if (length - this.position > MaxCatchUpBytes)
+                {
+                    // More has arrived than is worth reading: the viewer would keep only the
+                    // tail of it anyway. Skip to a whole line inside the budget, and drop the
+                    // partial line held from before the gap, which no longer joins onto
+                    // anything.
+                    long resume = this.StartOfNextLine(length - MaxCatchUpBytes);
+                    this.SkippedBytes = resume - this.position;
+                    this.position = resume;
+                    this.pending.SetLength(0);
                 }
 
                 if (length == this.position)
@@ -266,6 +289,21 @@ namespace WinSW.Gui.Services
         }
 
         private static long CurrentLength(FileStream stream) => RandomAccess.GetLength(stream.SafeFileHandle);
+
+        /// <summary>
+        /// The offset just past the first newline at or after <paramref name="from"/>, or the
+        /// end of the file when there is none: the place a whole line starts.
+        /// </summary>
+        private long StartOfNextLine(long from)
+        {
+            this.stream!.Position = from;
+            int b;
+            while ((b = this.stream.ReadByte()) >= 0 && b != '\n')
+            {
+            }
+
+            return this.stream.Position;
+        }
 
         private void DetectFromPreamble()
         {

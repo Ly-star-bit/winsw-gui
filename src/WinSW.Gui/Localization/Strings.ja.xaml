@@ -219,6 +219,7 @@
     <sys:String x:Key="M.Log.Files">{1} に {0} 件のログ ファイル。</sys:String>
     <sys:String x:Key="M.Log.DirFailed">ログ ディレクトリを読み取れませんでした: {0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── ログ ファイルがリセットまたはロールされました ──</sys:String>
+    <sys:String x:Key="M.Log.Skipped">── 追いつくため、古い出力 {0:N0} バイトをスキップしました ──</sys:String>
     <sys:String x:Key="M.Log.OpenFailed">ファイルを開けませんでした: {0}</sys:String>
     <sys:String x:Key="M.Wiz.Step1">ラッパーとプログラムを選択</sys:String>
     <sys:String x:Key="M.Wiz.Step2">サービスの説明</sys:String>

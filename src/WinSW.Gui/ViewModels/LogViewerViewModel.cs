@@ -478,11 +478,54 @@ namespace WinSW.Gui.ViewModels
 
             var lines = this.reader.ReadNewLines();
 
+            string? rolled = null;
             if (this.reader.Restarted)
             {
                 this.history.Clear();
                 this.Lines.Clear();
-                this.Append(Localizer.Get("M.Log.Rolled"));
+                rolled = Localizer.Get("M.Log.Rolled");
+            }
+
+            // The reader passed over more than the buffer could have held. Said on screen, in
+            // the place the gap is, rather than leaving a jump in the timestamps to explain.
+            string? skipped = this.reader.SkippedBytes > 0
+                ? Localizer.Format("M.Log.Skipped", this.reader.SkippedBytes)
+                : null;
+
+            if (lines.Count >= MaxLines)
+            {
+                // A batch this size replaces everything on screen. Built to one side and
+                // announced once, the way a filter change is, instead of thousands of adds
+                // each followed by the removal of the line it pushed out.
+                this.history.Clear();
+                if (rolled != null)
+                {
+                    this.history.AddLast(rolled);
+                }
+
+                if (skipped != null)
+                {
+                    this.history.AddLast(skipped);
+                }
+
+                for (int i = lines.Count - (MaxLines - this.history.Count); i < lines.Count; i++)
+                {
+                    this.history.AddLast(lines[i]);
+                }
+
+                this.EncodingInfo = Localizer.Format("M.Log.Detected", this.reader.EncodingName);
+                this.RebuildVisibleLines();
+                return;
+            }
+
+            if (rolled != null)
+            {
+                this.Append(rolled);
+            }
+
+            if (skipped != null)
+            {
+                this.Append(skipped);
             }
 
             foreach (string line in lines)

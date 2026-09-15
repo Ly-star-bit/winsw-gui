@@ -51,6 +51,53 @@ namespace WinSW.Gui.Tests
             Assert.Equal(new[] { "x" }, lines);
         }
 
+        /// <summary>
+        /// A file that has grown by more than the catch-up budget since the last read is
+        /// joined again at a whole line inside the budget, and the reader says how much it
+        /// passed over. Reading it all would have been work for lines the viewer drops.
+        /// </summary>
+        [Fact]
+        public void SkipsAheadWhenTheBacklogIsMoreThanTheViewerKeeps()
+        {
+            File.WriteAllText(this.path, "start\n");
+            using var reader = new LogTailReader(this.path);
+            Assert.Equal(new[] { "start" }, reader.ReadNewLines());
+
+            var backlog = new StringBuilder();
+            int count = 0;
+            while (backlog.Length < LogTailReader.MaxCatchUpBytes + 100_000)
+            {
+                backlog.Append("line ").Append(count++).Append('\n');
+            }
+
+            File.AppendAllText(this.path, backlog.ToString());
+            File.AppendAllText(this.path, "last\n");
+
+            var lines = reader.ReadNewLines();
+
+            Assert.True(reader.SkippedBytes > 0);
+            Assert.True(reader.SkippedBytes < backlog.Length);
+            Assert.True(lines.Count < count);
+            Assert.DoesNotContain("line 0", lines);
+            Assert.Equal("last", lines[^1]);
+
+            // Resynchronised onto a line boundary: nothing shown is a fragment.
+            Assert.All(lines, line => Assert.True(line == "last" || line.StartsWith("line ", StringComparison.Ordinal), line));
+
+            // Consecutive numbers from wherever it joined: nothing inside the budget was lost.
+            int first = int.Parse(lines[0].Substring("line ".Length));
+            for (int i = 1; i < lines.Count - 1; i++)
+            {
+                Assert.Equal("line " + (first + i), lines[i]);
+            }
+
+            Assert.Empty(reader.ReadNewLines());
+            Assert.Equal(0, reader.SkippedBytes);
+
+            File.AppendAllText(this.path, "after\n");
+            Assert.Equal(new[] { "after" }, reader.ReadNewLines());
+        }
+
         [Fact]
         public void AutoDetection_FallsBackToAnsiForGbk()
         {

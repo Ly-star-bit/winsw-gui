@@ -219,6 +219,7 @@
     <sys:String x:Key="M.Log.Files">{1} 中有 {0} 個記錄檔。</sys:String>
     <sys:String x:Key="M.Log.DirFailed">無法讀取記錄目錄：{0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── 記錄檔已重設或輪替 ──</sys:String>
+    <sys:String x:Key="M.Log.Skipped">── 為趕上進度，已略過 {0:N0} 位元組較早的輸出 ──</sys:String>
     <sys:String x:Key="M.Log.OpenFailed">無法開啟檔案：{0}</sys:String>
     <sys:String x:Key="M.Wiz.Step1">選擇包裝器和程式</sys:String>
     <sys:String x:Key="M.Wiz.Step2">描述服務</sys:String>
