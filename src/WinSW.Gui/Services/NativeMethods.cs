@@ -13,7 +13,6 @@ namespace WinSW.Gui.Services
         internal const int SC_MANAGER_CONNECT = 0x0001;
         internal const int SERVICE_QUERY_STATUS = 0x0004;
         internal const int SC_STATUS_PROCESS_INFO = 0;
-        internal const int TH32CS_SNAPPROCESS = 0x0002;
         internal const int ERROR_INSUFFICIENT_BUFFER = 122;
         internal const int ERROR_CANCELLED = 1223;
 
@@ -31,23 +30,6 @@ namespace WinSW.Gui.Services
             public int ServiceFlags;
         }
 
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        internal struct PROCESSENTRY32
-        {
-            public int Size;
-            public int Usage;
-            public int ProcessId;
-            public IntPtr DefaultHeapId;
-            public int ModuleId;
-            public int Threads;
-            public int ParentProcessId;
-            public int PriorityClassBase;
-            public int Flags;
-
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-            public string ExeFile;
-        }
-
         [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         internal static extern IntPtr OpenSCManagerW(string? machineName, string? databaseName, int access);
 
@@ -62,82 +44,145 @@ namespace WinSW.Gui.Services
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool CloseServiceHandle(IntPtr handle);
 
-        [DllImport("kernel32.dll", SetLastError = true)]
-        internal static extern IntPtr CreateToolhelp32Snapshot(int flags, int processId);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool Process32FirstW(IntPtr snapshot, ref PROCESSENTRY32 entry);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool Process32NextW(IntPtr snapshot, ref PROCESSENTRY32 entry);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        internal static extern bool CloseHandle(IntPtr handle);
-
         /// <summary>
-        /// Returns the process ID hosting <paramref name="serviceName"/>, or 0 when the
-        /// service is not running or cannot be queried.
+        /// Connects to the service control manager for querying. Zero when it refused, which
+        /// the caller treats as every service being unanswerable rather than as an error.
         /// </summary>
-        internal static int GetServiceProcessId(string serviceName) =>
-            TryQueryServiceStatus(serviceName, out var status) ? status.ProcessId : 0;
+        internal static IntPtr OpenServiceManager() => OpenSCManagerW(null, null, SC_MANAGER_CONNECT);
 
         /// <summary>
         /// Reads the full SERVICE_STATUS_PROCESS: state, hosting process and the exit codes
         /// the service left behind the last time it stopped.
         /// </summary>
-        internal static bool TryQueryServiceStatus(string serviceName, out SERVICE_STATUS_PROCESS status)
+        /// <param name="manager">
+        /// A connection from <see cref="OpenServiceManager"/>. Taken rather than made here so
+        /// that a pass over every service costs one connection, not one per service: the
+        /// connection is a round trip to services.exe of its own, before the query.
+        /// </param>
+        internal static bool TryQueryServiceStatus(IntPtr manager, string serviceName, out SERVICE_STATUS_PROCESS status)
         {
             status = default;
 
-            IntPtr manager = OpenSCManagerW(null, null, SC_MANAGER_CONNECT);
             if (manager == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            IntPtr service = OpenServiceW(manager, serviceName, SERVICE_QUERY_STATUS);
+            if (service == IntPtr.Zero)
             {
                 return false;
             }
 
             try
             {
-                IntPtr service = OpenServiceW(manager, serviceName, SERVICE_QUERY_STATUS);
-                if (service == IntPtr.Zero)
-                {
-                    return false;
-                }
-
+                int size = Marshal.SizeOf<SERVICE_STATUS_PROCESS>();
+                IntPtr buffer = Marshal.AllocHGlobal(size);
                 try
                 {
-                    int size = Marshal.SizeOf<SERVICE_STATUS_PROCESS>();
-                    IntPtr buffer = Marshal.AllocHGlobal(size);
-                    try
+                    if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, buffer, size, out _))
                     {
-                        if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, buffer, size, out _))
-                        {
-                            return false;
-                        }
+                        return false;
+                    }
 
-                        status = Marshal.PtrToStructure<SERVICE_STATUS_PROCESS>(buffer);
-                        return true;
-                    }
-                    finally
-                    {
-                        Marshal.FreeHGlobal(buffer);
-                    }
+                    status = Marshal.PtrToStructure<SERVICE_STATUS_PROCESS>(buffer);
+                    return true;
                 }
                 finally
                 {
-                    CloseServiceHandle(service);
+                    Marshal.FreeHGlobal(buffer);
                 }
             }
             finally
             {
-                CloseServiceHandle(manager);
+                CloseServiceHandle(service);
             }
         }
 
         /// <summary>ERROR_SERVICE_SPECIFIC_ERROR: the real code is in ServiceSpecificExitCode.</summary>
         internal const int ERROR_SERVICE_SPECIFIC_ERROR = 1066;
+
+        // Process snapshot ------------------------------------------------------
+        //
+        // One NtQuerySystemInformation call describes every process on the machine: its
+        // parent, its name, its times and its counters. It is what Task Manager reads, what
+        // Toolhelp copies into its own snapshot, and what the runtime takes — once per
+        // Process object — to answer WorkingSet64 or HandleCount. Asking for it directly
+        // means asking once per poll instead of once per service, and needs no handle to
+        // any process, so a standard user reads a LocalSystem service's process as fully as
+        // an administrator does.
+
+        /// <summary>SystemProcessInformation, from SYSTEM_INFORMATION_CLASS.</summary>
+        internal const int SystemProcessInformation = 5;
+
+        /// <summary>The buffer was too small; the returned length says what would have fitted.</summary>
+        internal const uint STATUS_INFO_LENGTH_MISMATCH = 0xC0000004;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct UNICODE_STRING
+        {
+            /// <summary>In bytes, without a terminator.</summary>
+            public ushort Length;
+
+            public ushort MaximumLength;
+
+            /// <summary>Points into the same buffer the entry was read from.</summary>
+            public IntPtr Buffer;
+        }
+
+        /// <summary>
+        /// The head of one entry in a SystemProcessInformation buffer, up to the last field
+        /// that is read. The pool, page-file and I/O counters that follow it, and then the
+        /// entry's SYSTEM_THREAD_INFORMATION array, are stepped over with NextEntryOffset.
+        /// </summary>
+        /// <remarks>
+        /// Field for field the layout the runtime's own System.Diagnostics.Process declares,
+        /// which is what keeps it right on x86, x64 and ARM64 alike: the handles and sizes
+        /// are pointer-sized, everything else is fixed. The runtime leaves the 48 bytes
+        /// between NumberOfThreads and ImageName as reserved; they are the process's times,
+        /// as every process viewer since Windows 2000 has read them, and CreateTime is the
+        /// reason to read them here — the start time of a process this user may not open.
+        /// </remarks>
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SYSTEM_PROCESS_INFORMATION
+        {
+            public uint NextEntryOffset;
+            public uint NumberOfThreads;
+            public long WorkingSetPrivateSize;
+            public uint HardFaultCount;
+            public uint NumberOfThreadsHighWatermark;
+            public ulong CycleTime;
+
+            /// <summary>A FILETIME: 100-nanosecond intervals since 1601, UTC. Zero for Idle and System.</summary>
+            public long CreateTime;
+
+            /// <summary>In 100-nanosecond units, like a TimeSpan's ticks.</summary>
+            public long UserTime;
+
+            public long KernelTime;
+
+            /// <summary>The image file's name alone, "WinSW.exe"; empty for Idle and System.</summary>
+            public UNICODE_STRING ImageName;
+
+            public int BasePriority;
+            public IntPtr UniqueProcessId;
+            public IntPtr InheritedFromUniqueProcessId;
+            public uint HandleCount;
+            public uint SessionId;
+            public UIntPtr UniqueProcessKey;
+            public UIntPtr PeakVirtualSize;
+            public UIntPtr VirtualSize;
+            public uint PageFaultCount;
+            public UIntPtr PeakWorkingSetSize;
+            public UIntPtr WorkingSetSize;
+        }
+
+        /// <summary>
+        /// Returns an NTSTATUS: negative on failure, <see cref="STATUS_INFO_LENGTH_MISMATCH"/>
+        /// with <paramref name="returnLength"/> set when the buffer has to grow.
+        /// </summary>
+        [DllImport("ntdll.dll")]
+        internal static extern int NtQuerySystemInformation(int informationClass, IntPtr buffer, int bufferLength, out int returnLength);
 
         // Notification area ---------------------------------------------------
         //

@@ -16,7 +16,8 @@ namespace WinSW.Gui.Services
     /// <remarks>
     /// Plain values, and deliberately not a <see cref="ServiceEntry"/>: this is what crosses
     /// back from the sampling thread, and an entry carries bindings that may only be touched
-    /// on the UI thread. <see cref="ServiceDiscovery.Apply"/> is where the two meet.
+    /// on the UI thread. <see cref="StatusReading.Sample"/> produces one and
+    /// <see cref="ServiceDiscovery.Apply"/> is where the two meet.
     /// </remarks>
     public readonly struct ServiceSample
     {
@@ -39,7 +40,7 @@ namespace WinSW.Gui.Services
 
         public int Handles { get; init; }
 
-        /// <summary>Null when the right to ask a LocalSystem process this is not held.</summary>
+        /// <summary>Local time; null when the process was not in the snapshot.</summary>
         public DateTime? StartedAt { get; init; }
     }
 
@@ -131,74 +132,10 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// Reads the volatile state of one service and its hosting process.
-        /// </summary>
-        /// <remarks>
-        /// Split from <see cref="Apply"/> so the reading can be done off the UI thread. Every
-        /// call here is a round trip: four to the service control manager, and for a running
-        /// service several more to open its process and ask for its counters. Multiplied by
-        /// the services on the machine and repeated every two seconds, that is not something
-        /// to do on the thread that is also drawing.
-        /// </remarks>
-        public static ServiceSample Sample(string serviceName)
-        {
-            if (!NativeMethods.TryQueryServiceStatus(serviceName, out var status))
-            {
-                // The service was uninstalled between the scan and this reading.
-                return default;
-            }
-
-            var state = (ServiceControllerStatus)status.CurrentState;
-            var sample = new ServiceSample
-            {
-                Queried = true,
-                Status = state,
-                ProcessId = state == ServiceControllerStatus.Running ? status.ProcessId : 0,
-                LastExitCode = status.Win32ExitCode == NativeMethods.ERROR_SERVICE_SPECIFIC_ERROR
-                    ? status.ServiceSpecificExitCode
-                    : status.Win32ExitCode,
-            };
-
-            if (sample.ProcessId <= 0)
-            {
-                return sample;
-            }
-
-            try
-            {
-                using var process = Process.GetProcessById(sample.ProcessId);
-                DateTime? started;
-                try
-                {
-                    started = process.StartTime;
-                }
-                catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
-                {
-                    // Start time needs a right a standard user may lack for a LocalSystem process.
-                    started = null;
-                }
-
-                return sample with
-                {
-                    HasProcess = true,
-                    ProcessorTime = process.TotalProcessorTime,
-                    WorkingSet = process.WorkingSet64,
-                    Handles = process.HandleCount,
-                    StartedAt = started,
-                };
-            }
-            catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.ComponentModel.Win32Exception)
-            {
-                // The process went away between being named and being opened, or it belongs to
-                // an account this one cannot look into.
-                return sample;
-            }
-        }
-
-        /// <summary>
         /// Writes a reading onto its entry. Must run on the UI thread: every property here
         /// raises PropertyChanged, and <see cref="ServiceEntry.Sample"/> keeps the running CPU
-        /// history that the sparkline is bound to.
+        /// history that the sparkline is bound to. The reading itself comes from
+        /// <see cref="StatusReading.Sample"/>, on whatever thread took it.
         /// </summary>
         public static void Apply(ServiceEntry entry, in ServiceSample sample)
         {

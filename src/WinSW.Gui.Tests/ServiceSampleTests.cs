@@ -48,8 +48,8 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
-        /// A running service whose process could not be opened — a LocalSystem process seen
-        /// from a standard user — still has a state worth showing.
+        /// A running service whose process was not in the snapshot — it started after the
+        /// snapshot was taken — still has a state worth showing.
         /// </summary>
         [Fact]
         public void AProcessThatCouldNotBeOpenedLeavesTheStateIntact()

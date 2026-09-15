@@ -1,7 +1,5 @@
-using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Runtime.InteropServices;
 
 namespace WinSW.Gui.Services
 {
@@ -24,12 +22,13 @@ namespace WinSW.Gui.Services
     }
 
     /// <summary>
-    /// Builds the descendant tree of a process from a single Toolhelp32 snapshot.
+    /// Builds the descendant tree of a process out of a <see cref="ProcessSnapshot"/>.
     /// </summary>
     /// <remarks>
     /// This is what <c>winsw dev ps</c> prints, computed without elevation. The snapshot
     /// gives every process's parent in one pass, so the tree is consistent rather than
-    /// stitched together from several point-in-time queries.
+    /// stitched together from several point-in-time queries — and when the dashboard has
+    /// already taken one for the status poll, the tree comes out of that same reading.
     /// </remarks>
     public static class ProcessTreeProvider
     {
@@ -62,84 +61,55 @@ namespace WinSW.Gui.Services
             return true;
         }
 
-        public static ProcessNode? Build(int rootProcessId)
+        /// <summary>Takes a snapshot of its own and builds the tree from it.</summary>
+        public static ProcessNode? Build(int rootProcessId) =>
+            rootProcessId > 0 && ProcessSnapshot.Take() is { } snapshot ? Build(snapshot, rootProcessId) : null;
+
+        /// <summary>
+        /// Builds the tree under <paramref name="rootProcessId"/> from a snapshot already
+        /// taken; null when the process is not in it.
+        /// </summary>
+        public static ProcessNode? Build(ProcessSnapshot snapshot, int rootProcessId)
         {
-            if (rootProcessId <= 0)
-            {
-                return null;
-            }
-
-            var names = new Dictionary<int, string>();
-            var childrenByParent = new Dictionary<int, List<int>>();
-
-            IntPtr snapshot = NativeMethods.CreateToolhelp32Snapshot(NativeMethods.TH32CS_SNAPPROCESS, 0);
-            if (snapshot == IntPtr.Zero || snapshot == new IntPtr(-1))
-            {
-                return null;
-            }
-
-            try
-            {
-                var entry = default(NativeMethods.PROCESSENTRY32);
-                entry.Size = Marshal.SizeOf<NativeMethods.PROCESSENTRY32>();
-
-                if (!NativeMethods.Process32FirstW(snapshot, ref entry))
-                {
-                    return null;
-                }
-
-                do
-                {
-                    names[entry.ProcessId] = entry.ExeFile;
-
-                    if (!childrenByParent.TryGetValue(entry.ParentProcessId, out var siblings))
-                    {
-                        siblings = new List<int>();
-                        childrenByParent[entry.ParentProcessId] = siblings;
-                    }
-
-                    siblings.Add(entry.ProcessId);
-                }
-                while (NativeMethods.Process32NextW(snapshot, ref entry));
-            }
-            finally
-            {
-                NativeMethods.CloseHandle(snapshot);
-            }
-
-            if (!names.ContainsKey(rootProcessId))
+            if (rootProcessId <= 0 || !snapshot.TryGet(rootProcessId, out var root))
             {
                 return null;
             }
 
             // Process IDs are recycled, so a parent link can point at a process that started
-            // later. Tracking what has been visited keeps a stale link from looping forever.
+            // later. Two guards: a child that is older than its supposed parent was spawned
+            // by a previous holder of that ID and is left out, and what has already been
+            // visited is not visited again, which keeps a stale link from looping forever.
             var visited = new HashSet<int>();
-            return Expand(rootProcessId);
+            return Expand(root);
 
-            ProcessNode? Expand(int processId)
+            ProcessNode? Expand(ProcessRecord record)
             {
-                if (!visited.Add(processId))
+                if (!visited.Add(record.ProcessId))
                 {
                     return null;
                 }
 
-                var node = new ProcessNode(processId, names.TryGetValue(processId, out string? name) ? name : "(exited)");
+                var node = new ProcessNode(record.ProcessId, record.Name);
 
-                if (childrenByParent.TryGetValue(processId, out var children))
+                foreach (int childId in snapshot.ChildrenOf(record.ProcessId))
                 {
-                    children.Sort();
-                    foreach (int child in children)
+                    if (!snapshot.TryGet(childId, out var child) || StartedBefore(child, record))
                     {
-                        if (Expand(child) is { } childNode)
-                        {
-                            node.Children.Add(childNode);
-                        }
+                        continue;
+                    }
+
+                    if (Expand(child) is { } childNode)
+                    {
+                        node.Children.Add(childNode);
                     }
                 }
 
                 return node;
             }
+
+            static bool StartedBefore(in ProcessRecord child, in ProcessRecord parent) =>
+                child.StartedAt is { } childStart && parent.StartedAt is { } parentStart && childStart < parentStart;
         }
     }
 }

@@ -699,6 +699,13 @@ namespace WinSW.Gui.ViewModels
         /// for its counters per running service, and a snapshot of every process on the
         /// machine for the tree — every two seconds, on the thread that is also drawing.
         /// <para>
+        /// The reading is one <see cref="StatusReading"/>: a single connection to the service
+        /// control manager, one round trip per service against it, and a single snapshot of
+        /// the machine's processes that answers every counter and the tree. The process
+        /// opened per running service was costing a snapshot of its own each time; see the
+        /// remarks there.
+        /// </para>
+        /// <para>
         /// What comes back is plain values. Applying them, raising the counts and touching the
         /// tree all stay here, which is what keeps ServiceEntry's bindings and the tray
         /// notification on the thread they require.
@@ -720,16 +727,18 @@ namespace WinSW.Gui.ViewModels
             {
                 var (samples, tree) = await Task.Run(() =>
                 {
+                    using var reading = new StatusReading();
+
                     var read = new ServiceSample[entries.Length];
                     for (int i = 0; i < read.Length; i++)
                     {
-                        read[i] = ServiceDiscovery.Sample(entries[i].ServiceName);
+                        read[i] = reading.Sample(entries[i].ServiceName);
                     }
 
                     // Built from the reading just taken rather than from the entry, so a
                     // service that started this tick shows its tree this tick.
                     var node = selectedIndex >= 0 && read[selectedIndex].ProcessId > 0
-                        ? ProcessTreeProvider.Build(read[selectedIndex].ProcessId)
+                        ? reading.Tree(read[selectedIndex].ProcessId)
                         : null;
 
                     return (read, node);
