@@ -235,7 +235,14 @@
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <Storyboard x:Key="PulseStoryboard" RepeatBehavior="Forever" AutoReverse="True">
+    <!--
+        The dot that breathes on every running row, for as long as its page is up. An
+        animation renders at sixty frames a second unless told otherwise, and while any
+        animation is running the whole window ticks at that rate: with a dozen services up,
+        the console redrew sixty times a second while nobody touched it. Fifteen is not
+        distinguishable on an eight-pixel dot easing over a second, and a quarter of the work.
+    -->
+    <Storyboard x:Key="PulseStoryboard" RepeatBehavior="Forever" AutoReverse="True" Timeline.DesiredFrameRate="15">
         <DoubleAnimation
             Storyboard.TargetProperty="Opacity"
             From="1" To="0.35" Duration="0:0:1.1">
