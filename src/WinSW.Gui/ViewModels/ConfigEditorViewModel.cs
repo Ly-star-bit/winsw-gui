@@ -681,10 +681,14 @@ namespace WinSW.Gui.ViewModels
             this.Toast?.Invoke(this.StatusMessage, false);
 
             // The header's actions change once the configuration belongs to a service, and
-            // the dashboard is a list that has just gained an entry.
-            this.InstalledService = ServiceDiscovery.Discover()
-                .FirstOrDefault(e => string.Equals(e.ServiceName, this.Model.Id, StringComparison.OrdinalIgnoreCase));
-            this.ServiceInstalled?.Invoke(this.Model.Id);
+            // the dashboard is a list that has just gained an entry. The sweep that finds it
+            // touches every service on the machine, which is why the dashboard keeps it off
+            // this thread; here it was running on it, at the moment the success toast was
+            // meant to appear.
+            string installedId = this.Model.Id;
+            var found = await Task.Run(ServiceDiscovery.Discover).ConfigureAwait(true);
+            this.InstalledService = found.FirstOrDefault(e => string.Equals(e.ServiceName, installedId, StringComparison.OrdinalIgnoreCase));
+            this.ServiceInstalled?.Invoke(installedId);
         }
 
         /// <summary>
