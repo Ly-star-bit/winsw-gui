@@ -44,6 +44,12 @@ namespace WinSW.Gui.ViewModels
 
         private ServiceEntry? selectedService;
         private string searchText = string.Empty;
+
+        /// <summary>
+        /// <see cref="SearchText"/> trimmed once, when it changes, rather than once per row
+        /// inside the filter on every keystroke. The log filter had the same allocation.
+        /// </summary>
+        private string searchNeedle = string.Empty;
         private string statusMessage = string.Empty;
         private bool isBusy;
         private bool isScanning;
@@ -346,6 +352,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.searchText, value))
                 {
+                    this.searchNeedle = (value ?? string.Empty).Trim();
                     this.ServicesView.Refresh();
                 }
             }
@@ -1106,12 +1113,12 @@ namespace WinSW.Gui.ViewModels
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(this.searchText))
+            string needle = this.searchNeedle;
+            if (needle.Length == 0)
             {
                 return true;
             }
 
-            string needle = this.searchText.Trim();
             return Contains(entry.ServiceName) || Contains(entry.DisplayName) || Contains(entry.ConfigPath);
 
             bool Contains(string? haystack) =>
