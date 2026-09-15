@@ -24,7 +24,8 @@ namespace WinSW.Gui.Services
     /// <para>
     /// The file is opened with the widest possible share mode so tailing can never block the
     /// service from writing to, rolling, or deleting its own log. Callers pull; there is no
-    /// background thread.
+    /// background thread of its own, and nothing here is safe against two calls at once. The
+    /// viewer reads on a worker and applies on the UI thread, one read in flight at a time.
     /// </para>
     /// <para>
     /// The wrapper writes the child's output bytes verbatim, and a console program on Windows

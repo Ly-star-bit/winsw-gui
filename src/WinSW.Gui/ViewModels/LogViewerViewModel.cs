@@ -82,6 +82,13 @@ namespace WinSW.Gui.ViewModels
         private readonly LinkedList<string> history = new();
 
         private LogTailReader? reader;
+
+        /// <summary>
+        /// The reader a worker is currently inside. Nothing on the UI thread disposes it
+        /// while it is set; whatever replaces it is closed by <see cref="PumpAsync"/> itself
+        /// once the read returns.
+        /// </summary>
+        private LogTailReader? inFlight;
         private ServiceEntry? service;
         private LogFileEntry? selectedFile;
         private EncodingOption selectedEncoding;
@@ -106,7 +113,7 @@ namespace WinSW.Gui.ViewModels
         public LogViewerViewModel()
         {
             this.timer = new DispatcherTimer { Interval = PollInterval };
-            this.timer.Tick += (_, _) => this.Pump();
+            this.timer.Tick += async (_, _) => await this.PumpAsync().ConfigureAwait(true);
 
             this.Encodings = new[]
             {
@@ -442,8 +449,7 @@ namespace WinSW.Gui.ViewModels
 
         private void OpenSelected()
         {
-            this.reader?.Dispose();
-            this.reader = null;
+            this.CloseReader();
             this.history.Clear();
             this.Lines.Clear();
             this.ErrorCount = 0;
@@ -458,28 +464,74 @@ namespace WinSW.Gui.ViewModels
 
             this.reader = new LogTailReader(this.selectedFile.Path, this.selectedEncoding.Choice);
             this.timer.Start();
-            this.Pump();
+            _ = this.PumpAsync();
         }
 
         /// <summary>Closes the handle on the log being tailed.</summary>
         public void Dispose()
         {
             this.timer.Stop();
-            this.reader?.Dispose();
-            this.reader = null;
+            this.CloseReader();
         }
 
-        private void Pump()
+        /// <summary>
+        /// Lets go of the current reader. Closed here unless a worker is inside it, in which
+        /// case it is left to the read to close on its way back: disposing a FileStream under
+        /// a Read on another thread is an ObjectDisposedException in that thread.
+        /// </summary>
+        private void CloseReader()
         {
-            if (this.reader is null || this.isPaused)
+            var current = this.reader;
+            this.reader = null;
+
+            if (current != null && !ReferenceEquals(current, this.inFlight))
+            {
+                current.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Reads what the file has gained and puts it on screen.
+        /// </summary>
+        /// <remarks>
+        /// The reading is on a worker; only the applying is here. It ran on this thread, every
+        /// six hundred milliseconds, and for a log on a local disk that is a length query and a
+        /// short read. For one on a share it is a round trip per tick on the thread that is
+        /// drawing, and a share that has stopped answering is that thread stalled until the
+        /// redirector gives up. The status poll came off this thread for the same reason.
+        /// </remarks>
+        private async Task PumpAsync()
+        {
+            // One read in flight at a time: the reader keeps its own position and buffer,
+            // and a second read started over the first would race it for both.
+            if (this.inFlight != null || this.reader is null || this.isPaused)
             {
                 return;
             }
 
-            var lines = this.reader.ReadNewLines();
+            var reader = this.reader;
+            this.inFlight = reader;
+
+            IReadOnlyList<string> lines;
+            try
+            {
+                lines = await Task.Run(reader.ReadNewLines).ConfigureAwait(true);
+            }
+            finally
+            {
+                this.inFlight = null;
+            }
+
+            if (!ReferenceEquals(reader, this.reader))
+            {
+                // Another file was chosen while this read was out. What it read belongs to the
+                // file that is no longer shown, and the reader was left open for this to close.
+                reader.Dispose();
+                return;
+            }
 
             string? rolled = null;
-            if (this.reader.Restarted)
+            if (reader.Restarted)
             {
                 this.history.Clear();
                 this.Lines.Clear();
@@ -488,8 +540,8 @@ namespace WinSW.Gui.ViewModels
 
             // The reader passed over more than the buffer could have held. Said on screen, in
             // the place the gap is, rather than leaving a jump in the timestamps to explain.
-            string? skipped = this.reader.SkippedBytes > 0
-                ? Localizer.Format("M.Log.Skipped", this.reader.SkippedBytes)
+            string? skipped = reader.SkippedBytes > 0
+                ? Localizer.Format("M.Log.Skipped", reader.SkippedBytes)
                 : null;
 
             if (lines.Count >= MaxLines)
@@ -513,7 +565,7 @@ namespace WinSW.Gui.ViewModels
                     this.history.AddLast(lines[i]);
                 }
 
-                this.EncodingInfo = Localizer.Format("M.Log.Detected", this.reader.EncodingName);
+                this.EncodingInfo = Localizer.Format("M.Log.Detected", reader.EncodingName);
                 this.RebuildVisibleLines();
                 return;
             }
@@ -535,7 +587,7 @@ namespace WinSW.Gui.ViewModels
 
             if (lines.Count > 0)
             {
-                this.EncodingInfo = Localizer.Format("M.Log.Detected", this.reader.EncodingName);
+                this.EncodingInfo = Localizer.Format("M.Log.Detected", reader.EncodingName);
                 this.LinesAppended?.Invoke();
             }
         }
