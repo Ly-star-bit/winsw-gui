@@ -233,9 +233,9 @@ jobs:
           body: |
             | Download | Size | Requires |
             | --- | --- | --- |
-            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~6 MB | the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64) |
-            | `WinSW.Gui-win-x64.exe` | ~70 MB | nothing — the runtime rides along |
-            | `WinSW.Gui-win-arm64.exe` | ~66 MB | nothing — the runtime rides along |
+            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64) |
+            | `WinSW.Gui-win-x64.exe` | ~69 MB | nothing — the runtime rides along |
+            | `WinSW.Gui-win-arm64.exe` | ~65 MB | nothing — the runtime rides along |
 
             WinSW itself is carried inside the console, so the new-service wizard installs a
             service on a machine with no network and no WinSW.exe to hand.
