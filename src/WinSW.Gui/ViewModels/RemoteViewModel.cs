@@ -150,13 +150,12 @@ namespace WinSW.Gui.ViewModels
                 }
                 else
                 {
-                    using (this.ServicesView.DeferRefresh())
+                    // No DeferRefresh here: the view still forwards each Add while deferred,
+                    // and the ListBox reading it back then throws.
+                    this.Services.Clear();
+                    foreach (var item in list)
                     {
-                        this.Services.Clear();
-                        foreach (var item in list)
-                        {
-                            this.Services.Add(item);
-                        }
+                        this.Services.Add(item);
                     }
 
                     this.loadedMachine = target;
