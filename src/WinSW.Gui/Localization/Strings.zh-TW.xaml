@@ -393,6 +393,7 @@
     <sys:String x:Key="M.Remote.AutoRefresh">自動重新整理</sys:String>
     <sys:String x:Key="M.Remote.Hint">輸入電腦名稱並連線，使用目前的 Windows 認證。</sys:String>
     <sys:String x:Key="M.Remote.Loaded">{1} 上有 {0} 個服務，{2} 個執行中。</sys:String>
+    <sys:String x:Key="M.Remote.LoadedFiltered">{1} 上共 {3} 個服務，篩選出 {0} 個，{2} 個執行中。</sys:String>
     <sys:String x:Key="M.Remote.Failed">無法查詢 {0}：{1}</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} 已發布。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">開啟發布頁面</sys:String>

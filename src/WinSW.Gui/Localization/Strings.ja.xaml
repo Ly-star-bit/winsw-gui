@@ -393,6 +393,7 @@
     <sys:String x:Key="M.Remote.AutoRefresh">自動更新</sys:String>
     <sys:String x:Key="M.Remote.Hint">コンピューター名を入力して接続します。現在の Windows 資格情報が使われます。</sys:String>
     <sys:String x:Key="M.Remote.Loaded">{1} に {0} 件のサービス、{2} 件が実行中。</sys:String>
+    <sys:String x:Key="M.Remote.LoadedFiltered">{1} の {3} 件のサービスのうち {0} 件が一致、{2} 件が実行中。</sys:String>
     <sys:String x:Key="M.Remote.Failed">{0} を照会できませんでした: {1}</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} が利用可能です。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">リリース ページを開く</sys:String>

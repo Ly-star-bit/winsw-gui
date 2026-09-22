@@ -1,29 +1,63 @@
 using System;
 using System.Collections.Generic;
 using System.ServiceProcess;
+using WinSW.Gui.Mvvm;
 
 namespace WinSW.Gui.Services
 {
-    /// <summary>The state of one service on another machine.</summary>
-    public sealed class RemoteServiceStatus
+    /// <summary>
+    /// The state of one service on another machine. Observable so a refresh can update the
+    /// row already on screen instead of replacing it, which would reset the list's scroll.
+    /// </summary>
+    public sealed class RemoteServiceStatus : ObservableObject
     {
+        private string displayName;
+        private ServiceControllerStatus? status;
+        private string? error;
+
         public RemoteServiceStatus(string serviceName, string displayName, ServiceControllerStatus? status, string? error)
         {
             this.ServiceName = serviceName;
-            this.DisplayName = displayName;
-            this.Status = status;
-            this.Error = error;
+            this.displayName = displayName;
+            this.status = status;
+            this.error = error;
         }
 
         public string ServiceName { get; }
 
-        public string DisplayName { get; }
+        public string DisplayName
+        {
+            get => this.displayName;
+            private set => this.Set(ref this.displayName, value);
+        }
 
-        public ServiceControllerStatus? Status { get; }
+        public ServiceControllerStatus? Status
+        {
+            get => this.status;
+            private set
+            {
+                if (this.Set(ref this.status, value))
+                {
+                    this.Raise(nameof(this.IsRunning));
+                }
+            }
+        }
 
-        public string? Error { get; }
+        public string? Error
+        {
+            get => this.error;
+            private set => this.Set(ref this.error, value);
+        }
 
         public bool IsRunning => this.Status == ServiceControllerStatus.Running;
+
+        /// <summary>Takes on a newer reading of the same service.</summary>
+        public void CopyFrom(RemoteServiceStatus newer)
+        {
+            this.DisplayName = newer.DisplayName;
+            this.Status = newer.Status;
+            this.Error = newer.Error;
+        }
     }
 
     /// <summary>
@@ -35,7 +69,7 @@ namespace WinSW.Gui.Services
     public static class RemoteMonitor
     {
         /// <exception cref="InvalidOperationException">The machine cannot be reached or refuses the query.</exception>
-        public static IReadOnlyList<RemoteServiceStatus> List(string machine, string? filter)
+        public static IReadOnlyList<RemoteServiceStatus> List(string machine)
         {
             var results = new List<RemoteServiceStatus>();
             ServiceController[] services;
@@ -62,13 +96,6 @@ namespace WinSW.Gui.Services
                     catch (InvalidOperationException)
                     {
                         display = name;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(filter)
-                        && !name.Contains(filter, StringComparison.OrdinalIgnoreCase)
-                        && !display.Contains(filter, StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
                     }
 
                     try

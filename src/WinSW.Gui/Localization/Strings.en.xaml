@@ -393,6 +393,7 @@
     <sys:String x:Key="M.Remote.AutoRefresh">Auto-refresh</sys:String>
     <sys:String x:Key="M.Remote.Hint">Enter a computer name and connect. Your current Windows credentials are used.</sys:String>
     <sys:String x:Key="M.Remote.Loaded">{0} services on {1}, {2} running.</sys:String>
+    <sys:String x:Key="M.Remote.LoadedFiltered">{0} of {3} services on {1} match, {2} running.</sys:String>
     <sys:String x:Key="M.Remote.Failed">Could not query {0}: {1}</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} is available.</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">Open release page</sys:String>

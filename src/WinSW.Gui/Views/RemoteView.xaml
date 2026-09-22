@@ -53,7 +53,7 @@
             <ListBox
                 Background="Transparent"
                 BorderThickness="0"
-                ItemsSource="{Binding Services}"
+                ItemsSource="{Binding ServicesView}"
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                 VirtualizingPanel.IsVirtualizing="True">
                 <ListBox.ItemContainerStyle>

@@ -393,6 +393,7 @@
     <sys:String x:Key="M.Remote.AutoRefresh">自动刷新</sys:String>
     <sys:String x:Key="M.Remote.Hint">输入计算机名并连接，使用当前 Windows 凭据。</sys:String>
     <sys:String x:Key="M.Remote.Loaded">{1} 上有 {0} 个服务，{2} 个运行中。</sys:String>
+    <sys:String x:Key="M.Remote.LoadedFiltered">{1} 上共 {3} 个服务，筛选出 {0} 个，{2} 个运行中。</sys:String>
     <sys:String x:Key="M.Remote.Failed">无法查询 {0}：{1}</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} 已发布。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">打开发布页</sys:String>
