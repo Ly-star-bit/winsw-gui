@@ -42,6 +42,7 @@ namespace WinSW.Gui.Model
         private string? problem;
         private int? lastExitCode;
         private DateTime? startedAt;
+        private DateTime? configWrittenAt;
         private double cpuPercent;
         private long workingSetBytes;
         private int handleCount;
@@ -202,6 +203,7 @@ namespace WinSW.Gui.Model
             this.StartMode = other.StartMode;
             this.Account = other.Account;
             this.WrapperVersion = other.WrapperVersion;
+            this.ConfigWrittenAt = other.ConfigWrittenAt;
             this.DependsOn = other.DependsOn;
             this.DependedBy = other.DependedBy;
             this.Problem = other.Problem;
@@ -232,9 +234,35 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.startedAt, value))
                 {
                     this.Raise(nameof(this.UptimeText));
+                    this.Raise(nameof(this.ConfigChangedSinceStart));
                 }
             }
         }
+
+        /// <summary>
+        /// When the configuration file was last written, local time. Brought forward by each
+        /// rescan, and set at once by the dashboard when the editor saves the file.
+        /// </summary>
+        public DateTime? ConfigWrittenAt
+        {
+            get => this.configWrittenAt;
+            set
+            {
+                if (this.Set(ref this.configWrittenAt, value))
+                {
+                    this.Raise(nameof(this.ConfigChangedSinceStart));
+                }
+            }
+        }
+
+        /// <summary>
+        /// The configuration was written after the running process started, so what is running
+        /// is not what the file says. The wrapper reads its configuration once, at start, and
+        /// 'winsw refresh' pushes only what the service control manager holds — the executable,
+        /// its arguments, its environment and its logging all wait for a restart.
+        /// </summary>
+        public bool ConfigChangedSinceStart =>
+            this.configWrittenAt is DateTime written && this.startedAt is DateTime started && written > started;
 
         public string UptimeText
         {

@@ -51,6 +51,10 @@ Across the pages:
   CPU sparkline and a memory line covering the last hour at one point a minute — drawn from
   zero, so a leak shows as a climb and a wobble stays a wobble — plus what the service
   depends on and what depends on it.
+- **A change that is not running yet**: the wrapper reads its configuration once, at start,
+  and `winsw refresh` pushes only what the service control manager holds. When the file has
+  been written since the running process started, the row carries a marker and the detail
+  panel says so, with a Restart button beside it.
 - **Batch operations**: Ctrl/Shift-select several services and start, stop or restart them
   under one elevation prompt.
 - **Clone**: the wizard can start from an existing service; it can also brand the wrapper

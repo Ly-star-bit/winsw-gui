@@ -140,6 +140,9 @@ namespace WinSW.Gui.ViewModels
             // A configuration installed from the editor is a service the dashboard has not
             // heard of yet.
             this.Editor.ServiceInstalled += _ => this.Dashboard.ReloadCommand.Execute(null);
+
+            // A saved configuration is one the running service has not read yet.
+            this.Editor.Saved += path => this.Dashboard.NoteConfigurationWritten(path);
             this.Dashboard.CreateServiceRequested += () =>
             {
                 // The wizard keeps whichever mode it was last used in; arriving from a page

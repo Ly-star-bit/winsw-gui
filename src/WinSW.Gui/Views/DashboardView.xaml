@@ -55,13 +55,25 @@
                         TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
-                <Border Grid.Column="2" Style="{StaticResource StatusPill}">
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Running on an older configuration than the file holds. -->
                     <TextBlock
-                        FontSize="11"
-                        FontWeight="SemiBold"
-                        Foreground="{Binding Health, Converter={StaticResource HealthToBrush}}"
-                        Text="{Binding StatusText}" />
-                </Border>
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{DynamicResource HealthPendingBrush}"
+                        Style="{StaticResource Icon}"
+                        Text="&#xE72C;"
+                        ToolTip="{DynamicResource M.Dash.ConfigPending}"
+                        Visibility="{Binding ConfigChangedSinceStart, Converter={StaticResource BoolToVisibility}}" />
+                    <Border Style="{StaticResource StatusPill}">
+                        <TextBlock
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Foreground="{Binding Health, Converter={StaticResource HealthToBrush}}"
+                            Text="{Binding StatusText}" />
+                    </Border>
+                </StackPanel>
             </Grid>
         </DataTemplate>
 
@@ -316,21 +328,49 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Problem banner -->
-                        <Border
-                            Grid.Row="1"
-                            Margin="0,0,0,14"
-                            Padding="12,10"
-                            Background="{DynamicResource DangerSoftBrush}"
-                            BorderBrush="{DynamicResource HealthBrokenBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
-                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
+                        <StackPanel Grid.Row="1">
+                            <!-- Problem banner -->
+                            <Border
+                                Margin="0,0,0,14"
+                                Padding="12,10"
+                                Background="{DynamicResource DangerSoftBrush}"
+                                BorderBrush="{DynamicResource HealthBrokenBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- The file has moved on since the process started -->
+                            <Border
+                                Margin="0,0,0,14"
+                                Padding="12,8"
+                                Background="{DynamicResource AccentSoftBrush}"
+                                BorderBrush="{DynamicResource AccentBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding ConfigChangedSinceStart, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Dash.ConfigPending}" TextWrapping="Wrap" />
+                                    <Button
+                                        Grid.Column="2"
+                                        Margin="10,0,0,0"
+                                        Padding="10,4"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{DynamicResource M.Dash.RestartNow}" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
 
                         <!-- Facts -->
                         <Grid Grid.Row="2" Margin="0,0,0,16">

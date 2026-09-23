@@ -206,6 +206,9 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Raised with the service ID after the editor installs a configuration.</summary>
         public event Action<string>? ServiceInstalled;
 
+        /// <summary>Raised with the path after the configuration has been written to disk.</summary>
+        public event Action<string>? Saved;
+
         /// <summary>
         /// Paths inside the configuration's own folder are written as %BASE%-relative, so the
         /// service keeps working when the folder is moved or the package is exported.
@@ -548,6 +551,7 @@ namespace WinSW.Gui.ViewModels
                     ? Localizer.Format("M.Editor.Saved", path)
                     : Localizer.Format("M.Editor.SavedApply", path);
                 this.Toast?.Invoke(Localizer.Format("M.Editor.Saved", Path.GetFileName(path)), false);
+                this.Saved?.Invoke(path);
                 return;
             }
             catch (UnauthorizedAccessException)
@@ -587,6 +591,7 @@ namespace WinSW.Gui.ViewModels
                 this.InstalledService = installed;
 
                 this.StatusMessage = Localizer.Format("M.Editor.SavedElevated", path);
+                this.Saved?.Invoke(path);
             }
             else
             {

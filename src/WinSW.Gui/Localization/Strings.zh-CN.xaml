@@ -349,6 +349,8 @@
     <sys:String x:Key="M.Dash.OpenWorkingDirectory">打开工作目录</sys:String>
     <sys:String x:Key="M.Dash.OpenWorkingDirectoryTip">打开服务运行所在的目录；它不一定是配置文件所在的目录</sys:String>
     <sys:String x:Key="M.Dash.ConfigUnreadable">无法读取配置文件：{0}</sys:String>
+    <sys:String x:Key="M.Dash.ConfigPending">配置在服务启动之后被修改过，重启服务后才会生效。</sys:String>
+    <sys:String x:Key="M.Dash.RestartNow">立即重启</sys:String>
     <sys:String x:Key="M.Hook.Tab">钩子</sys:String>
     <sys:String x:Key="M.Hook.Hint">wrapper 在服务生命周期前后运行的程序。均为可选，可执行文件留空即禁用。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">启动前</sys:String>

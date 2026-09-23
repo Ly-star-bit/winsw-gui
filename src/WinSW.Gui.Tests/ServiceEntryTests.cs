@@ -173,5 +173,47 @@ namespace WinSW.Gui.Tests
             entry.ClearSample();
             Assert.Empty(entry.MemoryHistory);
         }
+
+        [Theory]
+        [InlineData(10, 12, true)]
+        [InlineData(12, 10, false)]
+        public void AConfigurationWrittenAfterTheStartIsNotYetRunning(int startedHour, int writtenHour, bool pending)
+        {
+            var entry = new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml")
+            {
+                StartedAt = new System.DateTime(2026, 9, 22, startedHour, 0, 0),
+                ConfigWrittenAt = new System.DateTime(2026, 9, 22, writtenHour, 0, 0),
+            };
+
+            Assert.Equal(pending, entry.ConfigChangedSinceStart);
+        }
+
+        /// <summary>A service that is not running, or a file of unknown age, is not flagged.</summary>
+        [Fact]
+        public void NothingIsPendingWithoutBothTimes()
+        {
+            var entry = new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml")
+            {
+                ConfigWrittenAt = new System.DateTime(2026, 9, 22, 12, 0, 0),
+            };
+            Assert.False(entry.ConfigChangedSinceStart);
+
+            entry.StartedAt = new System.DateTime(2026, 9, 22, 10, 0, 0);
+            Assert.True(entry.ConfigChangedSinceStart);
+
+            entry.ConfigWrittenAt = null;
+            Assert.False(entry.ConfigChangedSinceStart);
+        }
+
+        [Fact]
+        public void ARescanBringsTheConfigurationsAgeForward()
+        {
+            var onScreen = new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml");
+            var written = new System.DateTime(2026, 9, 22, 12, 0, 0);
+
+            onScreen.MergeMetadataFrom(new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml") { ConfigWrittenAt = written });
+
+            Assert.Equal(written, onScreen.ConfigWrittenAt);
+        }
     }
 }

@@ -349,6 +349,8 @@
     <sys:String x:Key="M.Dash.OpenWorkingDirectory">Open working directory</sys:String>
     <sys:String x:Key="M.Dash.OpenWorkingDirectoryTip">Open the folder the service runs in, which is not always the folder its configuration is in</sys:String>
     <sys:String x:Key="M.Dash.ConfigUnreadable">Could not read the configuration: {0}</sys:String>
+    <sys:String x:Key="M.Dash.ConfigPending">The configuration was changed after the service started. It takes effect when the service restarts.</sys:String>
+    <sys:String x:Key="M.Dash.RestartNow">Restart now</sys:String>
     <sys:String x:Key="M.Hook.Tab">Hooks</sys:String>
     <sys:String x:Key="M.Hook.Hint">Programs the wrapper runs around the service's lifecycle. Each is optional; leave the executable empty to disable it.</sys:String>
     <sys:String x:Key="M.Hook.Prestart">BEFORE START</sys:String>

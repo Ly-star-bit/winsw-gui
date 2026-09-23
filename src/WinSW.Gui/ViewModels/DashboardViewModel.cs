@@ -476,6 +476,24 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Called by the shell when the window is in the tray, so watching continues.</summary>
         public void KeepWatching() => this.statusTimer.Start();
 
+        /// <summary>
+        /// The editor has just written <paramref name="path"/>. The next rescan would see it
+        /// within half a minute; the row the file belongs to says so now, while the user is
+        /// still looking at the change.
+        /// </summary>
+        public void NoteConfigurationWritten(string path)
+        {
+            string full = Path.GetFullPath(path);
+            var now = DateTime.Now;
+            foreach (var entry in this.Services)
+            {
+                if (string.Equals(entry.ConfigPath, full, StringComparison.OrdinalIgnoreCase))
+                {
+                    entry.ConfigWrittenAt = now;
+                }
+            }
+        }
+
         // Operations -----------------------------------------------------------
 
         public async Task ReloadAsync(bool quiet)

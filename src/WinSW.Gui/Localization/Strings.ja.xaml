@@ -349,6 +349,8 @@
     <sys:String x:Key="M.Dash.OpenWorkingDirectory">作業ディレクトリを開く</sys:String>
     <sys:String x:Key="M.Dash.OpenWorkingDirectoryTip">サービスが実行されるフォルダーを開きます。構成ファイルのあるフォルダーとは限りません</sys:String>
     <sys:String x:Key="M.Dash.ConfigUnreadable">構成ファイルを読み取れません: {0}</sys:String>
+    <sys:String x:Key="M.Dash.ConfigPending">サービスの起動後に構成が変更されています。サービスを再起動すると反映されます。</sys:String>
+    <sys:String x:Key="M.Dash.RestartNow">今すぐ再起動</sys:String>
     <sys:String x:Key="M.Hook.Tab">フック</sys:String>
     <sys:String x:Key="M.Hook.Hint">サービスのライフサイクル前後にラッパーが実行するプログラム。すべて任意で、実行ファイルを空にすると無効になります。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">開始前</sys:String>

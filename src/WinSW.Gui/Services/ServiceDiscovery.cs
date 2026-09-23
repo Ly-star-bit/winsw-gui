@@ -112,6 +112,7 @@ namespace WinSW.Gui.Services
                         Account = key.GetValue("ObjectName") as string ?? "LocalSystem",
                         Problem = problem,
                         WrapperVersion = VersionOf(versions, wrapperPath),
+                        ConfigWrittenAt = WrittenAt(configPath),
                         DependsOn = Names(() => controller.ServicesDependedOn),
                         DependedBy = Names(() => controller.DependentServices),
                     };
@@ -168,6 +169,28 @@ namespace WinSW.Gui.Services
         public static void RefreshWrapperVersion(ServiceEntry entry) => entry.WrapperVersion = ReadVersion(entry.WrapperPath);
 
         /// <summary>The wrapper's file version, read once per distinct path per sweep.</summary>
+        /// <summary>
+        /// When the configuration was last written, for telling whether the running process
+        /// predates it. Read here, once a sweep, rather than on every status poll: the answer
+        /// only matters at the scale of an edit, and the poll is kept to the one snapshot.
+        /// </summary>
+        private static DateTime? WrittenAt(string? configPath)
+        {
+            if (configPath is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return File.GetLastWriteTime(configPath);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return null;
+            }
+        }
+
         private static string VersionOf(Dictionary<string, string> cache, string path)
         {
             if (!cache.TryGetValue(path, out string? version))
