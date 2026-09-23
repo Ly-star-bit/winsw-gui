@@ -22,9 +22,9 @@
     WindowStartupLocation="CenterScreen">
 
     <ui:FluentWindow.InputBindings>
-        <KeyBinding Key="F5" Command="{Binding Dashboard.ReloadCommand}" />
+        <KeyBinding Key="F5" Command="{Binding RefreshPageCommand}" />
         <KeyBinding Key="S" Modifiers="Control" Command="{Binding Editor.SaveCommand}" />
-        <KeyBinding Key="Escape" Command="{Binding Dashboard.CancelConfirmCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding CancelPageCommand}" />
     </ui:FluentWindow.InputBindings>
 
     <Grid>

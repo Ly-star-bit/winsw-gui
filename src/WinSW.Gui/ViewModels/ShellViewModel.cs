@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
@@ -101,6 +102,9 @@ namespace WinSW.Gui.ViewModels
             };
 
             this.ToggleRailCommand = new RelayCommand(() => this.IsRailCollapsed = !this.IsRailCollapsed);
+
+            this.RefreshPageCommand = new RelayCommand(() => ExecuteIfAllowed(this.PageRefresh()));
+            this.CancelPageCommand = new RelayCommand(() => ExecuteIfAllowed(this.PageCancel()));
 
             this.SaveAndExitCommand = new RelayCommand(() => this.DecideExit(save: true));
             this.ExitWithoutSavingCommand = new RelayCommand(() => this.DecideExit(save: false));
@@ -265,6 +269,54 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand OpenGuiUpdateCommand { get; }
 
         public RelayCommand ToggleRailCommand { get; }
+
+        // Keys that act on the page on screen ---------------------------------------
+
+        /// <summary>
+        /// F5. The binding is the window's, so the page has to be asked for here: bound to the
+        /// dashboard's rescan directly, F5 on any other page swept the services behind it and
+        /// left the page in front unchanged.
+        /// </summary>
+        public RelayCommand RefreshPageCommand { get; }
+
+        /// <summary>
+        /// Esc. The dashboard and the task list each have a confirmation of their own; this
+        /// dismisses the one on screen, where the window's binding used to reach only the
+        /// dashboard's.
+        /// </summary>
+        public RelayCommand CancelPageCommand { get; }
+
+        private ICommand? PageRefresh() => this.currentPage switch
+        {
+            DashboardViewModel dashboard => dashboard.ReloadCommand,
+            DesktopTasksViewModel tasks => tasks.ReloadCommand,
+            LogViewerViewModel logs => logs.RescanCommand,
+            RemoteViewModel remote => remote.RefreshCommand,
+
+            // The editor's Reload reads the file back over unsaved changes without asking.
+            // A key pressed out of habit must not be able to do that.
+            _ => null,
+        };
+
+        private ICommand? PageCancel() => this.currentPage switch
+        {
+            DashboardViewModel dashboard => dashboard.CancelConfirmCommand,
+            DesktopTasksViewModel tasks => tasks.CancelConfirmCommand,
+            _ => null,
+        };
+
+        /// <summary>
+        /// A key binding asks CanExecute before it executes, but only of the command bound to
+        /// it; the page's command behind that one has to be asked here. AsyncRelayCommand does
+        /// not ask for itself.
+        /// </summary>
+        private static void ExecuteIfAllowed(ICommand? command)
+        {
+            if (command?.CanExecute(null) == true)
+            {
+                command.Execute(null);
+            }
+        }
 
         // Exit prompt -------------------------------------------------------------
 
