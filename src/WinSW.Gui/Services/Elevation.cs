@@ -8,6 +8,12 @@ namespace WinSW.Gui.Services
 {
     public static class Elevation
     {
+        /// <summary>
+        /// Tells the elevated copy that the one starting it is on its way out: it waits for that
+        /// copy to close instead of deferring to it as a second launch would.
+        /// </summary>
+        public const string ReplaceArgument = "--replace";
+
         public static bool IsElevated { get; } = Detect();
 
         /// <summary>
@@ -28,6 +34,7 @@ namespace WinSW.Gui.Services
                 {
                     UseShellExecute = true,
                     Verb = "runas",
+                    Arguments = ReplaceArgument,
                     WorkingDirectory = Environment.CurrentDirectory,
                 });
             }

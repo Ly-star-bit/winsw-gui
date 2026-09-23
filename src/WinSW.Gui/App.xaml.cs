@@ -5,12 +5,15 @@ using System.Windows;
 using System.Windows.Threading;
 using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
+using WinSW.Gui.Services;
 using WinSW.Gui.Theme;
 
 namespace WinSW.Gui
 {
     public partial class App : Application
     {
+        private SingleInstance? instance;
+
         /// <summary>A .xml given as the first argument: "WinSW.Gui.exe myapp.xml" or the Explorer verb.</summary>
         public static string? StartupConfigPath { get; private set; }
 
@@ -19,6 +22,20 @@ namespace WinSW.Gui
             if (e.Args.Length > 0 && e.Args[0].EndsWith(".xml", System.StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(e.Args[0]))
             {
                 StartupConfigPath = System.IO.Path.GetFullPath(e.Args[0]);
+            }
+
+            bool startInTray = HasArgument(e, Autostart.TrayArgument);
+
+            // A configuration to open is something the running copy was not told about, so that
+            // launch goes ahead on its own; see SingleInstance.
+            if (StartupConfigPath is null)
+            {
+                this.instance = SingleInstance.Claim(replacing: HasArgument(e, Elevation.ReplaceArgument), wake: !startInTray);
+                if (this.instance is null)
+                {
+                    this.Shutdown();
+                    return;
+                }
             }
 
             // A crash dialog with the message beats the process silently disappearing,
@@ -35,12 +52,35 @@ namespace WinSW.Gui
             // the log viewer needs them for output from console programs.
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-            // Before base.OnStartup, which creates the main window from StartupUri.
             Localizer.Initialize();
             ThemeManager.Initialize();
 
             base.OnStartup(e);
+
+            // Created here rather than from StartupUri, which would show it: a start at sign-in
+            // puts only the tray icon on screen.
+            var window = new MainWindow();
+            this.MainWindow = window;
+            if (startInTray)
+            {
+                window.StartInTray();
+            }
+            else
+            {
+                window.Show();
+            }
+
+            this.instance?.OnShowRequested(() => this.Dispatcher.BeginInvoke(window.BringToFront));
         }
+
+        protected override void OnExit(ExitEventArgs e)
+        {
+            this.instance?.Dispose();
+            base.OnExit(e);
+        }
+
+        private static bool HasArgument(StartupEventArgs e, string argument) =>
+            Array.Exists(e.Args, a => string.Equals(a, argument, StringComparison.OrdinalIgnoreCase));
 
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {

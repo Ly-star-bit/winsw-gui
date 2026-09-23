@@ -15,6 +15,23 @@ namespace WinSW.Gui
         private bool closeConfirmed;
         private bool resizeBorderAttached;
 
+        /// <summary>
+        /// Whether the window has ever been shown. A console started in the tray may never be,
+        /// and a window that never had a handle has no placement worth saving: its restore
+        /// bounds are an empty rectangle, whose infinite edges the settings file cannot hold.
+        /// </summary>
+        private bool everShown;
+
+        /// <summary>
+        /// Started at sign-in, in the tray. Such a console keeps to the tray whatever the
+        /// minimize-to-tray setting says: closing its window must not end the watching that
+        /// starting with Windows was asked for.
+        /// </summary>
+        private bool startedInTray;
+
+        /// <summary>Close and minimize put the window in the tray rather than ending or iconizing it.</summary>
+        private bool KeepsToTray => AppSettings.Current.MinimizeToTray || this.startedInTray;
+
         public MainWindow()
         {
             this.InitializeComponent();
@@ -49,6 +66,36 @@ namespace WinSW.Gui
             {
                 this.shell.OpenStartupPath(startupPath);
             }
+        }
+
+        /// <summary>
+        /// Starts with only the tray icon showing: the start at sign-in. The dashboard is the
+        /// page in front, so its polling is already running, and the notifications with it.
+        /// </summary>
+        public void StartInTray()
+        {
+            this.startedInTray = true;
+            this.tray.Visible = true;
+            this.shell.Dashboard.KeepWatching();
+        }
+
+        /// <summary>Shows the window and puts it in front: a second launch asked for this copy.</summary>
+        public void BringToFront()
+        {
+            if (!this.IsVisible || this.WindowState == WindowState.Minimized)
+            {
+                this.RestoreFromTray();
+            }
+            else
+            {
+                this.Activate();
+            }
+        }
+
+        protected override void OnSourceInitialized(EventArgs e)
+        {
+            base.OnSourceInitialized(e);
+            this.everShown = true;
         }
 
         /// <summary>
@@ -111,7 +158,7 @@ namespace WinSW.Gui
 
         private void OnStateChanged(object? sender, EventArgs e)
         {
-            if (this.WindowState == WindowState.Minimized && AppSettings.Current.MinimizeToTray)
+            if (this.WindowState == WindowState.Minimized && this.KeepsToTray)
             {
                 this.Hide();
                 this.tray.Visible = true;
@@ -151,7 +198,7 @@ namespace WinSW.Gui
             // been answered, the second pass has nothing left to ask.
             if (!this.closeConfirmed)
             {
-                if (!this.exiting && AppSettings.Current.MinimizeToTray)
+                if (!this.exiting && this.KeepsToTray)
                 {
                     // Closing behaves like minimizing when the tray is on; Exit lives in the tray menu.
                     e.Cancel = true;
@@ -179,7 +226,11 @@ namespace WinSW.Gui
                 }
             }
 
-            this.SaveWindowPlacement();
+            if (this.everShown)
+            {
+                this.SaveWindowPlacement();
+            }
+
             base.OnClosing(e);
         }
 

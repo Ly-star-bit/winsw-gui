@@ -28,7 +28,10 @@ Across the pages:
   finish within its `stoptimeout` plus a margin is reported as stuck, with Terminate offered.
 - **Background rescan** every 30 seconds picks up services installed by other tools.
 - **Notifications** when a service stops without the GUI having asked it to, optionally
-  with the window minimised to the tray.
+  with the window minimised to the tray. *Start with Windows* (Settings) adds a per-user
+  sign-in entry that starts the console in the tray, so the watching begins without anyone
+  remembering to open it. One console runs per sign-in: launching it again brings the running
+  one forward instead of starting a second that would announce every stop twice.
 - **Light, dark or system theme**, remembered window placement, F5 / Ctrl+S / Esc.
 - **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
   file is staged and copied into place with one elevation prompt. There is also a

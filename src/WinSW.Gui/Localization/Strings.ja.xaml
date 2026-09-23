@@ -403,6 +403,8 @@
     <sys:String x:Key="M.Shell.ContextMenu">.xml ファイルの右クリックに「WinSW で開く」を追加</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">現在のユーザーに右クリック項目を追加します。昇格は不要です。</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">WinSW で開く</sys:String>
+    <sys:String x:Key="M.Shell.StartWithWindows">Windows の起動時にトレイで開始する</sys:String>
+    <sys:String x:Key="M.Shell.StartWithWindowsTip">現在のユーザーのサインイン時の起動項目を追加します（管理者権限は不要）。コンソールはトレイから監視を続けるため、サービスが予期せず停止しても通知されます。</sys:String>
     <sys:String x:Key="M.Log.Regex">正規表現</sys:String>
     <sys:String x:Key="M.Log.NextErrorTip">次のエラー行へ移動</sys:String>
 

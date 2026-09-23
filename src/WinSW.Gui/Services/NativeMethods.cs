@@ -320,5 +320,18 @@ namespace WinSW.Gui.Services
 
         [DllImport("user32.dll")]
         internal static extern int GetSystemMetrics(int index);
+
+        /// <summary>Any process may take the foreground next; see <see cref="AllowSetForegroundWindow"/>.</summary>
+        internal const int ASFW_ANY = -1;
+
+        /// <summary>
+        /// Lets another process bring its window to the front. Windows refuses that to a process
+        /// the user is not interacting with, so a console woken by a second launch would only
+        /// flash in the taskbar; the second launch is the one the user just started, and it can
+        /// pass its turn on.
+        /// </summary>
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool AllowSetForegroundWindow(int processId);
     }
 }

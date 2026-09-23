@@ -403,6 +403,8 @@
     <sys:String x:Key="M.Shell.ContextMenu">"Open in WinSW" on .xml files</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">Adds a right-click entry for the current user; no elevation needed.</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">Open in WinSW</sys:String>
+    <sys:String x:Key="M.Shell.StartWithWindows">Start with Windows, in the tray</sys:String>
+    <sys:String x:Key="M.Shell.StartWithWindowsTip">Adds a sign-in entry for the current user; no elevation needed. The console watches from the tray, so a service that stops still raises a notification.</sys:String>
     <sys:String x:Key="M.Log.Regex">Regex</sys:String>
     <sys:String x:Key="M.Log.NextErrorTip">Jump to the next error line</sys:String>
 

@@ -70,6 +70,7 @@ namespace WinSW.Gui.ViewModels
         private ThemeOption selectedTheme;
         private ReleaseInfo? guiUpdate;
         private bool contextMenuRegistered = ShellIntegration.IsRegistered;
+        private bool startWithWindows = Autostart.IsRegistered;
         private bool isRailCollapsed = AppSettings.Current.RailCollapsed;
         private string toastText = string.Empty;
         private bool toastVisible;
@@ -518,6 +519,39 @@ namespace WinSW.Gui.ViewModels
                 {
                     ThemeManager.Apply(value.Choice);
                 }
+            }
+        }
+
+        /// <summary>The sign-in entry that starts this console in the tray; see <see cref="Autostart"/>.</summary>
+        public bool StartWithWindows
+        {
+            get => this.startWithWindows;
+            set
+            {
+                if (this.startWithWindows == value)
+                {
+                    return;
+                }
+
+                try
+                {
+                    if (value)
+                    {
+                        Autostart.Register();
+                    }
+                    else
+                    {
+                        Autostart.Unregister();
+                    }
+
+                    this.startWithWindows = value;
+                }
+                catch (Exception e) when (e is System.Security.SecurityException or System.IO.IOException or UnauthorizedAccessException)
+                {
+                    // HKCU is normally writable; if not, the checkbox simply snaps back.
+                }
+
+                this.Raise();
             }
         }
 

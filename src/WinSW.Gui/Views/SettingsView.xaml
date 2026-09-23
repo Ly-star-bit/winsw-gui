@@ -63,6 +63,8 @@
                         <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Settings.Behaviour}" />
                         <CheckBox Margin="0,0,0,8" Content="{DynamicResource M.Shell.MinimizeToTray}" IsChecked="{Binding MinimizeToTray}" />
                         <CheckBox Margin="0,0,0,8" Content="{DynamicResource M.Shell.NotifyOnStop}" IsChecked="{Binding NotifyOnUnexpectedStop}" />
+                        <CheckBox Content="{DynamicResource M.Shell.StartWithWindows}" IsChecked="{Binding StartWithWindows}" ToolTip="{DynamicResource M.Shell.StartWithWindowsTip}" />
+                        <TextBlock Margin="24,2,0,8" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Shell.StartWithWindowsTip}" />
                         <CheckBox Content="{DynamicResource M.Shell.ContextMenu}" IsChecked="{Binding ContextMenuRegistered}" ToolTip="{DynamicResource M.Shell.ContextMenuTip}" />
                         <TextBlock Margin="24,2,0,0" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Shell.ContextMenuTip}" />
 

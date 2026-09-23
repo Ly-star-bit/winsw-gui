@@ -403,6 +403,8 @@
     <sys:String x:Key="M.Shell.ContextMenu">在 .xml 右鍵選單加入「以 WinSW 開啟」</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">為目前使用者新增右鍵選單項目，無需提升權限。</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">以 WinSW 開啟</sys:String>
+    <sys:String x:Key="M.Shell.StartWithWindows">開機時自動啟動到系統匣</sys:String>
+    <sys:String x:Key="M.Shell.StartWithWindowsTip">為目前使用者新增登入啟動項目，不需要系統管理員權限。主控台在系統匣中持續監看，服務意外停止時照樣會跳出通知。</sys:String>
     <sys:String x:Key="M.Log.Regex">規則運算式</sys:String>
     <sys:String x:Key="M.Log.NextErrorTip">跳到下一個錯誤行</sys:String>
 
