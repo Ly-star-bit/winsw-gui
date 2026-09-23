@@ -14,6 +14,22 @@ using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
+    /// <summary>One line of the editor's History menu: a version to restore, or why there is none.</summary>
+    public sealed class HistoryEntry
+    {
+        public HistoryEntry(string label, ConfigVersion? version)
+        {
+            this.Label = label;
+            this.Version = version;
+        }
+
+        public string Label { get; }
+
+        public ConfigVersion? Version { get; }
+
+        public bool CanRestore => this.Version != null;
+    }
+
     /// <summary>
     /// Graphical editor over a WinSW configuration file, with live validation and a preview
     /// of exactly what will be written.
@@ -60,6 +76,7 @@ namespace WinSW.Gui.ViewModels
             this.SaveAsCommand = new AsyncRelayCommand(this.SaveAsAsync);
             this.OpenCommand = new RelayCommand(this.Open);
             this.ReloadCommand = new RelayCommand(this.Reload, () => this.filePath != null && File.Exists(this.filePath));
+            this.RestoreVersionCommand = new RelayCommand(p => this.Restore((p as HistoryEntry)?.Version), p => p is HistoryEntry { CanRestore: true });
             this.ApplyToServiceCommand = new AsyncRelayCommand(this.ApplyToServiceAsync, () => this.installedService != null && this.filePath != null);
             this.InstallCommand = new AsyncRelayCommand(this.InstallAsync, () => this.installedService is null && this.filePath != null);
 
@@ -191,6 +208,12 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand OpenCommand { get; }
 
         public RelayCommand ReloadCommand { get; }
+
+        /// <summary>Loads an earlier version of the file into the form; see <see cref="ConfigHistory"/>.</summary>
+        public RelayCommand RestoreVersionCommand { get; }
+
+        /// <summary>The History menu's lines, filled by <see cref="RefreshHistory"/> as the menu opens.</summary>
+        public ObservableCollection<HistoryEntry> History { get; } = new();
 
         public AsyncRelayCommand ApplyToServiceCommand { get; }
 
@@ -480,6 +503,74 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>
+        /// Fills the History menu. Read as it opens rather than kept up to date: it is a folder
+        /// of twenty files at most, looked at only when somebody asks.
+        /// </summary>
+        /// <remarks>
+        /// Restoring replaces what is in the form, so it is not offered over unsaved changes:
+        /// they would be lost without a word, which is the thing the history is there to stop.
+        /// </remarks>
+        public void RefreshHistory()
+        {
+            this.History.Clear();
+
+            if (this.filePath is null)
+            {
+                this.History.Add(new HistoryEntry(Localizer.Get("M.History.NotSaved"), null));
+                return;
+            }
+
+            if (this.IsDirty)
+            {
+                this.History.Add(new HistoryEntry(Localizer.Get("M.History.SaveFirst"), null));
+                return;
+            }
+
+            foreach (var version in ConfigHistory.List(this.filePath))
+            {
+                this.History.Add(new HistoryEntry(version.Label, version));
+            }
+
+            if (this.History.Count == 0)
+            {
+                this.History.Add(new HistoryEntry(Localizer.Get("M.History.None"), null));
+            }
+        }
+
+        /// <summary>
+        /// Puts an earlier version into the form, unsaved. Saving it is what restores it — through
+        /// the same path as any other save, elevation included, and setting aside the version it
+        /// replaces, so a restore can itself be undone.
+        /// </summary>
+        private void Restore(ConfigVersion? version)
+        {
+            if (version is null || this.filePath is null || this.IsDirty)
+            {
+                return;
+            }
+
+            try
+            {
+                var loaded = ServiceConfigModel.Load(version.Path);
+
+                // A version of this file, going back to it: relative paths resolve against
+                // where it belongs, not against the history folder it was read from.
+                loaded.FilePath = this.filePath;
+
+                this.Detach(this.Model);
+                this.Attach(loaded);
+                this.Model = loaded;
+                this.IsDirty = true;
+                this.StatusMessage = Localizer.Format("M.History.Restored", version.SavedAt.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture));
+                this.Recompute();
+            }
+            catch (Exception e) when (e is InvalidDataException or IOException or UnauthorizedAccessException)
+            {
+                this.StatusMessage = Localizer.Format("M.History.RestoreFailed", e.Message);
+            }
+        }
+
         // Saving ---------------------------------------------------------------
 
         /// <summary>
@@ -541,6 +632,9 @@ namespace WinSW.Gui.ViewModels
                 this.StatusMessage = Localizer.Get("M.Editor.FixProblems");
                 return;
             }
+
+            // Whatever is on disk now is about to be replaced, whichever way the write goes.
+            ConfigHistory.Preserve(path);
 
             try
             {

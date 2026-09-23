@@ -123,6 +123,17 @@
                 </Button>
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding OpenCommand}" Content="{DynamicResource S.Open}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ReloadCommand}" Content="{DynamicResource S.Reload}" />
+                <Button Margin="0,0,8,0" Padding="12,7" Click="OnHistoryClick" ToolTip="{DynamicResource M.History.Tip}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE81C;" />
+                        <TextBlock Text="{DynamicResource M.History.Button}" />
+                        <TextBlock Margin="6,0,0,0" FontSize="10" Style="{StaticResource Icon}" Text="&#xE70D;" />
+                    </StackPanel>
+                    <Button.ContextMenu>
+                        <!-- Filled as it opens; see OnHistoryClick. -->
+                        <ContextMenu />
+                    </Button.ContextMenu>
+                </Button>
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding SaveAsCommand}" Content="{DynamicResource S.SaveAs}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}" ToolTip="Ctrl+S">
                     <StackPanel Orientation="Horizontal">

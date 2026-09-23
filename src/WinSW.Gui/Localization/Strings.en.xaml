@@ -378,6 +378,13 @@
     <sys:String x:Key="M.Editor.ApplyXml">Apply</sys:String>
     <sys:String x:Key="M.Editor.XmlApplied">XML applied to the form. Save to write it.</sys:String>
     <sys:String x:Key="M.Editor.XmlInvalid">The XML could not be applied: {0}</sys:String>
+    <sys:String x:Key="M.History.Button">History</sys:String>
+    <sys:String x:Key="M.History.Tip">Earlier versions of this file. A copy is set aside each time it is saved from this console; the last 20 are kept.</sys:String>
+    <sys:String x:Key="M.History.None">No earlier versions yet</sys:String>
+    <sys:String x:Key="M.History.SaveFirst">Save or reload the changes first</sys:String>
+    <sys:String x:Key="M.History.NotSaved">This configuration has not been saved yet</sys:String>
+    <sys:String x:Key="M.History.Restored">Loaded the version saved at {0}. Save to put it back.</sys:String>
+    <sys:String x:Key="M.History.RestoreFailed">Could not read that version: {0}</sys:String>
     <sys:String x:Key="M.Wiz.CloneFrom">Start from an existing service (optional)</sys:String>
     <sys:String x:Key="M.Wiz.CloneHint">Copies its program, arguments and settings; the ID and display name get a suffix.</sys:String>
     <sys:String x:Key="M.Wiz.CloneFailed">Could not read the source configuration: {0}</sys:String>

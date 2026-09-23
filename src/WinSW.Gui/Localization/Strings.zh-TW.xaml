@@ -378,6 +378,13 @@
     <sys:String x:Key="M.Editor.ApplyXml">套用</sys:String>
     <sys:String x:Key="M.Editor.XmlApplied">XML 已套用到表單，儲存後寫入檔案。</sys:String>
     <sys:String x:Key="M.Editor.XmlInvalid">XML 無法套用：{0}</sys:String>
+    <sys:String x:Key="M.History.Button">歷史版本</sys:String>
+    <sys:String x:Key="M.History.Tip">這個檔案的早期版本。每次從本主控台儲存前都會自動留一份，保留最近 20 份。</sys:String>
+    <sys:String x:Key="M.History.None">還沒有早期版本</sys:String>
+    <sys:String x:Key="M.History.SaveFirst">請先儲存或重新載入目前的修改</sys:String>
+    <sys:String x:Key="M.History.NotSaved">這個設定還沒有儲存過</sys:String>
+    <sys:String x:Key="M.History.Restored">已載入 {0} 儲存的版本，儲存後即還原為該版本。</sys:String>
+    <sys:String x:Key="M.History.RestoreFailed">無法讀取這個版本：{0}</sys:String>
     <sys:String x:Key="M.Wiz.CloneFrom">以現有服務為基礎（選填）</sys:String>
     <sys:String x:Key="M.Wiz.CloneHint">複製其程式、參數和設定；ID 和顯示名稱會加上後綴。</sys:String>
     <sys:String x:Key="M.Wiz.CloneFailed">無法讀取來源設定：{0}</sys:String>

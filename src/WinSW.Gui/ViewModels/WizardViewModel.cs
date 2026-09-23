@@ -1027,8 +1027,10 @@ namespace WinSW.Gui.ViewModels
         {
             try
             {
-                // The service's own folder under the install root will not exist yet.
+                // The service's own folder under the install root will not exist yet. When it
+                // does, and holds a configuration, the wizard is about to overwrite it.
                 Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+                ConfigHistory.Preserve(configPath);
                 model.Save(configPath);
                 return true;
             }

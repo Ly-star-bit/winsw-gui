@@ -378,6 +378,13 @@
     <sys:String x:Key="M.Editor.ApplyXml">適用</sys:String>
     <sys:String x:Key="M.Editor.XmlApplied">XML をフォームに適用しました。保存すると書き込まれます。</sys:String>
     <sys:String x:Key="M.Editor.XmlInvalid">XML を適用できませんでした: {0}</sys:String>
+    <sys:String x:Key="M.History.Button">履歴</sys:String>
+    <sys:String x:Key="M.History.Tip">このファイルの以前のバージョン。このコンソールから保存するたびにコピーを残し、直近 20 件を保持します。</sys:String>
+    <sys:String x:Key="M.History.None">以前のバージョンはまだありません</sys:String>
+    <sys:String x:Key="M.History.SaveFirst">先に変更を保存するか再読み込みしてください</sys:String>
+    <sys:String x:Key="M.History.NotSaved">この構成はまだ保存されていません</sys:String>
+    <sys:String x:Key="M.History.Restored">{0} に保存されたバージョンを読み込みました。保存すると元に戻ります。</sys:String>
+    <sys:String x:Key="M.History.RestoreFailed">このバージョンを読み込めませんでした: {0}</sys:String>
     <sys:String x:Key="M.Wiz.CloneFrom">既存のサービスをもとにする (任意)</sys:String>
     <sys:String x:Key="M.Wiz.CloneHint">プログラム、引数、設定をコピーします。ID と表示名にはサフィックスが付きます。</sys:String>
     <sys:String x:Key="M.Wiz.CloneFailed">コピー元の構成を読み取れませんでした: {0}</sys:String>
