@@ -47,7 +47,7 @@
                 <Button Margin="0,0,12,0" Padding="12,7" Command="{Binding CleanupCommand}" Content="{DynamicResource M.Log.Cleanup}" ToolTip="{DynamicResource M.Log.CleanupTip}" />
                 <Button Padding="12,7" Command="{Binding RescanCommand}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
                         <TextBlock Text="{DynamicResource S.RescanFiles}" />
                     </StackPanel>
                 </Button>
@@ -95,7 +95,7 @@
                     <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Log.Regex}" IsChecked="{Binding UseRegex}" />
                     <Button Margin="10,0,0,0" Padding="10,4" Command="{Binding NextErrorCommand}" ToolTip="{DynamicResource M.Log.NextErrorTip}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                            <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                             <TextBlock Text="{Binding ErrorCount}" />
                         </StackPanel>
                     </Button>

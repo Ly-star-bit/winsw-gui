@@ -51,19 +51,19 @@
                 <StackPanel Grid.Column="6" HorizontalAlignment="Right" Orientation="Horizontal">
                     <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
+                            <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xF605;" />
                             <TextBlock Text="{DynamicResource S.Start}" />
                         </StackPanel>
                     </Button>
                     <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StopCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE71A;" />
+                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF72A;" />
                             <TextBlock Text="{DynamicResource S.Stop}" />
                         </StackPanel>
                     </Button>
                     <Button Padding="12,6" Command="{Binding RestartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
                             <TextBlock Text="{DynamicResource S.Restart}" />
                         </StackPanel>
                     </Button>

@@ -119,7 +119,7 @@
 
             <Button Grid.Column="2" VerticalAlignment="Center" Padding="12,7" Command="{Binding ReloadCommand}">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
                     <TextBlock Text="{DynamicResource S.Rescan}" />
                 </StackPanel>
             </Button>
@@ -169,12 +169,12 @@
                 <!-- Nothing registered yet -->
                 <Border Padding="24" Style="{StaticResource Card}" VerticalAlignment="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
-                        <TextBlock FontSize="34" Style="{StaticResource Icon}" Text="&#xE7F4;" />
+                        <TextBlock FontSize="34" Style="{StaticResource Icon}" Text="&#xF359;" />
                         <TextBlock Margin="0,12,0,4" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Task.EmptyTitle}" />
                         <TextBlock Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Task.EmptyBody}" TextWrapping="Wrap" />
                         <Button Margin="0,16,0,0" HorizontalAlignment="Left" Padding="14,8" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding CreateTaskCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE710;" />
+                                <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xF109;" />
                                 <TextBlock Text="{DynamicResource M.Task.EmptyCreate}" />
                             </StackPanel>
                         </Button>
@@ -196,7 +196,7 @@
                                 </Style.Triggers>
                             </Style>
                         </StackPanel.Style>
-                        <TextBlock HorizontalAlignment="Center" FontSize="40" Style="{StaticResource Icon}" Text="&#xE7F4;" />
+                        <TextBlock HorizontalAlignment="Center" FontSize="40" Style="{StaticResource Icon}" Text="&#xF359;" />
                         <TextBlock Margin="0,12,0,0" HorizontalAlignment="Center" Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Task.SelectHint}" />
                     </StackPanel>
 
@@ -238,7 +238,7 @@
                                 CornerRadius="8"
                                 Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                    <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                                     <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
@@ -336,7 +336,7 @@
             Style="{StaticResource Card}"
             Visibility="{Binding IsAvailable, Converter={StaticResource InverseBoolToVisibility}}">
             <StackPanel>
-                <TextBlock FontSize="34" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                <TextBlock FontSize="34" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                 <TextBlock Margin="0,12,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding UnavailableText}" TextWrapping="Wrap" />
             </StackPanel>
         </Border>

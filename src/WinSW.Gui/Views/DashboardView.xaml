@@ -63,7 +63,7 @@
                         FontSize="12"
                         Foreground="{DynamicResource HealthBrokenBrush}"
                         Style="{StaticResource Icon}"
-                        Text="&#xE7BA;"
+                        Text="&#xF869;"
                         ToolTip="{Binding StrayProcessText}"
                         Visibility="{Binding HasStrayProcess, Converter={StaticResource BoolToVisibility}}" />
                     <!-- Running on an older configuration than the file holds. -->
@@ -73,7 +73,7 @@
                         FontSize="12"
                         Foreground="{DynamicResource HealthPendingBrush}"
                         Style="{StaticResource Icon}"
-                        Text="&#xE72C;"
+                        Text="&#xF13D;"
                         ToolTip="{DynamicResource M.Dash.ConfigPending}"
                         Visibility="{Binding ConfigChangedSinceStart, Converter={StaticResource BoolToVisibility}}" />
                     <Border Style="{StaticResource StatusPill}">
@@ -89,7 +89,7 @@
 
         <HierarchicalDataTemplate x:Key="ProcessNodeTemplate" DataType="{x:Type services:ProcessNode}" ItemsSource="{Binding Children}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE7C4;" />
+                <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE05C;" />
                 <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Name}" />
                 <TextBlock Margin="8,0,0,0" Style="{StaticResource Mono}" Text="{Binding ProcessId}" />
             </StackPanel>
@@ -167,7 +167,7 @@
                 Padding="12,7"
                 ToolTip="F5">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
                     <TextBlock Text="{DynamicResource S.Rescan}" />
                 </StackPanel>
             </Button>
@@ -271,12 +271,12 @@
                 <!-- Getting started: nothing is installed yet -->
                 <Border Grid.Row="1" Padding="24" Style="{StaticResource Card}" VerticalAlignment="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
-                        <TextBlock FontSize="34" Style="{StaticResource Icon}" Text="&#xE7B8;" />
+                        <TextBlock FontSize="34" Style="{StaticResource Icon}" Text="&#xE1BB;" />
                         <TextBlock Margin="0,12,0,4" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Empty.Title}" />
                         <TextBlock Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Empty.Body}" />
                         <Button Margin="0,16,0,8" HorizontalAlignment="Left" Padding="14,8" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding CreateServiceCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE710;" />
+                                <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xF109;" />
                                 <TextBlock Text="{DynamicResource M.Empty.Create}" />
                             </StackPanel>
                         </Button>
@@ -304,7 +304,7 @@
                             HorizontalAlignment="Center"
                             FontSize="40"
                             Style="{StaticResource Icon}"
-                            Text="&#xE9F5;" />
+                            Text="&#xE445;" />
                         <TextBlock
                             Margin="0,12,0,0"
                             HorizontalAlignment="Center"
@@ -360,38 +360,38 @@
                         <WrapPanel Grid.Row="1" Margin="0,0,0,8">
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
+                                    <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xF605;" />
                                     <TextBlock Text="{DynamicResource S.Start}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE71A;" />
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF72A;" />
                                     <TextBlock Text="{DynamicResource S.Stop}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
                                     <TextBlock Text="{DynamicResource S.Restart}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.ViewLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ToolTip="{DynamicResource M.Dash.DoubleClickTip}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE557;" />
                                     <TextBlock Text="{DynamicResource S.Logs}" />
                                 </StackPanel>
                             </Button>
                             <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.EditConfigCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE713;" />
+                                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF6A9;" />
                                     <TextBlock Text="{DynamicResource S.EditConfiguration}" />
                                 </StackPanel>
                             </Button>
                             <Button x:Name="MoreButton" Style="{StaticResource ActionButton}" Click="OnMoreClick" AutomationProperties.Name="{DynamicResource M.Dash.More}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{DynamicResource M.Dash.More}" />
-                                    <TextBlock Margin="6,0,0,0" FontSize="10" Style="{StaticResource Icon}" Text="&#xE70D;" />
+                                    <TextBlock Margin="6,0,0,0" FontSize="10" Style="{StaticResource Icon}" Text="&#xF2A3;" />
                                 </StackPanel>
                                 <Button.ContextMenu>
                                     <ContextMenu>
@@ -421,7 +421,7 @@
                                         CornerRadius="8"
                                         Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                            <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                                             <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
@@ -441,7 +441,7 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                            <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                 <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayProcessText}" TextWrapping="Wrap" />
                                                 <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayParentText}" TextWrapping="Wrap" />
@@ -480,7 +480,7 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                                            <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xF13D;" />
                                             <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Dash.ConfigPending}" TextWrapping="Wrap" />
                                             <Button
                                                 Grid.Column="2"

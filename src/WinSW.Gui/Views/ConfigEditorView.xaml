@@ -117,7 +117,7 @@
                 <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" Content="{DynamicResource S.XMLPreview}" IsChecked="{Binding ShowPreview}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Click="OnOpenGuide" ToolTip="{DynamicResource G.OpenGuideHint}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE8A5;" />
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE557;" />
                         <TextBlock Text="{DynamicResource G.OpenGuide}" />
                     </StackPanel>
                 </Button>
@@ -125,9 +125,9 @@
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ReloadCommand}" Content="{DynamicResource S.Reload}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Click="OnHistoryClick" ToolTip="{DynamicResource M.History.Tip}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE81C;" />
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF47E;" />
                         <TextBlock Text="{DynamicResource M.History.Button}" />
-                        <TextBlock Margin="6,0,0,0" FontSize="10" Style="{StaticResource Icon}" Text="&#xE70D;" />
+                        <TextBlock Margin="6,0,0,0" FontSize="10" Style="{StaticResource Icon}" Text="&#xF2A3;" />
                     </StackPanel>
                     <Button.ContextMenu>
                         <!-- Filled as it opens; see OnHistoryClick. -->
@@ -137,19 +137,19 @@
                 <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding SaveAsCommand}" Content="{DynamicResource S.SaveAs}" />
                 <Button Margin="0,0,8,0" Padding="12,7" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}" ToolTip="Ctrl+S">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE74E;" />
+                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xF67F;" />
                         <TextBlock Text="{DynamicResource S.Save}" />
                     </StackPanel>
                 </Button>
                 <Button Padding="12,7" Command="{Binding ApplyToServiceCommand}" ToolTip="{DynamicResource S.SaveThenRunWinswRefreshAgainst}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE895;" />
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF190;" />
                         <TextBlock Text="{DynamicResource M.Editor.SaveAndApply}" />
                     </StackPanel>
                 </Button>
                 <Button Padding="12,7" Command="{Binding InstallCommand}" ToolTip="{DynamicResource M.Editor.InstallHint}" Visibility="{Binding IsInstalled, Converter={StaticResource InverseBoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE896;" />
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF150;" />
                         <TextBlock Text="{DynamicResource M.Editor.Install}" />
                     </StackPanel>
                 </Button>
@@ -323,7 +323,7 @@
                                         <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Password}" />
                                         <DockPanel>
                                             <ToggleButton x:Name="RevealAccountPassword" DockPanel.Dock="Right" Margin="8,0,0,0" Padding="8,0" AutomationProperties.Name="{DynamicResource M.Reveal}" ToolTip="{DynamicResource M.Reveal}">
-                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE7B3;" />
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE5F2;" />
                                             </ToggleButton>
                                             <Grid>
                                                 <PasswordBox controls:PasswordHelper.BoundPassword="{Binding ServiceAccountPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Visibility="{Binding IsChecked, ElementName=RevealAccountPassword, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -518,7 +518,7 @@
                                                             <ComboBox Width="90" Margin="0,0,8,0" ItemsSource="{Binding DataContext.AuthTypes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Auth}" ToolTip="{DynamicResource S.Authentication}" />
                                                             <ui:TextBox Width="130" Margin="0,0,8,0" PlaceholderText="{DynamicResource S.UserBasicAuth}" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}" />
                                                             <ToggleButton x:Name="RevealDownloadPassword" Margin="0,0,4,0" Padding="6,0" ToolTip="{DynamicResource M.Reveal}">
-                                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE7B3;" />
+                                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE5F2;" />
                                                             </ToggleButton>
                                                             <Grid Width="130" Margin="0,0,8,0">
                                                                 <PasswordBox controls:PasswordHelper.BoundPassword="{Binding Password, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="{DynamicResource S.PasswordBasicAuth}" Visibility="{Binding IsChecked, ElementName=RevealDownloadPassword, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -608,7 +608,7 @@
                 <Expander Grid.Row="1" Margin="0,10,0,0" IsExpanded="{Binding IsTrialRunning, Mode=OneWay}">
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE768;" />
+                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF605;" />
                             <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Trial.Tab}" />
                             <TextBlock Margin="12,0,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding TrialStatus}" />
                         </StackPanel>
@@ -623,7 +623,7 @@
                                 <StackPanel Orientation="Horizontal">
                                 <Button Margin="0,0,8,0" Padding="12,6" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding StartTrialCommand}">
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE768;" />
+                                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xF605;" />
                                         <TextBlock Text="{DynamicResource M.Trial.Start}" />
                                     </StackPanel>
                                 </Button>

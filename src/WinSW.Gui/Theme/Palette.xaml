@@ -52,10 +52,14 @@
     <SolidColorBrush x:Key="LogInfoBrush" Color="#C7CBD8" />
 
     <!--
-        Segoe Fluent Icons ships with Windows 11, Segoe MDL2 Assets with Windows 10.
-        Listing both keeps the icons real glyphs rather than tofu on either OS.
+        The icons come from Fluent System Icons, the font WPF-UI carries inside its own
+        assembly, not from the system. Segoe Fluent Icons ships only with Windows 11 and
+        Segoe MDL2 Assets only from Windows 10 and Server 2016, so on Server 2012 R2 every
+        icon was blank; this one travels with the application, costs nothing it does not
+        already carry, and looks the same on every Windows. Its code points are its own:
+        an icon is written as the 20-pixel glyph of WPF-UI's SymbolRegular of that name.
     -->
-    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <FontFamily x:Key="IconFont">pack://application:,,,/Wpf.Ui;component/Resources/Fonts/#FluentSystemIcons-Regular</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
     <!--

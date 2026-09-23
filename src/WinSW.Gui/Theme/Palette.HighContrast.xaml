@@ -45,7 +45,8 @@
     <SolidColorBrush x:Key="LogWarnBrush" Color="#FFFF00" />
     <SolidColorBrush x:Key="LogInfoBrush" Color="#FFFFFF" />
 
-    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <!-- Fluent System Icons from WPF-UI; see Palette.xaml. -->
+    <FontFamily x:Key="IconFont">pack://application:,,,/Wpf.Ui;component/Resources/Fonts/#FluentSystemIcons-Regular</FontFamily>
     <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
     <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
 

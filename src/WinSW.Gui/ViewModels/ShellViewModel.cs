@@ -24,7 +24,7 @@ namespace WinSW.Gui.ViewModels
             this.Page = page;
         }
 
-        /// <summary>A Segoe Fluent / MDL2 glyph.</summary>
+        /// <summary>A Fluent System Icons glyph; see IconFont in Theme/Palette.xaml.</summary>
         public string Glyph { get; }
 
         public string Title => Localizer.Get(this.titleKey);
@@ -94,15 +94,17 @@ namespace WinSW.Gui.ViewModels
             // The settings page binds to this shell itself; its DataTemplate maps ShellViewModel → SettingsView.
             // The glyphs are escapes rather than literal characters: they live in the Unicode
             // private use area, and a tool that does not know that has dropped them before.
+            // They are Fluent System Icons, SymbolRegular 20 in WPF-UI: Home, Desktop, Edit,
+            // DocumentText, Add, Globe, Settings.
             this.Items = new ObservableCollection<NavigationItem>
             {
-                new("\uE80F", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
-                new("\uE7F4", "M.Nav.Tasks", "M.Nav.TasksSub", this.Tasks),
-                new("\uE70F", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
-                new("\uE8A5", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
-                new("\uE710", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
-                new("\uE774", "M.Nav.Remote", "M.Nav.RemoteSub", this.Remote),
-                new("\uE713", "M.Nav.Settings", "M.Nav.SettingsSub", this),
+                new("\uF480", "M.Nav.Services", "M.Nav.ServicesSub", this.Dashboard),
+                new("\uF359", "M.Nav.Tasks", "M.Nav.TasksSub", this.Tasks),
+                new("\uF3DD", "M.Nav.Config", "M.Nav.ConfigSub", this.Editor),
+                new("\uE557", "M.Nav.Logs", "M.Nav.LogsSub", this.Logs),
+                new("\uF109", "M.Nav.New", "M.Nav.NewSub", this.Wizard),
+                new("\uF45A", "M.Nav.Remote", "M.Nav.RemoteSub", this.Remote),
+                new("\uF6A9", "M.Nav.Settings", "M.Nav.SettingsSub", this),
             };
 
             this.ToggleRailCommand = new RelayCommand(() => this.IsRailCollapsed = !this.IsRailCollapsed);

@@ -55,7 +55,7 @@
                     Click="OnRestore"
                     ToolTipService.ShowOnDisabled="True">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xE81C;" />
+                        <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xF47E;" />
                         <TextBlock Text="{DynamicResource M.Diff.Restore}" />
                     </StackPanel>
                 </Button>

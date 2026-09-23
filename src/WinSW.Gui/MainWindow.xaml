@@ -68,7 +68,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal">
                         <Border Width="34" Height="34" Background="{DynamicResource AccentGradientBrush}" CornerRadius="9">
-                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="White" Style="{StaticResource Icon}" Text="&#xE770;" />
+                            <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" Foreground="White" Style="{StaticResource Icon}" Text="&#xF769;" />
                         </Border>
                         <StackPanel Margin="12,0,0,0" VerticalAlignment="Center" Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
                             <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="WinSW" />
@@ -88,7 +88,7 @@
                             Command="{Binding ToggleRailCommand}"
                             ToolTip="{DynamicResource M.Settings.CollapseRail}"
                             Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}">
-                            <TextBlock Style="{StaticResource Icon}" Text="&#xE700;" />
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xF560;" />
                         </Button>
                     </Grid>
 
@@ -124,13 +124,13 @@
                             Command="{Binding ToggleRailCommand}"
                             ToolTip="{DynamicResource M.Settings.ExpandRail}"
                             Visibility="{Binding IsRailCollapsed, Converter={StaticResource BoolToVisibility}}">
-                            <TextBlock Style="{StaticResource Icon}" Text="&#xE700;" />
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xF560;" />
                         </Button>
 
                         <Border Padding="12,10" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1" CornerRadius="8" ToolTip="{Binding ElevationHint}">
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE7EF;" />
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xEAD4;" />
                                     <TextBlock Margin="8,0,0,0" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ElevationLabel}" Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
                                 </StackPanel>
                                 <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding ElevationHint}" TextWrapping="Wrap" Visibility="{Binding IsRailCollapsed, Converter={StaticResource InverseBoolToVisibility}}" />
@@ -215,7 +215,7 @@
                 </Border.Effect>
                 <StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Margin="0,0,10,0" FontSize="18" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                        <TextBlock Margin="0,0,10,0" FontSize="18" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                         <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Exit.Title}" />
                     </StackPanel>
                     <TextBlock Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Exit.Body}" TextWrapping="Wrap" />
