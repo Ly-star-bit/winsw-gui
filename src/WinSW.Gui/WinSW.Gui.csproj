@@ -21,7 +21,8 @@
 
     <!--
       The .NET desktop runtime pack carries its own framework messages translated into forty
-      languages, about 15 MB of the self-contained build. They are the runtime's strings, not
+      languages: 16.7 MB of the self-contained build before compression, 5.8 MB of the
+      compressed executable that is actually released. They are the runtime's strings, not
       ours: this application's four languages are XAML resource dictionaries compiled into the
       assembly, so nothing user-visible depends on them.
     -->
@@ -44,11 +45,19 @@
       The tray icon, and nothing else. TrayIcon calls Shell_NotifyIcon itself rather than
       using the Windows Forms NotifyIcon, and System.Drawing is what remains of that: it
       decodes the multi-resolution .ico and picks the frame matching the notification area's
-      size, which follows the display scaling. It came in with Windows Forms before and so
-      was never referenced by name.
+      size, which follows the display scaling.
+
+      It is taken from the desktop runtime, not from NuGet. UseWPF references only the WPF
+      profile of Microsoft.WindowsDesktop.App, and System.Drawing.Common is listed in the
+      Windows Forms profile alone, so it has to be asked for by name; but it is the same
+      runtime, and the file is already on every machine that can run this application.
+      Referencing the profile changes what this project compiles against and nothing about
+      what it runs on. UseWindowsForms would do the same, with its high-DPI analyzer
+      (WFAC010) objecting to app.manifest on every build.
 
       Dropping UseWindowsForms was expected to be worth about 15 MB of the self-contained
-      build. It was worth nothing, and this reference is why the smallest build grew:
+      build. It was worth nothing, and the NuGet package that first stood in here for the
+      framework's copy is why the smallest build grew:
 
         gui-v0.11.0 -> gui-v0.12.0, release assets, bytes
           x64 self-contained         68,702,026 -> 68,712,333
@@ -59,14 +68,23 @@
       carries Windows Forms alongside WPF. A self-contained publish with no trimming — and
       WPF cannot be trimmed — ships all of it either way, so the switch only ever governed
       what this project compiled against. Size work here has to target the runtime pack, not
-      individual framework references.
+      individual framework references — or, for the framework-dependent build, at packages
+      that bring along copies of what the runtime already has. That package was 611 KB of it.
     -->
-    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+    <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
 
-    <!-- Neither is in the shared framework; both track the target framework's major. -->
-    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+    <!-- Not in either shared framework, so a package that tracks the target framework's major. -->
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
-    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" />
+
+    <!--
+      The desktop runtime has System.Diagnostics.EventLog already, and its copy is the one
+      that loads. The package arrives anyway, as a dependency of ServiceController, and with
+      it System.Diagnostics.EventLog.Messages.dll: 801 KB of message tables for events written
+      under a source that this application registers. The console only reads event logs, and
+      a reader formats each entry from the message file its own source registered. The
+      package is named here only to leave its runtime files out.
+    -->
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <!--

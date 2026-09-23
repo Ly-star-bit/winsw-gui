@@ -13,11 +13,12 @@ namespace WinSW.Gui.Services
     /// </summary>
     /// <remarks>
     /// <para>
-    /// WPF has no tray control. Windows Forms has one, and using it meant compiling the whole
-    /// Windows Forms framework into the application — about 15 MB of the self-contained build
-    /// — for a single class in a single file. This calls <c>Shell_NotifyIcon</c> directly, as
-    /// that class does, and the menu is an ordinary WPF <see cref="ContextMenu"/>, so it
-    /// follows the application's theme rather than sitting outside it.
+    /// WPF has no tray control. Windows Forms has one, and using it meant referencing the whole
+    /// Windows Forms framework for a single class in a single file. This calls
+    /// <c>Shell_NotifyIcon</c> directly, as that class does, and the menu is an ordinary WPF
+    /// <see cref="ContextMenu"/>, so it follows the application's theme rather than sitting
+    /// outside it. It saves no download size: the desktop runtime carries Windows Forms either
+    /// way, as the project file records.
     /// </para>
     /// <para>
     /// The icon is the application's own, read from the same resource the windows use, so the
