@@ -176,6 +176,7 @@
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Arguments}" />
                             <TextBox Text="{Binding Arguments, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.JarHint}" Visibility="{Binding TargetIsJar, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WorkingDirectory}" />

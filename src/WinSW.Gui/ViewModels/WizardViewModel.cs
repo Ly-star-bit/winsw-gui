@@ -431,6 +431,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.targetPath, value))
                 {
+                    this.Raise(nameof(this.TargetIsJar));
                     this.SuggestDefaults();
                     this.Raise(nameof(this.InstallDirectory));
                     this.Raise(nameof(this.ConfigPath));
@@ -439,6 +440,9 @@ namespace WinSW.Gui.ViewModels
                 }
             }
         }
+
+        /// <summary>The program is a .jar, which is run through java; see <see cref="BuildModel"/>.</summary>
+        public bool TargetIsJar => IsJar(this.targetPath);
 
         public string Arguments
         {
@@ -652,6 +656,26 @@ namespace WinSW.Gui.ViewModels
             return null;
         }
 
+        internal static bool IsJar(string path) =>
+            string.Equals(Path.GetExtension(path.Trim()), ".jar", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// What java is given for a .jar: <c>-jar "file"</c> ahead of the arguments. Arguments
+        /// that already say <c>-jar</c> are a Java command line written out in full — JVM
+        /// options in front of it, most likely — and are handed over as they are.
+        /// </summary>
+        internal static string JarArguments(string jarPath, string arguments)
+        {
+            string rest = arguments.Trim();
+            if (ServiceDiscovery.SplitCommandLine(rest).Contains("-jar"))
+            {
+                return rest;
+            }
+
+            string jar = "-jar \"" + jarPath.Trim() + "\"";
+            return rest.Length == 0 ? jar : jar + " " + rest;
+        }
+
         private bool CanLeaveCurrentStep() => this.step switch
         {
             1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || this.wrapperExists),
@@ -739,8 +763,22 @@ namespace WinSW.Gui.ViewModels
             model.Id = this.serviceId.Trim();
             model.DisplayName = NullIfBlank(this.displayName);
             model.Description = NullIfBlank(this.description);
-            model.Executable = this.targetPath.Trim();
-            model.Arguments = NullIfBlank(this.arguments);
+            string target = this.targetPath.Trim();
+            if (IsJar(target))
+            {
+                // The wrapper starts its program the way CreateProcess does, and a .jar is not
+                // something that can be started that way: written as the executable, it is a
+                // service that installs cleanly and then fails every start. It is java that
+                // runs, with the file handed to it. The bare name, as upstream's samples use
+                // it, is looked up on the PATH the service sees, which is the system's.
+                model.Executable = "java";
+                model.Arguments = JarArguments(target, this.arguments);
+            }
+            else
+            {
+                model.Executable = target;
+                model.Arguments = NullIfBlank(this.arguments);
+            }
             model.WorkingDirectory = NullIfBlank(this.workingDirectory);
             model.StartMode = this.startMode;
             model.DelayedAutoStart = this.delayedAutoStart;

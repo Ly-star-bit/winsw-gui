@@ -434,6 +434,7 @@
     <sys:String x:Key="M.Wiz.DownloadTip">從 GitHub 下載適合本機的最新 WinSW</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">沒有 WinSW.exe？按「下載」會把最新版放到程式旁邊。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">改為安裝到程式自己的資料夾裡</sys:String>
+    <sys:String x:Key="M.Wiz.JarHint">.jar 檔會透過 Java 啟動：服務會執行 java -jar 加上這個檔案，後面再接上面的參數。Java 必須在系統 PATH 裡，服務看不到你自己的 PATH。如果參數裡已經寫了 -jar，會原樣交給 Java。</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">安裝資料夾：</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">已有相同 ID 的服務安裝在本機。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">服務 ID「{0}」在本機已被使用。</sys:String>

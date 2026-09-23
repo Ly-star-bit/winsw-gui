@@ -434,6 +434,7 @@
     <sys:String x:Key="M.Wiz.DownloadTip">Fetch the latest WinSW build for this machine from GitHub</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">Don't have WinSW.exe? Download puts the latest build next to your program.</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">Install into the program's own folder instead</sys:String>
+    <sys:String x:Key="M.Wiz.JarHint">A .jar is started through Java: the service runs java -jar with this file, followed by the arguments above. Java has to be on the system PATH — a service does not see your own. Arguments that already contain -jar are handed to Java as written.</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">Install folder:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">A service with this ID is already installed.</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">Service ID '{0}' is already in use on this machine.</sys:String>

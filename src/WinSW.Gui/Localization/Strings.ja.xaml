@@ -434,6 +434,7 @@
     <sys:String x:Key="M.Wiz.DownloadTip">GitHub からこのマシン向けの最新 WinSW を取得</sys:String>
     <sys:String x:Key="M.Wiz.WrapperHint">WinSW.exe がない場合は「ダウンロード」で最新ビルドをプログラムの隣に配置します。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">代わりにプログラム自身のフォルダーへインストールする</sys:String>
+    <sys:String x:Key="M.Wiz.JarHint">.jar は Java 経由で起動されます。サービスは java -jar にこのファイルを付け、その後に上の引数を続けて実行します。Java はシステムの PATH に入っている必要があります（サービスからはユーザーの PATH は見えません）。引数にすでに -jar が含まれている場合は、そのまま Java に渡します。</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">インストール先:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">この ID のサービスは既にインストールされています。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">サービス ID '{0}' はこのマシンで既に使用されています。</sys:String>

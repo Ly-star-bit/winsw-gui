@@ -153,6 +153,24 @@ namespace WinSW.Gui.Tests
             }
         }
 
+        /// <summary>
+        /// A .jar picked as the program is run by java rather than written as the executable,
+        /// which the wrapper cannot start. Arguments that already carry their own -jar are a
+        /// full Java command line and pass through untouched.
+        /// </summary>
+        [Fact]
+        public void AJarIsHandedToJava()
+        {
+            Assert.True(WizardViewModel.IsJar(@"C:\apps\my app\server.JAR "));
+            Assert.False(WizardViewModel.IsJar(@"C:\apps\server.exe"));
+            Assert.False(WizardViewModel.IsJar(string.Empty));
+
+            const string Jar = @"C:\apps\my app\server.jar";
+            Assert.Equal("-jar \"C:\\apps\\my app\\server.jar\"", WizardViewModel.JarArguments(Jar, "  "));
+            Assert.Equal("-jar \"C:\\apps\\my app\\server.jar\" --port 8080", WizardViewModel.JarArguments(Jar, " --port 8080 "));
+            Assert.Equal("-Xmx512m -jar server.jar --port 8080", WizardViewModel.JarArguments(Jar, "-Xmx512m -jar server.jar --port 8080"));
+        }
+
         private static string GuideFor(string code)
         {
             using var stream = typeof(XmlGuide).Assembly.GetManifestResourceStream("WinSW.Gui.Guide." + code + ".md");
