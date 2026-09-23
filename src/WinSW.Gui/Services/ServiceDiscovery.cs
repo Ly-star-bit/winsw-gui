@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.ServiceProcess;
@@ -43,8 +44,12 @@ namespace WinSW.Gui.Services
         /// <summary>Local time; null when the process was not in the snapshot.</summary>
         public DateTime? StartedAt { get; init; }
 
-        /// <summary>While running: everything under the wrapper, to know later what outlived it.</summary>
-        public IReadOnlyList<ProcessMark>? Descendants { get; init; }
+        /// <summary>
+        /// While running: everything under the wrapper, to know later what outlived it. Default
+        /// (not merely empty) when nothing was read. Immutable, and a struct: a reading crosses
+        /// from the worker to the UI thread, and carries nothing either side could change.
+        /// </summary>
+        public ImmutableArray<ProcessMark> Descendants { get; init; }
 
         /// <summary>While stopped: the service's program, still running outside it; see <see cref="StrayProcesses"/>.</summary>
         public ProcessMark? Stray { get; init; }
@@ -167,9 +172,9 @@ namespace WinSW.Gui.Services
             entry.ProcessId = sample.ProcessId;
             entry.LastExitCode = sample.LastExitCode;
             entry.NoteStray(sample.Stray, DateTime.UtcNow);
-            if (sample.Descendants is { } descendants)
+            if (!sample.Descendants.IsDefault)
             {
-                entry.Descendants = descendants;
+                entry.Descendants = sample.Descendants;
             }
 
             if (!sample.HasProcess)

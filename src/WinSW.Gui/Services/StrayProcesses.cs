@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -38,9 +39,9 @@ namespace WinSW.Gui.Services
     public static class StrayProcesses
     {
         /// <summary>Everything under <paramref name="processId"/>, for noticing later what outlived it.</summary>
-        public static IReadOnlyList<ProcessMark> DescendantsOf(ProcessSnapshot snapshot, int processId)
+        public static ImmutableArray<ProcessMark> DescendantsOf(ProcessSnapshot snapshot, int processId)
         {
-            var found = new List<ProcessMark>();
+            var found = ImmutableArray.CreateBuilder<ProcessMark>();
             var pending = new Stack<int>(snapshot.ChildrenOf(processId));
             var seen = new HashSet<int> { processId };
 
@@ -59,7 +60,7 @@ namespace WinSW.Gui.Services
                 }
             }
 
-            return found;
+            return found.ToImmutable();
         }
 
         /// <summary>
