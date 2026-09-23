@@ -289,9 +289,9 @@ namespace WinSW.Gui.ViewModels
         public RelayCommand RefreshPageCommand { get; }
 
         /// <summary>
-        /// Esc. The dashboard and the task list each have a confirmation of their own; this
-        /// dismisses the one on screen, where the window's binding used to reach only the
-        /// dashboard's.
+        /// Esc. The dashboard, the task list and the log page each have a confirmation of their
+        /// own; this dismisses the one on screen, where the window's binding used to reach only
+        /// the dashboard's.
         /// </summary>
         public RelayCommand CancelPageCommand { get; }
 
@@ -336,6 +336,7 @@ namespace WinSW.Gui.ViewModels
         {
             DashboardViewModel dashboard => dashboard.CancelConfirmCommand,
             DesktopTasksViewModel tasks => tasks.CancelConfirmCommand,
+            LogViewerViewModel logs => logs.CancelCleanupCommand,
             _ => null,
         };
 

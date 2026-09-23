@@ -35,7 +35,7 @@ namespace WinSW.Gui.ViewModels
         public string Caption =>
             $"{this.Name}   ·   {FormatSize(this.Length)}   ·   {this.LastWrite:yyyy-MM-dd HH:mm:ss}";
 
-        private static string FormatSize(long bytes) => bytes switch
+        internal static string FormatSize(long bytes) => bytes switch
         {
             < 1024 => $"{bytes} B",
             < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
@@ -43,6 +43,13 @@ namespace WinSW.Gui.ViewModels
         };
 
         public override string ToString() => this.Caption;
+
+        /// <summary>
+        /// The files cleanup would take: written before <paramref name="cutoff"/>, and not the
+        /// one on screen, which is being read and is not deleted from under its reader.
+        /// </summary>
+        internal static IReadOnlyList<LogFileEntry> OlderThan(IEnumerable<LogFileEntry> files, DateTime cutoff, string? onScreen) =>
+            files.Where(f => f.LastWrite < cutoff && !string.Equals(f.Path, onScreen, StringComparison.OrdinalIgnoreCase)).ToList();
     }
 
     /// <summary>A selectable log encoding, labelled for the picker.</summary>
@@ -109,6 +116,11 @@ namespace WinSW.Gui.ViewModels
         private bool filterInvalid;
         private int errorCount;
         private int lastJumpIndex = -1;
+        private string keepDays = "30";
+        private bool cleanupConfirmVisible;
+        private string cleanupMessage = string.Empty;
+        private bool isCleaning;
+        private IReadOnlyList<LogFileEntry> cleanupCandidates = Array.Empty<LogFileEntry>();
 
         public LogViewerViewModel()
         {
@@ -137,6 +149,9 @@ namespace WinSW.Gui.ViewModels
             this.RevealCommand = new RelayCommand(this.Reveal, () => this.selectedFile != null);
             this.RefreshEventsCommand = new AsyncRelayCommand(this.LoadEventsAsync, () => this.service != null && !this.isLoadingEvents);
             this.NextErrorCommand = new RelayCommand(this.JumpToNextError, () => this.errorCount > 0);
+            this.CleanupCommand = new RelayCommand(this.AskCleanup, () => this.Files.Count > 0 && !this.isCleaning);
+            this.ConfirmCleanupCommand = new AsyncRelayCommand(this.CleanUpAsync);
+            this.CancelCleanupCommand = new RelayCommand(() => this.CleanupConfirmVisible = false);
 
             this.statusMessage = Localizer.Get("M.Log.SelectService");
             Localizer.Changed += () =>
@@ -167,6 +182,97 @@ namespace WinSW.Gui.ViewModels
         public EncodingOption[] Encodings { get; }
 
         public RelayCommand RescanCommand { get; }
+
+        // Cleanup ---------------------------------------------------------------
+
+        /// <summary>How many files the service has here and how much they come to; nothing new is read for it.</summary>
+        public string TotalSizeText => this.Files.Count == 0
+            ? string.Empty
+            : Localizer.Format("M.Log.TotalSize", this.Files.Count, LogFileEntry.FormatSize(this.Files.Sum(f => f.Length)));
+
+        /// <summary>Files last written longer ago than this many days are the ones cleanup deletes.</summary>
+        public string KeepDays
+        {
+            get => this.keepDays;
+            set => this.Set(ref this.keepDays, value);
+        }
+
+        public RelayCommand CleanupCommand { get; }
+
+        public AsyncRelayCommand ConfirmCleanupCommand { get; }
+
+        public RelayCommand CancelCleanupCommand { get; }
+
+        public bool CleanupConfirmVisible
+        {
+            get => this.cleanupConfirmVisible;
+            private set => this.Set(ref this.cleanupConfirmVisible, value);
+        }
+
+        public string CleanupMessage
+        {
+            get => this.cleanupMessage;
+            private set => this.Set(ref this.cleanupMessage, value);
+        }
+
+        private void AskCleanup()
+        {
+            if (!int.TryParse(this.keepDays.Trim(), out int days) || days < 1)
+            {
+                this.StatusMessage = Localizer.Format("M.Log.CleanupBadDays", this.keepDays);
+                return;
+            }
+
+            var old = LogFileEntry.OlderThan(this.Files, DateTime.Now - TimeSpan.FromDays(days), this.selectedFile?.Path);
+            if (old.Count == 0)
+            {
+                this.StatusMessage = Localizer.Format("M.Log.CleanupNone", days);
+                return;
+            }
+
+            this.cleanupCandidates = old;
+            this.CleanupMessage = Localizer.Format("M.Log.CleanupBody", old.Count, days, LogFileEntry.FormatSize(old.Sum(f => f.Length)), this.LogDirectory);
+            this.CleanupConfirmVisible = true;
+        }
+
+        private async Task CleanUpAsync()
+        {
+            this.CleanupConfirmVisible = false;
+            var targets = this.cleanupCandidates;
+            this.cleanupCandidates = Array.Empty<LogFileEntry>();
+            if (targets.Count == 0)
+            {
+                return;
+            }
+
+            this.isCleaning = true;
+            this.CleanupCommand.RaiseCanExecuteChanged();
+            try
+            {
+                var outcome = await LogCleanup.DeleteAsync(targets.Select(t => (t.Path, t.Length)).ToList()).ConfigureAwait(true);
+
+                string done = Localizer.Format("M.Log.CleanupDone", outcome.Deleted, LogFileEntry.FormatSize(outcome.Freed));
+                this.StatusMessage = outcome.Declined && outcome.Deleted == 0
+                    ? Localizer.Get("M.Common.ElevationDeclined")
+                    : outcome.Left > 0 ? done + " " + Localizer.Format("M.Log.CleanupLeft", outcome.Left) : done;
+
+                ActionLog.Record(
+                    "delete logs",
+                    this.ServiceName,
+                    outcome.Left == 0
+                        ? $"ok: {outcome.Deleted} files, {LogFileEntry.FormatSize(outcome.Freed)}"
+                        : $"{outcome.Deleted} deleted, {outcome.Left} left" + (outcome.Declined ? " (elevation declined)" : string.Empty));
+            }
+            finally
+            {
+                this.isCleaning = false;
+                string status = this.StatusMessage;
+                this.Rescan();
+
+                // The rescan reports the files it found; what was just done is the more useful line.
+                this.StatusMessage = status;
+            }
+        }
 
         public RelayCommand ClearCommand { get; }
 
@@ -413,6 +519,7 @@ namespace WinSW.Gui.ViewModels
 
                 string? previous = this.selectedFile?.Path;
                 this.Files.Clear();
+                this.Raise(nameof(this.TotalSizeText));
 
                 var directory = new DirectoryInfo(this.LogDirectory);
                 if (!directory.Exists)
@@ -438,6 +545,8 @@ namespace WinSW.Gui.ViewModels
                 this.StatusMessage = this.Files.Count == 0
                     ? Localizer.Format("M.Log.NoFiles", stem, this.LogDirectory)
                     : Localizer.Format("M.Log.Files", this.Files.Count, this.LogDirectory);
+                this.Raise(nameof(this.TotalSizeText));
+                this.CleanupCommand.RaiseCanExecuteChanged();
 
                 this.SelectedFile = this.Files.FirstOrDefault(f => f.Path == previous) ?? this.Files.FirstOrDefault();
             }

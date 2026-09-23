@@ -220,6 +220,17 @@
     <sys:String x:Key="M.Log.DirFailed">ログ ディレクトリを読み取れませんでした: {0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── ログ ファイルがリセットまたはロールされました ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── 追いつくため、古い出力 {0:N0} バイトをスキップしました ──</sys:String>
+    <sys:String x:Key="M.Log.TotalSize">{0} ファイル · {1}</sys:String>
+    <sys:String x:Key="M.Log.KeepDays">保持日数</sys:String>
+    <sys:String x:Key="M.Log.Cleanup">古いファイルを削除</sys:String>
+    <sys:String x:Key="M.Log.CleanupTip">このサービスのログのうち、最終書き込みがその日数より前のファイルを削除します。書き込み中のファイルはそこまで古くならず、表示中のファイルも残します。</sys:String>
+    <sys:String x:Key="M.Log.CleanupTitle">古いログ ファイルを削除しますか？</sys:String>
+    <sys:String x:Key="M.Log.CleanupBody">{3} から、最終書き込みが {1} 日より前のファイル {0} 個（合計 {2}）を削除します。元に戻せません。</sys:String>
+    <sys:String x:Key="M.Log.CleanupAction">削除</sys:String>
+    <sys:String x:Key="M.Log.CleanupNone">{0} 日より古いログ ファイルはありません。</sys:String>
+    <sys:String x:Key="M.Log.CleanupBadDays">'{0}' は日数として無効です。</sys:String>
+    <sys:String x:Key="M.Log.CleanupDone">{0} 個のファイルを削除し、{1} を解放しました。</sys:String>
+    <sys:String x:Key="M.Log.CleanupLeft">{0} 個は削除できませんでした（使用中または拒否）。</sys:String>
     <sys:String x:Key="M.Log.OpenFailed">ファイルを開けませんでした: {0}</sys:String>
     <sys:String x:Key="M.Wiz.Step1">ラッパーとプログラムを選択</sys:String>
     <sys:String x:Key="M.Wiz.Step2">サービスの説明</sys:String>

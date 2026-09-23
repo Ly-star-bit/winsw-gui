@@ -250,6 +250,21 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Deletes files with administrator rights, in as few prompts as cmd allows: a
+        /// service's logs are written by its own account, often where the user may only read.
+        /// </summary>
+        public static Task<CommandResult> DeleteElevatedAsync(IReadOnlyList<string> paths)
+        {
+            if (RejectExpandablePaths(paths) is { } refusal)
+            {
+                return Task.FromResult(refusal);
+            }
+
+            var steps = paths.Select(p => $"del /f /q {Quote(p)}").ToList();
+            return RunElevatedScriptAsync(steps, null, QuickTimeout, "del");
+        }
+
+        /// <summary>
         /// Registers a task from a definition file, replacing one of the same name, with
         /// administrator rights: a task that runs as SYSTEM cannot be registered without them.
         /// </summary>

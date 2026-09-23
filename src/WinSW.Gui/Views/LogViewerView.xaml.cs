@@ -22,6 +22,7 @@ namespace WinSW.Gui.Views
             {
                 this.attached.LinesAppended -= this.ScrollToEnd;
                 this.attached.ScrollToRequested -= this.ScrollToIndex;
+                this.attached.PropertyChanged -= this.OnViewModelPropertyChanged;
             }
 
             this.attached = e.NewValue as LogViewerViewModel;
@@ -30,6 +31,16 @@ namespace WinSW.Gui.Views
             {
                 this.attached.LinesAppended += this.ScrollToEnd;
                 this.attached.ScrollToRequested += this.ScrollToIndex;
+                this.attached.PropertyChanged += this.OnViewModelPropertyChanged;
+            }
+        }
+
+        // Keyboard users land on Cancel when the confirmation opens; Enter is bound to Delete.
+        private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(LogViewerViewModel.CleanupConfirmVisible) && this.attached?.CleanupConfirmVisible == true)
+            {
+                this.Dispatcher.BeginInvoke(() => this.CleanupCancelButton.Focus(), System.Windows.Threading.DispatcherPriority.Input);
             }
         }
 

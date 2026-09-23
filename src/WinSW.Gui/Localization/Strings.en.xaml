@@ -220,6 +220,17 @@
     <sys:String x:Key="M.Log.DirFailed">Could not read the log directory: {0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── the log file was reset or rolled ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── {0:N0} bytes of older output were skipped to catch up ──</sys:String>
+    <sys:String x:Key="M.Log.TotalSize">{0} files · {1}</sys:String>
+    <sys:String x:Key="M.Log.KeepDays">Days to keep</sys:String>
+    <sys:String x:Key="M.Log.Cleanup">Delete older files</sys:String>
+    <sys:String x:Key="M.Log.CleanupTip">Deletes this service's log files last written more than that many days ago. The file being written to now is never that old, and the one on screen is kept.</sys:String>
+    <sys:String x:Key="M.Log.CleanupTitle">Delete old log files?</sys:String>
+    <sys:String x:Key="M.Log.CleanupBody">{0} files last written more than {1} days ago, {2} in all, will be deleted from {3}. This cannot be undone.</sys:String>
+    <sys:String x:Key="M.Log.CleanupAction">Delete</sys:String>
+    <sys:String x:Key="M.Log.CleanupNone">No log files are older than {0} days.</sys:String>
+    <sys:String x:Key="M.Log.CleanupBadDays">'{0}' is not a number of days.</sys:String>
+    <sys:String x:Key="M.Log.CleanupDone">Deleted {0} files and freed {1}.</sys:String>
+    <sys:String x:Key="M.Log.CleanupLeft">{0} could not be deleted: in use, or refused.</sys:String>
     <sys:String x:Key="M.Log.OpenFailed">Could not open the file: {0}</sys:String>
     <sys:String x:Key="M.Wiz.Step1">Choose the wrapper and the program</sys:String>
     <sys:String x:Key="M.Wiz.Step2">Describe the service</sys:String>

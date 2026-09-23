@@ -220,6 +220,17 @@
     <sys:String x:Key="M.Log.DirFailed">無法讀取記錄目錄：{0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── 記錄檔已重設或輪替 ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── 為趕上進度，已略過 {0:N0} 位元組較早的輸出 ──</sys:String>
+    <sys:String x:Key="M.Log.TotalSize">{0} 個檔案 · {1}</sys:String>
+    <sys:String x:Key="M.Log.KeepDays">保留天數</sys:String>
+    <sys:String x:Key="M.Log.Cleanup">清理更早的檔案</sys:String>
+    <sys:String x:Key="M.Log.CleanupTip">刪除這個服務最後寫入時間超過該天數的記錄檔。正在寫入的檔案不會那麼舊，畫面上正在查看的檔案也會保留。</sys:String>
+    <sys:String x:Key="M.Log.CleanupTitle">刪除舊記錄檔？</sys:String>
+    <sys:String x:Key="M.Log.CleanupBody">將從 {3} 刪除 {0} 個最後寫入超過 {1} 天的檔案，共 {2}。刪除後無法復原。</sys:String>
+    <sys:String x:Key="M.Log.CleanupAction">刪除</sys:String>
+    <sys:String x:Key="M.Log.CleanupNone">沒有超過 {0} 天的記錄檔。</sys:String>
+    <sys:String x:Key="M.Log.CleanupBadDays">「{0}」不是有效的天數。</sys:String>
+    <sys:String x:Key="M.Log.CleanupDone">已刪除 {0} 個檔案，釋放 {1}。</sys:String>
+    <sys:String x:Key="M.Log.CleanupLeft">有 {0} 個檔案沒能刪除：正在使用，或被拒絕。</sys:String>
     <sys:String x:Key="M.Log.OpenFailed">無法開啟檔案：{0}</sys:String>
     <sys:String x:Key="M.Wiz.Step1">選擇包裝器和程式</sys:String>
     <sys:String x:Key="M.Wiz.Step2">描述服務</sys:String>

@@ -34,12 +34,24 @@
                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding LogDirectory}" />
                 </StackPanel>
             </StackPanel>
-            <Button Grid.Column="1" VerticalAlignment="Center" Padding="12,7" Command="{Binding RescanCommand}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
-                    <TextBlock Text="{DynamicResource S.RescanFiles}" />
-                </StackPanel>
-            </Button>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                <!-- What the service's logs come to here, and clearing out the old ones. -->
+                <TextBlock Margin="0,0,16,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding TotalSizeText}" />
+                <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Log.KeepDays}" />
+                <TextBox
+                    Width="52"
+                    Margin="0,0,8,0"
+                    VerticalContentAlignment="Center"
+                    AutomationProperties.Name="{DynamicResource M.Log.KeepDays}"
+                    Text="{Binding KeepDays, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Margin="0,0,12,0" Padding="12,7" Command="{Binding CleanupCommand}" Content="{DynamicResource M.Log.Cleanup}" ToolTip="{DynamicResource M.Log.CleanupTip}" />
+                <Button Padding="12,7" Command="{Binding RescanCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                        <TextBlock Text="{DynamicResource S.RescanFiles}" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
         </Grid>
 
         <!-- Toolbar -->
@@ -213,5 +225,33 @@
         </TabControl>
 
         <TextBlock Grid.Row="3" Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+
+        <!-- Cleanup confirmation -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="4"
+            Margin="-28,-24,-28,-20"
+            Background="{DynamicResource OverlayBrush}"
+            Focusable="True"
+            Visibility="{Binding CleanupConfirmVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding ConfirmCleanupCommand}" />
+            </Grid.InputBindings>
+            <Border MaxWidth="480" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Log.CleanupTitle}" />
+                    <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding CleanupMessage}" TextWrapping="Wrap" />
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button x:Name="CleanupCancelButton" Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelCleanupCommand}" Content="{DynamicResource S.Cancel}" />
+                        <Button
+                            Padding="14,7"
+                            Background="{DynamicResource HealthBrokenBrush}"
+                            Command="{Binding ConfirmCleanupCommand}"
+                            Content="{DynamicResource M.Log.CleanupAction}"
+                            Foreground="White" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

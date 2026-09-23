@@ -59,6 +59,10 @@ Across the pages:
   and restores it from that comparison; saving puts it back, and sets aside the version it
   replaces. The
   copies belong to the Windows user who saved, and carry whatever the configuration carries.
+- **Log housekeeping**: the Logs page shows how many files a service has and what they come
+  to, and deletes those last written more than a chosen number of days ago (30 by default)
+  after asking. Age alone decides — the file being written now is never that old — and a file
+  the user may not delete goes in one elevated batch.
 - **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside

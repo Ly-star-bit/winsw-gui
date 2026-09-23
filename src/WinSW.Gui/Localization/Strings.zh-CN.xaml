@@ -220,6 +220,17 @@
     <sys:String x:Key="M.Log.DirFailed">无法读取日志目录：{0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── 日志文件已重置或滚动 ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── 为跟上进度，已跳过 {0:N0} 字节较早的输出 ──</sys:String>
+    <sys:String x:Key="M.Log.TotalSize">{0} 个文件 · {1}</sys:String>
+    <sys:String x:Key="M.Log.KeepDays">保留天数</sys:String>
+    <sys:String x:Key="M.Log.Cleanup">清理更早的文件</sys:String>
+    <sys:String x:Key="M.Log.CleanupTip">删除这个服务最后写入时间超过该天数的日志文件。正在写入的文件不会那么旧，屏幕上正在查看的文件也会保留。</sys:String>
+    <sys:String x:Key="M.Log.CleanupTitle">删除旧日志文件？</sys:String>
+    <sys:String x:Key="M.Log.CleanupBody">将从 {3} 删除 {0} 个最后写入超过 {1} 天的文件，共 {2}。删除后无法恢复。</sys:String>
+    <sys:String x:Key="M.Log.CleanupAction">删除</sys:String>
+    <sys:String x:Key="M.Log.CleanupNone">没有超过 {0} 天的日志文件。</sys:String>
+    <sys:String x:Key="M.Log.CleanupBadDays">“{0}”不是有效的天数。</sys:String>
+    <sys:String x:Key="M.Log.CleanupDone">已删除 {0} 个文件，释放 {1}。</sys:String>
+    <sys:String x:Key="M.Log.CleanupLeft">有 {0} 个文件没能删除：正在使用，或被拒绝。</sys:String>
     <sys:String x:Key="M.Log.OpenFailed">无法打开文件：{0}</sys:String>
     <sys:String x:Key="M.Wiz.Step1">选择包装器和程序</sys:String>
     <sys:String x:Key="M.Wiz.Step2">描述服务</sys:String>
