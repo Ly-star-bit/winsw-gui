@@ -351,6 +351,17 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">Could not read the configuration: {0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">The configuration was changed after the service started. It takes effect when the service restarts.</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">Restart now</sys:String>
+    <sys:String x:Key="M.Sched.Label">Scheduled restart</sys:String>
+    <sys:String x:Key="M.Sched.Off">Off</sys:String>
+    <sys:String x:Key="M.Sched.Daily">Every day</sys:String>
+    <sys:String x:Key="M.Sched.Weekly">Every {0}</sys:String>
+    <sys:String x:Key="M.Sched.Apply">Apply</sys:String>
+    <sys:String x:Key="M.Sched.Hint">Restarted by the task scheduler at this time, as SYSTEM, whether or not anyone is signed in. A service that is stopped is left stopped, and a restart that would also have to stop the services depending on it is skipped.</sys:String>
+    <sys:String x:Key="M.Sched.BadTime">'{0}' is not a time of day. Use HH:mm, such as 03:00.</sys:String>
+    <sys:String x:Key="M.Sched.Saved">Scheduled restart for '{0}' saved.</sys:String>
+    <sys:String x:Key="M.Sched.Removed">Scheduled restart for '{0}' removed.</sys:String>
+    <sys:String x:Key="M.Sched.Failed">The task scheduler did not accept the change (schtasks exit code {0}).</sys:String>
+    <sys:String x:Key="M.Sched.Unreadable">The current schedule cannot be read with this account's rights.</sys:String>
     <sys:String x:Key="M.Hook.Tab">Hooks</sys:String>
     <sys:String x:Key="M.Hook.Hint">Programs the wrapper runs around the service's lifecycle. Each is optional; leave the executable empty to disable it.</sys:String>
     <sys:String x:Key="M.Hook.Prestart">BEFORE START</sys:String>

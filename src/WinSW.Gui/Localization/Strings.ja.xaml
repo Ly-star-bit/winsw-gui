@@ -351,6 +351,17 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">構成ファイルを読み取れません: {0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">サービスの起動後に構成が変更されています。サービスを再起動すると反映されます。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">今すぐ再起動</sys:String>
+    <sys:String x:Key="M.Sched.Label">定期再起動</sys:String>
+    <sys:String x:Key="M.Sched.Off">オフ</sys:String>
+    <sys:String x:Key="M.Sched.Daily">毎日</sys:String>
+    <sys:String x:Key="M.Sched.Weekly">毎週{0}</sys:String>
+    <sys:String x:Key="M.Sched.Apply">適用</sys:String>
+    <sys:String x:Key="M.Sched.Hint">タスク スケジューラが SYSTEM としてこの時刻に再起動します（サインインしているユーザーがいなくても実行されます）。停止中のサービスは停止したままにし、依存するサービスも停止する必要がある場合はその回の再起動をスキップします。</sys:String>
+    <sys:String x:Key="M.Sched.BadTime">'{0}' は時刻として無効です。HH:mm 形式（例: 03:00）で入力してください。</sys:String>
+    <sys:String x:Key="M.Sched.Saved">'{0}' の定期再起動を保存しました。</sys:String>
+    <sys:String x:Key="M.Sched.Removed">'{0}' の定期再起動を解除しました。</sys:String>
+    <sys:String x:Key="M.Sched.Failed">タスク スケジューラが変更を受け付けませんでした（schtasks 終了コード {0}）。</sys:String>
+    <sys:String x:Key="M.Sched.Unreadable">このアカウントの権限では現在のスケジュールを読み取れません。</sys:String>
     <sys:String x:Key="M.Hook.Tab">フック</sys:String>
     <sys:String x:Key="M.Hook.Hint">サービスのライフサイクル前後にラッパーが実行するプログラム。すべて任意で、実行ファイルを空にすると無効になります。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">開始前</sys:String>

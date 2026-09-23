@@ -250,6 +250,17 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Registers a task from a definition file, replacing one of the same name, with
+        /// administrator rights: a task that runs as SYSTEM cannot be registered without them.
+        /// </summary>
+        public static Task<CommandResult> ScheduleTaskAsync(string taskPath, string definitionPath) =>
+            RunElevatedAsync("schtasks.exe", $"/Create /TN {Quote(taskPath)} /XML {Quote(definitionPath)} /F", null, QuickTimeout, "schtasks");
+
+        /// <summary>Deletes a task with administrator rights.</summary>
+        public static Task<CommandResult> UnscheduleTaskAsync(string taskPath) =>
+            RunElevatedAsync("schtasks.exe", $"/Delete /TN {Quote(taskPath)} /F", null, QuickTimeout, "schtasks");
+
+        /// <summary>
         /// The most a chained script may be, in characters. cmd refuses a command line longer
         /// than 8191 and does not say so usefully; the margin covers <c>cmd.exe /d /c ""</c>
         /// and leaves room for one more step than fits exactly.

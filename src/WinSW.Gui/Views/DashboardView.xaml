@@ -387,6 +387,7 @@
                                 <RowDefinition />
                                 <RowDefinition />
                                 <RowDefinition />
+                                <RowDefinition />
                             </Grid.RowDefinitions>
                             <Grid.Resources>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
@@ -425,6 +426,33 @@
                                     Command="{Binding DataContext.UpgradeWrapperCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     Content="{DynamicResource M.Dash.Upgrade}"
                                     Visibility="{Binding DataContext.WrapperUpdateAvailable, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="{DynamicResource M.Sched.Label}" ToolTip="{DynamicResource M.Sched.Hint}" />
+                            <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,0,0,6" Orientation="Horizontal" ToolTip="{DynamicResource M.Sched.Hint}">
+                                <ComboBox
+                                    MinWidth="130"
+                                    AutomationProperties.Name="{DynamicResource M.Sched.Label}"
+                                    DisplayMemberPath="Label"
+                                    ItemsSource="{Binding DataContext.RestartChoices, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    SelectedItem="{Binding DataContext.SelectedRestartChoice, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                <TextBox
+                                    Width="64"
+                                    Margin="8,0,0,0"
+                                    VerticalContentAlignment="Center"
+                                    IsEnabled="{Binding DataContext.RestartTimeEditable, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Text="{Binding DataContext.RestartTime, RelativeSource={RelativeSource AncestorType=UserControl}, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button
+                                    Margin="8,0,0,0"
+                                    Padding="10,2"
+                                    Command="{Binding DataContext.ApplyRestartScheduleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Content="{DynamicResource M.Sched.Apply}" />
+                                <TextBlock
+                                    Margin="10,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource FieldHint}"
+                                    Text="{Binding DataContext.RestartScheduleNote, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
 

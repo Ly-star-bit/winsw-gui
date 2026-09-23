@@ -32,6 +32,11 @@ Across the pages:
   sign-in entry that starts the console in the tray, so the watching begins without anyone
   remembering to open it. One console runs per sign-in: launching it again brings the running
   one forward instead of starting a second that would announce every stop twice.
+- **Scheduled restarts**: the detail panel can have a service restarted every day, or on
+  one day of the week, at a set time — by a task in the task scheduler (`\WinSW\Restart`),
+  running as SYSTEM, so nobody needs to be signed in. It restarts only a service that is
+  running, and does not force one that other services depend on. Setting or removing it
+  takes one elevation prompt.
 - **Light, dark or system theme**, remembered window placement, F5 / Ctrl+S / Esc.
 - **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
   file is staged and copied into place with one elevation prompt. There is also a

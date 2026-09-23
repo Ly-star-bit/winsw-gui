@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.ServiceProcess;
 using System.Threading.Tasks;
@@ -16,6 +17,30 @@ using WinSW.Gui.Services;
 
 namespace WinSW.Gui.ViewModels
 {
+    /// <summary>One choice in the scheduled-restart picker: off, every day, or one weekday.</summary>
+    public sealed class RestartChoice : ObservableObject
+    {
+        public RestartChoice(bool isOff, DayOfWeek? day)
+        {
+            this.IsOff = isOff;
+            this.Day = day;
+        }
+
+        public bool IsOff { get; }
+
+        /// <summary>The weekday, or null for every day.</summary>
+        public DayOfWeek? Day { get; }
+
+        /// <summary>Weekday names come from the interface language's own calendar.</summary>
+        public string Label => this.IsOff
+            ? Localizer.Get("M.Sched.Off")
+            : this.Day is DayOfWeek day
+                ? Localizer.Format("M.Sched.Weekly", CultureInfo.CurrentUICulture.DateTimeFormat.GetDayName(day))
+                : Localizer.Get("M.Sched.Daily");
+
+        public void RefreshLocalized() => this.Raise(nameof(this.Label));
+    }
+
     /// <summary>
     /// The service management panel: what is installed, what state it is in, and the
     /// operations that change that state.
@@ -67,6 +92,19 @@ namespace WinSW.Gui.ViewModels
         private string healthFilter = "all";
         private bool sortByStatus = AppSettings.Current.SortServicesByStatus;
         private readonly Dictionary<string, (DateTime At, int Count)> notified = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// How long the selection has to rest before its restart schedule is read. The read is a
+        /// connection to the task scheduler, and moving down the list with the arrow keys is not
+        /// a request for one per row passed over.
+        /// </summary>
+        private static readonly TimeSpan ScheduleReadDelay = TimeSpan.FromMilliseconds(250);
+
+        private RestartChoice selectedRestartChoice;
+        private string restartTime = "03:00";
+        private string restartScheduleNote = string.Empty;
+        private RestartSchedule? restartSchedule;
+        private bool restartScheduleKnown;
 
         public DashboardViewModel()
         {
@@ -131,6 +169,13 @@ namespace WinSW.Gui.ViewModels
             this.DiagnosticsCommand = new AsyncRelayCommand(this.CreateDiagnosticsAsync, () => this.selectedService != null);
             this.UpgradeWrapperCommand = new AsyncRelayCommand(this.UpgradeWrapperAsync, () => this.WrapperUpdateAvailable);
 
+            this.RestartChoices = new[] { new RestartChoice(true, null), new RestartChoice(false, null) }
+                .Concat(new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday }
+                    .Select(day => new RestartChoice(false, day)))
+                .ToArray();
+            this.selectedRestartChoice = this.RestartChoices[0];
+            this.ApplyRestartScheduleCommand = new AsyncRelayCommand(this.ApplyRestartScheduleAsync, () => this.selectedService?.ConfigPath != null);
+
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
             this.statusTimer.Tick += async (_, _) =>
             {
@@ -170,6 +215,16 @@ namespace WinSW.Gui.ViewModels
 
                 this.RaiseWrapperUpdate();
                 this.Raise(nameof(this.SelectedCountText));
+
+                foreach (var choice in this.RestartChoices)
+                {
+                    choice.RefreshLocalized();
+                }
+
+                if (this.restartScheduleNote.Length > 0)
+                {
+                    this.RestartScheduleNote = Localizer.Get("M.Sched.Unreadable");
+                }
             };
         }
 
@@ -333,6 +388,7 @@ namespace WinSW.Gui.ViewModels
                     // process tree, and the states on screen are at most one tick old.
                     _ = this.RefreshProcessTreeAsync();
                     this.RaiseWrapperUpdate();
+                    _ = this.LoadRestartScheduleAsync();
                 }
             }
         }
@@ -431,6 +487,158 @@ namespace WinSW.Gui.ViewModels
         {
             get => this.confirmActionLabel;
             set => this.Set(ref this.confirmActionLabel, value);
+        }
+
+        // Scheduled restart ----------------------------------------------------
+
+        /// <summary>Off, every day, then Monday to Sunday.</summary>
+        public IReadOnlyList<RestartChoice> RestartChoices { get; }
+
+        public RestartChoice SelectedRestartChoice
+        {
+            get => this.selectedRestartChoice;
+            set
+            {
+                if (value != null && this.Set(ref this.selectedRestartChoice, value))
+                {
+                    this.Raise(nameof(this.RestartTimeEditable));
+                }
+            }
+        }
+
+        /// <summary>The time of day, as typed: HH:mm.</summary>
+        public string RestartTime
+        {
+            get => this.restartTime;
+            set => this.Set(ref this.restartTime, value);
+        }
+
+        public bool RestartTimeEditable => !this.selectedRestartChoice.IsOff;
+
+        /// <summary>Why the picker may not be showing what is registered; empty when it is.</summary>
+        public string RestartScheduleNote
+        {
+            get => this.restartScheduleNote;
+            private set => this.Set(ref this.restartScheduleNote, value);
+        }
+
+        public AsyncRelayCommand ApplyRestartScheduleCommand { get; }
+
+        /// <summary>
+        /// Shows the selected service's restart schedule, read off this thread once the
+        /// selection has settled. A reading for a service no longer selected is dropped.
+        /// </summary>
+        private async Task LoadRestartScheduleAsync()
+        {
+            var entry = this.selectedService;
+            this.restartScheduleKnown = false;
+            if (entry is null)
+            {
+                return;
+            }
+
+            await Task.Delay(ScheduleReadDelay).ConfigureAwait(true);
+            if (!ReferenceEquals(entry, this.selectedService))
+            {
+                return;
+            }
+
+            RestartSchedule? schedule = null;
+            bool known = true;
+            try
+            {
+                schedule = await Task.Run(() => ScheduledRestart.Read(entry.ServiceName)).ConfigureAwait(true);
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or System.Runtime.InteropServices.COMException or InvalidOperationException or InvalidCastException or IOException or System.Xml.XmlException)
+            {
+                // Registered by an administrator and not readable here, or no task scheduler
+                // to ask.
+                known = false;
+            }
+
+            if (!ReferenceEquals(entry, this.selectedService))
+            {
+                return;
+            }
+
+            this.restartSchedule = schedule;
+            this.restartScheduleKnown = known;
+            this.RestartScheduleNote = known ? string.Empty : Localizer.Get("M.Sched.Unreadable");
+            if (!known)
+            {
+                // Not the previous row's schedule, shown under this one's name: Off, with the
+                // note beside it saying that this is not known to be the case.
+                this.SelectedRestartChoice = this.RestartChoices[0];
+                return;
+            }
+
+            if (schedule is { } registered)
+            {
+                this.SelectedRestartChoice = this.RestartChoices.First(c => !c.IsOff && c.Day == registered.Day);
+                this.RestartTime = registered.At.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                this.SelectedRestartChoice = this.RestartChoices[0];
+            }
+        }
+
+        /// <summary>Registers, replaces or removes the schedule, under one elevation prompt.</summary>
+        private async Task ApplyRestartScheduleAsync()
+        {
+            var entry = this.selectedService;
+            if (entry?.ConfigPath is null)
+            {
+                return;
+            }
+
+            var choice = this.selectedRestartChoice;
+            CommandResult result;
+            string logged;
+
+            if (choice.IsOff)
+            {
+                // Known to have none: nothing to remove, and no prompt to raise for it.
+                if (this.restartScheduleKnown && this.restartSchedule is null)
+                {
+                    return;
+                }
+
+                logged = "unschedule restart";
+                result = await ScheduledRestart.RemoveAsync(entry.ServiceName).ConfigureAwait(true);
+            }
+            else
+            {
+                if (!ScheduledRestart.TryParseTime(this.restartTime, out var at))
+                {
+                    this.StatusMessage = Localizer.Format("M.Sched.BadTime", this.restartTime);
+                    this.Toast?.Invoke(this.StatusMessage, true);
+                    return;
+                }
+
+                var schedule = new RestartSchedule(choice.Day, at);
+                logged = "schedule restart " + (choice.Day?.ToString() ?? "daily") + " " + at.ToString(@"hh\:mm", CultureInfo.InvariantCulture);
+                result = await ScheduledRestart.SetAsync(entry.ServiceName, entry.WrapperPath, entry.ConfigPath, schedule).ConfigureAwait(true);
+            }
+
+            ActionLog.Record(logged, entry.ServiceName, result);
+
+            this.StatusMessage = result switch
+            {
+                { Cancelled: true } => Localizer.Get("M.Common.ElevationDeclined"),
+                { Succeeded: true } => Localizer.Format(choice.IsOff ? "M.Sched.Removed" : "M.Sched.Saved", entry.ServiceName),
+
+                // schtasks's own exit code, where there is one; otherwise the reason the
+                // change was refused before it was sent, such as a path cmd would rewrite.
+                { ExitCode: > 0 } => Localizer.Format("M.Sched.Failed", result.ExitCode),
+                _ => result.Error ?? Localizer.Format("M.Sched.Failed", result.ExitCode),
+            };
+            this.Toast?.Invoke(this.StatusMessage, !result.Succeeded && !result.Cancelled);
+
+            if (result.Succeeded)
+            {
+                await this.LoadRestartScheduleAsync().ConfigureAwait(true);
+            }
         }
 
         // Lifetime ------------------------------------------------------------
@@ -1089,6 +1297,7 @@ namespace WinSW.Gui.ViewModels
             this.ViewLogsCommand.RaiseCanExecuteChanged();
             this.OpenFolderCommand.RaiseCanExecuteChanged();
             this.OpenWorkingDirectoryCommand.RaiseCanExecuteChanged();
+            this.ApplyRestartScheduleCommand.RaiseCanExecuteChanged();
         }
 
         private void ApplySort()

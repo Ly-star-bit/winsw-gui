@@ -351,6 +351,17 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">无法读取配置文件：{0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">配置在服务启动之后被修改过，重启服务后才会生效。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">立即重启</sys:String>
+    <sys:String x:Key="M.Sched.Label">定时重启</sys:String>
+    <sys:String x:Key="M.Sched.Off">关闭</sys:String>
+    <sys:String x:Key="M.Sched.Daily">每天</sys:String>
+    <sys:String x:Key="M.Sched.Weekly">每{0}</sys:String>
+    <sys:String x:Key="M.Sched.Apply">应用</sys:String>
+    <sys:String x:Key="M.Sched.Hint">由任务计划程序以 SYSTEM 身份在这个时间重启，没有人登录也会执行。已停止的服务保持停止；如果重启需要连带停止依赖它的服务，这次重启会跳过。</sys:String>
+    <sys:String x:Key="M.Sched.BadTime">“{0}”不是有效的时间，请用 HH:mm 格式，例如 03:00。</sys:String>
+    <sys:String x:Key="M.Sched.Saved">已保存“{0}”的定时重启。</sys:String>
+    <sys:String x:Key="M.Sched.Removed">已取消“{0}”的定时重启。</sys:String>
+    <sys:String x:Key="M.Sched.Failed">任务计划程序没有接受这次修改（schtasks 退出码 {0}）。</sys:String>
+    <sys:String x:Key="M.Sched.Unreadable">以当前账户的权限读不到现有的定时设置。</sys:String>
     <sys:String x:Key="M.Hook.Tab">钩子</sys:String>
     <sys:String x:Key="M.Hook.Hint">wrapper 在服务生命周期前后运行的程序。均为可选，可执行文件留空即禁用。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">启动前</sys:String>

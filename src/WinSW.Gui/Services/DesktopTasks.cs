@@ -734,7 +734,7 @@ namespace WinSW.Gui.Services
         /// The result is deliberately typed as <see cref="object"/>: a dynamic value passed to
         /// one of the helpers here would make that call late-bound as well, for no reason.
         /// </summary>
-        private static object? Connect()
+        internal static object? Connect()
         {
             var type = Type.GetTypeFromProgID("Schedule.Service");
             if (type is null)
@@ -772,7 +772,7 @@ namespace WinSW.Gui.Services
         /// registration touches a dozen intermediate objects once per user action, are left to
         /// the collector rather than made unreadable.
         /// </remarks>
-        private static void Release(object? com)
+        internal static void Release(object? com)
         {
             if (com != null && Marshal.IsComObject(com))
             {

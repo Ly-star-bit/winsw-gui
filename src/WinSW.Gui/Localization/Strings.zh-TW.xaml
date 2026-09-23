@@ -351,6 +351,17 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">無法讀取設定檔：{0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">設定在服務啟動之後被修改過，重新啟動服務後才會生效。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">立即重新啟動</sys:String>
+    <sys:String x:Key="M.Sched.Label">定時重新啟動</sys:String>
+    <sys:String x:Key="M.Sched.Off">關閉</sys:String>
+    <sys:String x:Key="M.Sched.Daily">每天</sys:String>
+    <sys:String x:Key="M.Sched.Weekly">每{0}</sys:String>
+    <sys:String x:Key="M.Sched.Apply">套用</sys:String>
+    <sys:String x:Key="M.Sched.Hint">由工作排程器以 SYSTEM 身分在這個時間重新啟動，沒有人登入也會執行。已停止的服務保持停止；如果重新啟動需要連帶停止相依於它的服務，這次重新啟動會略過。</sys:String>
+    <sys:String x:Key="M.Sched.BadTime">「{0}」不是有效的時間，請用 HH:mm 格式，例如 03:00。</sys:String>
+    <sys:String x:Key="M.Sched.Saved">已儲存「{0}」的定時重新啟動。</sys:String>
+    <sys:String x:Key="M.Sched.Removed">已取消「{0}」的定時重新啟動。</sys:String>
+    <sys:String x:Key="M.Sched.Failed">工作排程器沒有接受這次修改（schtasks 結束代碼 {0}）。</sys:String>
+    <sys:String x:Key="M.Sched.Unreadable">以目前帳戶的權限讀不到現有的定時設定。</sys:String>
     <sys:String x:Key="M.Hook.Tab">掛勾</sys:String>
     <sys:String x:Key="M.Hook.Hint">wrapper 在服務生命週期前後執行的程式。均為選填，執行檔留白即停用。</sys:String>
     <sys:String x:Key="M.Hook.Prestart">啟動前</sys:String>
