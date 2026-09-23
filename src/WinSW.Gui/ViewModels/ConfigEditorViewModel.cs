@@ -14,20 +14,25 @@ using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.ViewModels
 {
-    /// <summary>One line of the editor's History menu: a version to restore, or why there is none.</summary>
+    /// <summary>One line of the editor's History menu: a version to compare and restore, or a note.</summary>
     public sealed class HistoryEntry
     {
-        public HistoryEntry(string label, ConfigVersion? version)
+        public HistoryEntry(string label, ConfigVersion? version, bool restorable = false)
         {
             this.Label = label;
             this.Version = version;
+            this.CanRestore = version != null && restorable;
         }
 
         public string Label { get; }
 
         public ConfigVersion? Version { get; }
 
-        public bool CanRestore => this.Version != null;
+        /// <summary>Any version can be compared; looking changes nothing.</summary>
+        public bool CanCompare => this.Version != null;
+
+        /// <summary>Only when the form holds nothing unsaved for the restore to replace.</summary>
+        public bool CanRestore { get; }
     }
 
     /// <summary>
@@ -508,8 +513,9 @@ namespace WinSW.Gui.ViewModels
         /// of twenty files at most, looked at only when somebody asks.
         /// </summary>
         /// <remarks>
-        /// Restoring replaces what is in the form, so it is not offered over unsaved changes:
-        /// they would be lost without a word, which is the thing the history is there to stop.
+        /// Every version can be compared with the file. Restoring replaces what is in the form,
+        /// so it is not offered over unsaved changes: they would be lost without a word, which
+        /// is the thing the history is there to stop. The menu says so at its head.
         /// </remarks>
         public void RefreshHistory()
         {
@@ -521,20 +527,45 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            if (this.IsDirty)
+            var versions = ConfigHistory.List(this.filePath);
+            if (versions.Count == 0)
             {
-                this.History.Add(new HistoryEntry(Localizer.Get("M.History.SaveFirst"), null));
+                this.History.Add(new HistoryEntry(Localizer.Get("M.History.None"), null));
                 return;
             }
 
-            foreach (var version in ConfigHistory.List(this.filePath))
+            if (this.IsDirty)
             {
-                this.History.Add(new HistoryEntry(version.Label, version));
+                this.History.Add(new HistoryEntry(Localizer.Get("M.History.SaveFirst"), null));
             }
 
-            if (this.History.Count == 0)
+            foreach (var version in versions)
             {
-                this.History.Add(new HistoryEntry(Localizer.Get("M.History.None"), null));
+                this.History.Add(new HistoryEntry(version.Label, version, restorable: !this.IsDirty));
+            }
+        }
+
+        /// <summary>
+        /// An earlier version against the file as it is on disk — not the form, which may hold
+        /// edits nobody has saved. Null when either cannot be read; the status line says why.
+        /// </summary>
+        public IReadOnlyList<DiffLine>? CompareWithFile(ConfigVersion version)
+        {
+            if (this.filePath is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                string earlier = File.ReadAllText(version.Path);
+                string current = File.Exists(this.filePath) ? File.ReadAllText(this.filePath) : string.Empty;
+                return TextDiff.Compare(earlier, current);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                this.StatusMessage = Localizer.Format("M.Diff.ReadFailed", e.Message);
+                return null;
             }
         }
 

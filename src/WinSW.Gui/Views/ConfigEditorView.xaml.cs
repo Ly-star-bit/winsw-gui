@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
+using WinSW.Gui.Localization;
 using WinSW.Gui.ViewModels;
 
 namespace WinSW.Gui.Views
@@ -39,6 +40,8 @@ namespace WinSW.Gui.Views
         // The History menu is read as it opens: the folder behind it changes with every save.
         // Its items are built here rather than through an item container style, so that they
         // take the theme's menu item style as they are, with no style key to go missing.
+        // Picking one compares it with the file; restoring is done from the comparison, with
+        // what it would change in front of whoever is restoring it.
         private void OnHistoryClick(object sender, RoutedEventArgs e)
         {
             if (sender is Button button && button.ContextMenu is { } menu && this.DataContext is ConfigEditorViewModel editor)
@@ -47,18 +50,28 @@ namespace WinSW.Gui.Views
                 menu.Items.Clear();
                 foreach (var entry in editor.History)
                 {
-                    menu.Items.Add(new MenuItem
-                    {
-                        Header = entry.Label,
-                        IsEnabled = entry.CanRestore,
-                        Command = editor.RestoreVersionCommand,
-                        CommandParameter = entry,
-                    });
+                    var item = new MenuItem { Header = entry.Label, IsEnabled = entry.CanCompare };
+                    item.Click += (_, _) => this.Compare(editor, entry);
+                    menu.Items.Add(item);
                 }
 
                 menu.PlacementTarget = button;
                 menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
                 menu.IsOpen = true;
+            }
+        }
+
+        private void Compare(ConfigEditorViewModel editor, HistoryEntry entry)
+        {
+            if (entry.Version is not { } version || editor.CompareWithFile(version) is not { } lines)
+            {
+                return;
+            }
+
+            string subtitle = Localizer.Format("M.Diff.Subtitle", version.SavedAt.ToString("yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture), editor.FilePath);
+            if (DiffWindow.ShowComparison(Window.GetWindow(this), subtitle, lines, entry.CanRestore))
+            {
+                editor.RestoreVersionCommand.Execute(entry);
             }
         }
 

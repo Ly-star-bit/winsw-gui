@@ -54,8 +54,10 @@ Across the pages:
   says: a service usually runs as another account, whose network can differ.
 - **Configuration history**: before every save — from the editor or over an existing file
   from the wizard — the version on disk is copied to `%LOCALAPPDATA%\WinSW.Gui\history`,
-  keeping the last 20 per configuration. *History* on the Configuration page loads any of
-  them back into the form; saving puts it back, and sets aside the version it replaces. The
+  keeping the last 20 per configuration. *History* on the Configuration page compares any of
+  them with the file as it is on disk — what restoring would bring back, what it would drop —
+  and restores it from that comparison; saving puts it back, and sets aside the version it
+  replaces. The
   copies belong to the Windows user who saved, and carry whatever the configuration carries.
 - **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
   and configuration save made from the console is recorded, one tab-separated line each —
