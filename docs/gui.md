@@ -47,6 +47,10 @@ Across the pages:
   through it comes back — because a proxy that is not running and a proxy that will not carry
   the request want different fixes. It runs as the signed-in user, which the hint beside it
   says: a service usually runs as another account, whose network can differ.
+- **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
+  and configuration save made from the console is recorded, one tab-separated line each —
+  time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside
+  as `actions.1.log` past 1 MB. Settings has a button that opens it.
 - **Full configuration coverage**: lifecycle hooks (`prestart` … `poststop`), network drive
   mappings, and the `<extensions>` element as raw XML. The preview pane can also be switched
   to a raw XML editor and applied back to the form.

@@ -545,6 +545,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 this.Model.Save(path);
+                ActionLog.Record("save", path, "ok");
                 this.FilePath = this.Model.FilePath;
                 this.IsDirty = false;
                 this.StatusMessage = this.installedService is null
@@ -563,6 +564,7 @@ namespace WinSW.Gui.ViewModels
             catch (IOException e)
             {
                 this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", path, e.Message);
+                ActionLog.Record("save", path, "failed: " + e.Message);
                 return;
             }
 
@@ -570,6 +572,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 result = await StagedWrite.ElevatedAsync(this.Model, path).ConfigureAwait(true);
+                ActionLog.Record("save (elevated)", path, result);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -620,6 +623,7 @@ namespace WinSW.Gui.ViewModels
 
             this.StatusMessage = Localizer.Format("M.Editor.Applying", entry.ServiceName);
             var result = await WinSwCli.RefreshAsync(entry.WrapperPath, this.filePath).ConfigureAwait(true);
+            ActionLog.Record("refresh", entry.ServiceName, result);
 
             this.StatusMessage = result switch
             {
@@ -672,6 +676,7 @@ namespace WinSW.Gui.ViewModels
             var result = start
                 ? await WinSwCli.InstallAndStartAsync(wrapper, this.filePath).ConfigureAwait(true)
                 : await WinSwCli.InstallAsync(wrapper, this.filePath).ConfigureAwait(true);
+            ActionLog.Record(start ? "install + start" : "install", this.Model.Id, result);
 
             if (!result.Succeeded)
             {

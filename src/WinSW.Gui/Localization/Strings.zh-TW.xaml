@@ -568,6 +568,8 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">工作註冊失敗。{0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">桌面工作的安裝根目錄</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">預設放在目前使用者目錄下：桌面工作以某一個帳戶執行、不提權，記錄檔必須是這個帳戶寫得進去的。留空則使用上面顯示的預設值。</sys:String>
+    <sys:String x:Key="M.Settings.ActionLog">操作記錄</sys:String>
+    <sys:String x:Key="M.Settings.ActionLogHint">從這個主控台做的每一次啟動、停止、重新啟動、解除安裝、升級、安裝和設定儲存，連同時間、操作人和結果。按 Windows 使用者分別記錄；超過 1 MB 時舊檔案改名為 actions.1.log，重新開始記錄。</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

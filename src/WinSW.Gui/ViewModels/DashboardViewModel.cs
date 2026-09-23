@@ -634,6 +634,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var result = await operation(entry.WrapperPath, entry.ConfigPath).ConfigureAwait(true);
+                ActionLog.Record(label, entry.ServiceName, result);
 
                 this.StatusMessage = result switch
                 {
@@ -879,7 +880,8 @@ namespace WinSW.Gui.ViewModels
 
         private async Task RunOnSelectedAsync(string command)
         {
-            var targets = this.selectedEntries.Where(e => e.ConfigPath != null).Select(e => (e.WrapperPath, e.ConfigPath!)).ToList();
+            var chosen = this.selectedEntries.Where(e => e.ConfigPath != null).ToList();
+            var targets = chosen.Select(e => (e.WrapperPath, e.ConfigPath!)).ToList();
             if (targets.Count == 0)
             {
                 return;
@@ -897,6 +899,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var result = await WinSwCli.RunOnManyAsync(command, targets).ConfigureAwait(true);
+                ActionLog.Record(command, string.Join(", ", chosen.Select(e => e.ServiceName)), result);
                 this.StatusMessage = result.Cancelled
                     ? Localizer.Get("M.Common.ElevationDeclined")
                     : Localizer.Format("M.Dash.RanMany", command, targets.Count);

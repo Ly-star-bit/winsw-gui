@@ -944,6 +944,7 @@ namespace WinSW.Gui.ViewModels
                 var result = this.startAfterInstall
                     ? await WinSwCli.InstallAndStartAsync(wrapper, configPath).ConfigureAwait(true)
                     : await WinSwCli.InstallAsync(wrapper, configPath).ConfigureAwait(true);
+                ActionLog.Record(this.startAfterInstall ? "install + start" : "install", model.Id, result);
 
                 if (!result.Succeeded)
                 {
@@ -1004,9 +1005,11 @@ namespace WinSW.Gui.ViewModels
             catch (Exception e)
             {
                 this.StatusMessage = Localizer.Format("M.Wiz.RegisterFailed", e.Message);
+                ActionLog.Record(start ? "register task + start" : "register task", model.Id, "failed: " + e.Message);
                 return;
             }
 
+            ActionLog.Record(start ? "register task + start" : "register task", model.Id, "ok");
             this.StatusMessage = Localizer.Format(start ? "M.Wiz.RegisteredStarted" : "M.Wiz.Registered", model.Id);
             this.DesktopTaskCompleted?.Invoke(plan.Id);
 

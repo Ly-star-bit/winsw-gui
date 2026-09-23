@@ -568,6 +568,8 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">タスクを登録できませんでした。{0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">デスクトップタスクのインストール先</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">既定ではユーザーごとの場所です。デスクトップタスクは昇格なしで単一のアカウントとして動くため、ログはそのアカウントが書き込める必要があります。空欄にすると上に表示された既定値を使います。</sys:String>
+    <sys:String x:Key="M.Settings.ActionLog">操作ログ</sys:String>
+    <sys:String x:Key="M.Settings.ActionLogHint">このコンソールから行った起動・停止・再起動・アンインストール・アップグレード・インストール・構成の保存を、日時・実行者・結果とともに記録します。Windows ユーザーごとに保存され、1 MB を超えると古いファイルは actions.1.log に移され、新しいファイルに記録を続けます。</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

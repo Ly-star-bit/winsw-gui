@@ -568,6 +568,8 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">The task could not be registered. {0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">Install root for desktop tasks</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">A per-user location by default: a desktop task runs as one account without elevation, and its logs have to be writable by that account. Leave blank for the default shown.</sys:String>
+    <sys:String x:Key="M.Settings.ActionLog">Action log</sys:String>
+    <sys:String x:Key="M.Settings.ActionLogHint">Every start, stop, restart, uninstall, upgrade, install and configuration save made from this console, with when, by whom and how it went. Kept per Windows user; past 1 MB the file is set aside as actions.1.log and a new one begun.</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

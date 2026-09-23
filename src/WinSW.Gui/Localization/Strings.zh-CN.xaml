@@ -568,6 +568,8 @@
     <sys:String x:Key="M.Wiz.RegisterFailed">任务注册失败。{0}</sys:String>
     <sys:String x:Key="M.Settings.TaskRoot">桌面任务的安装根目录</sys:String>
     <sys:String x:Key="M.Settings.TaskRootHint">默认放在当前用户目录下：桌面任务以某一个账号运行、不提权，日志必须是这个账号写得进去的。留空则使用上面显示的默认值。</sys:String>
+    <sys:String x:Key="M.Settings.ActionLog">操作记录</sys:String>
+    <sys:String x:Key="M.Settings.ActionLogHint">从这个控制台做的每一次启动、停止、重启、卸载、升级、安装和配置保存，连同时间、操作人和结果。按 Windows 用户分别记录；超过 1 MB 时旧文件改名为 actions.1.log，重新开始记录。</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

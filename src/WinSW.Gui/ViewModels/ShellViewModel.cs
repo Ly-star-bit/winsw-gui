@@ -180,6 +180,7 @@ namespace WinSW.Gui.ViewModels
                     this.TaskRoot = path;
                 }
             });
+            this.OpenActionLogCommand = new RelayCommand(OpenActionLog);
             this.OpenGuiUpdateCommand = new RelayCommand(() =>
             {
                 if (this.guiUpdate != null)
@@ -272,6 +273,10 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand OpenGuiUpdateCommand { get; }
 
+        public RelayCommand OpenActionLogCommand { get; }
+
+        public string ActionLogPath => ActionLog.FilePath;
+
         public RelayCommand ToggleRailCommand { get; }
 
         // Keys that act on the page on screen ---------------------------------------
@@ -289,6 +294,31 @@ namespace WinSW.Gui.ViewModels
         /// dashboard's.
         /// </summary>
         public RelayCommand CancelPageCommand { get; }
+
+        /// <summary>
+        /// The log in whatever opens .log files, or its folder when nothing has been recorded
+        /// yet, so the button always shows where the record will be.
+        /// </summary>
+        private static void OpenActionLog()
+        {
+            string path = ActionLog.FilePath;
+            try
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+                    return;
+                }
+
+                string folder = System.IO.Path.GetDirectoryName(path)!;
+                System.IO.Directory.CreateDirectory(folder);
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true });
+            }
+            catch (Exception e) when (e is System.ComponentModel.Win32Exception or System.IO.IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                // No program for .log files, or the folder cannot be created; nothing to show.
+            }
+        }
 
         private ICommand? PageRefresh() => this.currentPage switch
         {

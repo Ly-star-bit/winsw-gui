@@ -368,11 +368,13 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 await Task.Run(() => operation(entry)).ConfigureAwait(true);
+                ActionLog.Record("task " + label, entry.Name, "ok");
                 this.StatusMessage = Localizer.Format("M.Task.Completed", label, entry.Name);
                 this.Toast?.Invoke(this.StatusMessage, false);
             }
             catch (Exception e)
             {
+                ActionLog.Record("task " + label, entry.Name, "failed: " + e.Message);
                 this.StatusMessage = Localizer.Format("M.Task.Failed", label, e.Message);
                 this.Toast?.Invoke(this.StatusMessage, true);
             }
