@@ -377,6 +377,9 @@
     <sys:String x:Key="M.Dash.StrayBanner">{0}（PID {1}）仍在執行，但不在服務之下。</sys:String>
     <sys:String x:Key="M.Dash.StrayParent">由 {0}（PID {1}）啟動，它仍在執行：如果這個處理程序結束後又反覆出現，就是它在重新拉起。</sys:String>
     <sys:String x:Key="M.Dash.StrayOrphan">啟動它的處理程序已經結束：它是被遺留下來的，沒有別的處理程序在拉起它。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEndParent">結束 {0}（PID {1}）及其啟動的所有處理程序</sys:String>
+    <sys:String x:Key="M.Dash.StrayParentTitle">結束反覆拉起它的處理程序？</sys:String>
+    <sys:String x:Key="M.Dash.StrayParentBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序（包括 {2}，PID {3}），不做正常關閉。之後再啟動「{4}」，讓它重新在服務下執行。</sys:String>
     <sys:String x:Key="M.Dash.StrayHint">多半是 wrapper 停止時遺留下來的。它還在執行時，啟動服務可能因為檔案或連接埠被它佔用而失敗。</sys:String>
     <sys:String x:Key="M.Dash.StrayAction">結束它</sys:String>
     <sys:String x:Key="M.Dash.StrayTitle">結束遺留的處理程序？</sys:String>

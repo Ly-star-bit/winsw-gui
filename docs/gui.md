@@ -87,7 +87,11 @@ Across the pages:
   panel names it with its PID, and with the process that started it: when that is still
   running, it is what brings the program back after it is ended; when it has exited, the
   program was simply left behind. A button ends it (and what it started) after asking; Start
-  then runs it under the service again. It is found either as a process the console saw
+  then runs it under the service again. When the parent is still running — uvicorn's main
+  process restarting a worker, a script looping over the program — a second button ends the
+  parent and everything under it, since ending the program alone only has the parent start
+  another. It is never offered for Windows' own processes (explorer, svchost, services and the
+  like). It is found either as a process the console saw
   under the service's wrapper while it ran, or by the executable's full path when that can be
   read. A program named bare in the configuration (`java`, `python`) is only found the first
   way, and nothing under a WinSW wrapper or started by the console's own try run is claimed.

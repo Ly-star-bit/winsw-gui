@@ -169,6 +169,25 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Windows' own processes, which are never offered for ending however a stray program came
+        /// to be under one of them: the shell, the service host, the session manager and the rest.
+        /// A command prompt or PowerShell is not among them — a script looping over the program is
+        /// exactly the parent worth ending, and the confirmation names it before anything happens.
+        /// </summary>
+        private static readonly HashSet<string> Protected = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "System", "Registry", "Idle", "smss.exe", "csrss.exe", "wininit.exe", "winlogon.exe",
+            "services.exe", "lsass.exe", "lsaiso.exe", "svchost.exe", "explorer.exe", "taskhostw.exe",
+            "taskeng.exe", "dwm.exe", "sihost.exe", "fontdrvhost.exe", "userinit.exe", "spoolsv.exe",
+            "wmiprvse.exe", "dllhost.exe", "conhost.exe", "runtimebroker.exe", "ctfmon.exe",
+            "searchhost.exe", "startmenuexperiencehost.exe", "shellexperiencehost.exe", "mmc.exe",
+        };
+
+        /// <summary>Whether a process may be offered for ending at all; see <see cref="Protected"/>.</summary>
+        public static bool MayEnd(ProcessMark process) =>
+            process.ProcessId > 4 && process.ProcessId != Environment.ProcessId && !Protected.Contains(process.Name);
+
+        /// <summary>
         /// Ends the process and everything it started. Checked first to still be the process that
         /// was found — an ID is reused once its process has gone — and done with administrator
         /// rights when the program runs as an account this user may not end.

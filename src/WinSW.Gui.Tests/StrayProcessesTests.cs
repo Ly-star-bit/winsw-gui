@@ -174,6 +174,40 @@ namespace WinSW.Gui.Tests
             Assert.Null(StrayProcesses.FindingFor(Snapshot(P(150, 1, "notepad.exe", 30), P(500, 150, "server.exe", 5)), P(500, 150, "server.exe", 5)).Parent);
         }
 
+        /// <summary>
+        /// Windows' own processes are never offered for ending, whatever the program is under; a
+        /// launcher, or a script looping over the program, is exactly what should be.
+        /// </summary>
+        [Theory]
+        [InlineData("uvicorn.exe", 2540, true)]
+        [InlineData("cmd.exe", 3000, true)]
+        [InlineData("python.exe", 3100, true)]
+        [InlineData("explorer.exe", 3200, false)]
+        [InlineData("SVCHOST.EXE", 3300, false)]
+        [InlineData("services.exe", 700, false)]
+        [InlineData("System", 4, false)]
+        public void OnlyAParentThatIsNotWindowsOwnMayBeEnded(string name, int id, bool mayEnd)
+        {
+            Assert.Equal(mayEnd, StrayProcesses.MayEnd(new ProcessMark(id, T0, name)));
+        }
+
+        /// <summary>The button to end the parent appears for a living parent that may be ended, and only then.</summary>
+        [Fact]
+        public void TheParentsButtonFollowsTheParent()
+        {
+            Assert.True(Confirmed(new StrayFinding(Mark(11380, 5, "python.exe"), Mark(2540, 1, "uvicorn.exe"))).CanEndStrayParent);
+            Assert.False(Confirmed(new StrayFinding(Mark(11380, 5, "python.exe"), Mark(900, 1, "svchost.exe"))).CanEndStrayParent);
+            Assert.False(Confirmed(new StrayFinding(Mark(11380, 5, "python.exe"), null)).CanEndStrayParent);
+        }
+
+        private static Model.ServiceEntry Confirmed(StrayFinding finding)
+        {
+            var entry = new Model.ServiceEntry("demo", "Demo", "C:/bin/WinSW.exe", "C:/svc/demo.xml");
+            entry.NoteStray(finding, T0);
+            entry.NoteStray(finding, T0.AddSeconds(3));
+            return entry;
+        }
+
         private static ProcessRecord P(int id, int parent, string name, int minutes) =>
             new(id, parent, name, T0.AddMinutes(minutes), TimeSpan.Zero, 0, 0);
 

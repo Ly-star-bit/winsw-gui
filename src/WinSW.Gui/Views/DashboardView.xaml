@@ -389,6 +389,14 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayProcessText}" TextWrapping="Wrap" />
                                         <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayParentText}" TextWrapping="Wrap" />
+                                        <!-- Ending the program alone only has a living parent start another. -->
+                                        <Button
+                                            Margin="0,6,0,2"
+                                            Padding="10,4"
+                                            HorizontalAlignment="Left"
+                                            Command="{Binding DataContext.EndStrayParentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            Content="{Binding StrayParentActionText}"
+                                            Visibility="{Binding CanEndStrayParent, Converter={StaticResource BoolToVisibility}}" />
                                         <TextBlock Margin="0,2,0,0" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Dash.StrayHint}" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <Button

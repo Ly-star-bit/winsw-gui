@@ -137,6 +137,7 @@ namespace WinSW.Gui.ViewModels
             this.RefreshConfigCommand = new AsyncRelayCommand(() => this.RunAsync("refresh", (w, c) => WinSwCli.RefreshAsync(w, c)), () => this.selectedService != null);
 
             this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.HasStrayProcess == true);
+            this.EndStrayParentCommand = new RelayCommand(this.AskEndStrayParent, () => this.selectedService?.CanEndStrayParent == true);
 
             this.KillCommand = new RelayCommand(
                 () => this.Ask(
@@ -572,6 +573,27 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Ends the selected service's program that is running outside it; see <see cref="StrayProcesses"/>.</summary>
         public RelayCommand TerminateStrayCommand { get; }
+
+        /// <summary>
+        /// Ends what keeps starting the stray program, and with it the program: ending the program
+        /// alone only has its parent start another. Never offered for a parent that is one of
+        /// Windows' own; see <see cref="StrayProcesses.MayEnd"/>.
+        /// </summary>
+        public RelayCommand EndStrayParentCommand { get; }
+
+        private void AskEndStrayParent()
+        {
+            if (this.selectedService is not { StrayProcess: { Process: var stray, Parent: { } parent } } entry || !StrayProcesses.MayEnd(parent))
+            {
+                return;
+            }
+
+            this.Ask(
+                Localizer.Get("M.Dash.StrayParentTitle"),
+                Localizer.Format("M.Dash.StrayParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, entry.ServiceName),
+                Localizer.Get("M.Dash.StrayAction"),
+                () => this.TerminateStrayAsync(entry, parent));
+        }
 
         private void AskTerminateStray()
         {
@@ -1445,6 +1467,7 @@ namespace WinSW.Gui.ViewModels
             this.OpenWorkingDirectoryCommand.RaiseCanExecuteChanged();
             this.ApplyRestartScheduleCommand.RaiseCanExecuteChanged();
             this.TerminateStrayCommand.RaiseCanExecuteChanged();
+            this.EndStrayParentCommand.RaiseCanExecuteChanged();
         }
 
         private void ApplySort()

@@ -529,6 +529,8 @@ namespace WinSW.Gui.Model
                     this.Raise(nameof(this.HasStrayProcess));
                     this.Raise(nameof(this.StrayProcessText));
                     this.Raise(nameof(this.StrayParentText));
+                    this.Raise(nameof(this.CanEndStrayParent));
+                    this.Raise(nameof(this.StrayParentActionText));
                 }
             }
         }
@@ -569,6 +571,16 @@ namespace WinSW.Gui.Model
 
         public string StrayProcessText => this.strayProcess is { } stray
             ? Localizer.Format("M.Dash.StrayBanner", stray.Process.Name, stray.Process.ProcessId)
+            : string.Empty;
+
+        /// <summary>
+        /// The parent is still running and is not one of Windows' own: ending it, and so what it
+        /// keeps starting, can be offered.
+        /// </summary>
+        public bool CanEndStrayParent => this.strayProcess is { Parent: { } parent } && Services.StrayProcesses.MayEnd(parent);
+
+        public string StrayParentActionText => this.strayProcess is { Parent: { } parent }
+            ? Localizer.Format("M.Dash.StrayEndParent", parent.Name, parent.ProcessId)
             : string.Empty;
 
         /// <summary>
@@ -626,6 +638,7 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.UptimeText));
             this.Raise(nameof(this.StrayProcessText));
             this.Raise(nameof(this.StrayParentText));
+            this.Raise(nameof(this.StrayParentActionText));
         }
 
         public bool CanStart => this.status == ServiceControllerStatus.Stopped;

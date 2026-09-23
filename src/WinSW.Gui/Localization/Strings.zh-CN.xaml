@@ -377,6 +377,9 @@
     <sys:String x:Key="M.Dash.StrayBanner">{0}（PID {1}）仍在运行，但不在服务之下。</sys:String>
     <sys:String x:Key="M.Dash.StrayParent">由 {0}（PID {1}）启动，它仍在运行：如果这个进程结束后又反复出现，就是它在重新拉起。</sys:String>
     <sys:String x:Key="M.Dash.StrayOrphan">启动它的进程已经退出：它是被遗留下来的，没有别的进程在拉起它。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEndParent">结束 {0}（PID {1}）及其启动的所有进程</sys:String>
+    <sys:String x:Key="M.Dash.StrayParentTitle">结束反复拉起它的进程？</sys:String>
+    <sys:String x:Key="M.Dash.StrayParentBody">将强制结束 {0}（PID {1}）及其启动的所有进程（包括 {2}，PID {3}），不做正常关闭。之后再启动“{4}”，让它重新在服务下运行。</sys:String>
     <sys:String x:Key="M.Dash.StrayHint">多半是 wrapper 停止时遗留下来的。它还在运行时，启动服务可能因为文件或端口被它占用而失败。</sys:String>
     <sys:String x:Key="M.Dash.StrayAction">结束它</sys:String>
     <sys:String x:Key="M.Dash.StrayTitle">结束遗留的进程？</sys:String>
