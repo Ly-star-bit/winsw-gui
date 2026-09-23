@@ -66,6 +66,10 @@ Across the pages:
 - **Groups**: a service can be filed under a group from the detail panel, and *Group* in the
   header shows the list under group headings, the ungrouped last. Groups are kept per user,
   not in the service's configuration, and the search box matches them.
+- **Alerts to a group chat**: Settings takes a WeCom, DingTalk or Feishu robot's webhook (or
+  any receiver that accepts a JSON `text` field) and a signing secret, and posts each
+  unexpected stop there as well as to the tray, naming the machine. Both are stored encrypted
+  to the Windows user; *Send a test* checks them.
 - **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside

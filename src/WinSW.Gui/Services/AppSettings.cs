@@ -45,6 +45,12 @@ namespace WinSW.Gui.Services
         /// <summary>Show a notification when a service stops without the GUI having asked it to.</summary>
         public bool NotifyOnUnexpectedStop { get; set; } = true;
 
+        /// <summary>Where unexpected stops are also posted, encrypted to this user; see <see cref="AlertWebhook"/>.</summary>
+        public string? AlertWebhook { get; set; }
+
+        /// <summary>The webhook's signing secret, encrypted to this user.</summary>
+        public string? AlertSecret { get; set; }
+
         public double? WindowLeft { get; set; }
 
         public double? WindowTop { get; set; }

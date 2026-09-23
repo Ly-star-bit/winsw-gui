@@ -71,6 +71,9 @@ namespace WinSW.Gui.ViewModels
         private ReleaseInfo? guiUpdate;
         private bool contextMenuRegistered = ShellIntegration.IsRegistered;
         private bool startWithWindows = Autostart.IsRegistered;
+        private string alertUrl = AlertWebhook.Url;
+        private string alertSecret = AlertWebhook.Secret;
+        private string alertTestStatus = string.Empty;
         private bool isRailCollapsed = AppSettings.Current.RailCollapsed;
         private string toastText = string.Empty;
         private bool toastVisible;
@@ -144,6 +147,11 @@ namespace WinSW.Gui.ViewModels
 
             // A saved configuration is one the running service has not read yet.
             this.Editor.Saved += path => this.Dashboard.NoteConfigurationWritten(path);
+
+            // Where the tray notification goes, the group chat's goes too. The dashboard has
+            // already held a crash-looping service to one announcement per five minutes.
+            this.Dashboard.UnexpectedStop += entry => _ = AlertWebhook.NotifyStopAsync(entry);
+            this.SendTestAlertCommand = new AsyncRelayCommand(this.SendTestAlertAsync, () => !string.IsNullOrWhiteSpace(this.alertUrl));
             this.Dashboard.CreateServiceRequested += () =>
             {
                 // The wizard keeps whichever mode it was last used in; arriving from a page
@@ -551,6 +559,54 @@ namespace WinSW.Gui.ViewModels
                     ThemeManager.Apply(value.Choice);
                 }
             }
+        }
+
+        // Alerts ----------------------------------------------------------------------
+
+        /// <summary>The webhook unexpected stops are posted to; stored encrypted, see <see cref="AlertWebhook"/>.</summary>
+        public string AlertUrl
+        {
+            get => this.alertUrl;
+            set
+            {
+                if (this.Set(ref this.alertUrl, value ?? string.Empty))
+                {
+                    AlertWebhook.Url = this.alertUrl;
+                    this.AlertTestStatus = string.Empty;
+                    this.SendTestAlertCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>The DingTalk or Feishu signing secret, if the robot has one.</summary>
+        public string AlertSecret
+        {
+            get => this.alertSecret;
+            set
+            {
+                if (this.Set(ref this.alertSecret, value ?? string.Empty))
+                {
+                    AlertWebhook.Secret = this.alertSecret;
+                    this.AlertTestStatus = string.Empty;
+                }
+            }
+        }
+
+        public string AlertTestStatus
+        {
+            get => this.alertTestStatus;
+            private set => this.Set(ref this.alertTestStatus, value);
+        }
+
+        public AsyncRelayCommand SendTestAlertCommand { get; }
+
+        private async Task SendTestAlertAsync()
+        {
+            this.AlertTestStatus = Localizer.Get("M.Alert.Sending");
+            string url = this.alertUrl;
+            string? error = await AlertWebhook.SendAsync(url, this.alertSecret, Localizer.Format("M.Alert.Test", Environment.MachineName)).ConfigureAwait(true);
+            ActionLog.Record("alert test", AlertWebhook.KindOf(url).ToString(), error is null ? "ok" : "failed: " + error);
+            this.AlertTestStatus = error is null ? Localizer.Get("M.Alert.TestOk") : Localizer.Format("M.Alert.TestFailed", error);
         }
 
         /// <summary>The sign-in entry that starts this console in the tray; see <see cref="Autostart"/>.</summary>
