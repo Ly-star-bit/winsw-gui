@@ -13,9 +13,10 @@ using WinSW.Gui.Services;
 namespace WinSW.Gui.ViewModels
 {
     /// <summary>
-    /// Read-only status of services on another machine. Deliberately no control: changing
-    /// a remote service means running the wrapper there, which is a WinRM/PsExec job with a
-    /// different trust model than a local UAC prompt.
+    /// Services on another machine: their status, and starting, stopping and restarting them
+    /// through its service control manager with the current user's rights there. Nothing that
+    /// needs the wrapper on that machine — installing, uninstalling, applying a configuration —
+    /// is offered: that is a WinRM or PsExec job, with a different trust model.
     /// </summary>
     public sealed class RemoteViewModel : ObservableObject
     {
@@ -39,12 +40,16 @@ namespace WinSW.Gui.ViewModels
         private bool lastRefreshFailed;
         private bool isBusy;
         private bool autoRefresh = true;
+        private RemoteServiceStatus? selectedService;
 
         public RemoteViewModel()
         {
             this.ServicesView = CollectionViewSource.GetDefaultView(this.Services);
             this.ServicesView.Filter = this.MatchesFilter;
             this.RefreshCommand = new AsyncRelayCommand(this.RefreshAsync, () => !string.IsNullOrWhiteSpace(this.machine) && !this.isBusy);
+            this.StartCommand = new AsyncRelayCommand(() => this.ControlAsync(RemoteAction.Start), () => !this.isBusy && this.selectedService?.CanStart == true);
+            this.StopCommand = new AsyncRelayCommand(() => this.ControlAsync(RemoteAction.Stop), () => !this.isBusy && this.selectedService?.CanStop == true);
+            this.RestartCommand = new AsyncRelayCommand(() => this.ControlAsync(RemoteAction.Restart), () => !this.isBusy && this.selectedService?.Status != null);
             this.timer = new DispatcherTimer { Interval = PollInterval };
             this.timer.Tick += async (_, _) =>
             {
@@ -73,6 +78,24 @@ namespace WinSW.Gui.ViewModels
         public ICollectionView ServicesView { get; }
 
         public AsyncRelayCommand RefreshCommand { get; }
+
+        public AsyncRelayCommand StartCommand { get; }
+
+        public AsyncRelayCommand StopCommand { get; }
+
+        public AsyncRelayCommand RestartCommand { get; }
+
+        public RemoteServiceStatus? SelectedService
+        {
+            get => this.selectedService;
+            set
+            {
+                if (this.Set(ref this.selectedService, value))
+                {
+                    this.RefreshControlCommands();
+                }
+            }
+        }
 
         /// <summary>Computer name or address; the current user's credentials are used.</summary>
         public string Machine
@@ -124,6 +147,7 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.isBusy, value))
                 {
                     this.RefreshCommand.RaiseCanExecuteChanged();
+                    this.RefreshControlCommands();
                 }
             }
         }
@@ -132,6 +156,60 @@ namespace WinSW.Gui.ViewModels
         public int RunningCount => this.ServicesView.Cast<RemoteServiceStatus>().Count(s => s.IsRunning);
 
         public void Activate() => this.timer.Start();
+
+        private void RefreshControlCommands()
+        {
+            this.StartCommand.RaiseCanExecuteChanged();
+            this.StopCommand.RaiseCanExecuteChanged();
+            this.RestartCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>
+        /// Starts, stops or restarts the selected service on the machine the list was read
+        /// from, then reads the list again so the row shows what happened.
+        /// </summary>
+        private async Task ControlAsync(RemoteAction action)
+        {
+            var target = this.selectedService;
+            string? on = this.loadedMachine;
+            if (target is null || on is null)
+            {
+                return;
+            }
+
+            string verb = action.ToString().ToLowerInvariant();
+            this.IsBusy = true;
+            this.StatusMessage = Localizer.Format("M.Remote.Controlling", verb, target.ServiceName, on);
+
+            string message;
+            string outcome;
+            try
+            {
+                await Task.Run(() => RemoteMonitor.Control(on, target.ServiceName, action)).ConfigureAwait(true);
+                message = Localizer.Format("M.Remote.Controlled", verb, target.ServiceName, on);
+                outcome = "ok";
+            }
+            catch (InvalidOperationException e)
+            {
+                message = Localizer.Format("M.Remote.ControlFailed", verb, target.ServiceName, e.Message);
+                outcome = "failed: " + e.Message;
+            }
+            finally
+            {
+                this.IsBusy = false;
+            }
+
+            ActionLog.Record("remote " + verb, on + "\\" + target.ServiceName, outcome);
+
+            // The row shows the state it settled in; the line under the list says what was done.
+            // Only while the box still names that machine: a refresh reads whatever it names.
+            if (string.Equals(this.machine.Trim(), on, StringComparison.OrdinalIgnoreCase))
+            {
+                await this.RefreshAsync().ConfigureAwait(true);
+            }
+
+            this.StatusMessage = message;
+        }
 
         public void Deactivate() => this.timer.Stop();
 

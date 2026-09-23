@@ -97,8 +97,11 @@ Across the pages:
   leaves the services as it found them rather than stopped, and success is judged afterwards
   from the file's own version. Crossing a major version, or replacing a self-contained
   wrapper with the bundled .NET Framework build, is called out in the confirmation.
-- **Remote**: read-only status of services on another computer, through the SCM's RPC
-  interface, with your current credentials.
+- **Remote**: services on another computer, through the SCM's RPC interface, with your
+  current credentials — their status, and Start, Stop and Restart for the selected one, which
+  are the service control manager's own operations and need nothing installed there. Stop does
+  not take dependent services down with it; the other machine refuses, and the page says so.
+  Installing or changing a configuration there still needs the wrapper on that machine.
 - **Command line and Explorer**: `WinSW.Gui.exe myapp.xml` opens that service (or the file in
   the editor if it is not installed); an optional "Open in WinSW" verb on .xml files is
   registered per user from the rail.

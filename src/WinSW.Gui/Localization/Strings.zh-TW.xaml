@@ -424,8 +424,8 @@
     <sys:String x:Key="M.Wiz.Branding">正在建立 {0}…</sys:String>
     <sys:String x:Key="M.Wiz.BrandFailed">品牌化失敗：{0}</sys:String>
     <sys:String x:Key="M.Nav.Remote">遠端</sys:String>
-    <sys:String x:Key="M.Nav.RemoteSub">唯讀狀態</sys:String>
-    <sys:String x:Key="M.Remote.Subtitle">透過服務控制管理員檢視另一台電腦上的服務狀態。唯讀：變更遠端服務需要在那台機器上執行 wrapper。</sys:String>
+    <sys:String x:Key="M.Nav.RemoteSub">狀態與啟停</sys:String>
+    <sys:String x:Key="M.Remote.Subtitle">透過服務控制管理員，以你的 Windows 認證檢視和控制另一台電腦上的服務。啟動、停止、重新啟動由服務控制管理員直接完成；安裝或修改那邊的設定仍需在那台機器上執行 wrapper。</sys:String>
     <sys:String x:Key="M.Remote.Machine">電腦</sys:String>
     <sys:String x:Key="M.Remote.Filter">篩選</sys:String>
     <sys:String x:Key="M.Remote.Connect">連線</sys:String>
@@ -434,6 +434,12 @@
     <sys:String x:Key="M.Remote.Loaded">{1} 上有 {0} 個服務，{2} 個執行中。</sys:String>
     <sys:String x:Key="M.Remote.LoadedFiltered">{1} 上共 {3} 個服務，篩選出 {0} 個，{2} 個執行中。</sys:String>
     <sys:String x:Key="M.Remote.Failed">無法查詢 {0}：{1}</sys:String>
+    <sys:String x:Key="M.Remote.ControlTip">以你在那台電腦上的權限操作選取的服務。停止不會連帶停止相依於它的服務，而是被拒絕。</sys:String>
+    <sys:String x:Key="M.Remote.Controlling">正在對 {2} 上的「{1}」執行 {0}…</sys:String>
+    <sys:String x:Key="M.Remote.Controlled">{2} 上的「{1}」已完成 {0}。</sys:String>
+    <sys:String x:Key="M.Remote.ControlFailed">「{1}」執行 {0} 失敗：{2}</sys:String>
+    <sys:String x:Key="M.Remote.TimedOut">服務在 {0} 秒內沒有完成狀態切換。</sys:String>
+    <sys:String x:Key="M.Remote.Denied">存取被拒。變更 {0} 上的服務需要那台機器的系統管理員權限。</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} 已發布。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">開啟發布頁面</sys:String>
     <sys:String x:Key="M.Shell.ContextMenu">在 .xml 右鍵選單加入「以 WinSW 開啟」</sys:String>

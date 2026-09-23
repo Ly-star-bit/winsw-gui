@@ -46,6 +46,28 @@
                 <TextBox Grid.Column="3" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" />
                 <Button Grid.Column="4" Margin="12,0,0,0" Padding="12,6" Command="{Binding RefreshCommand}" Content="{DynamicResource M.Remote.Connect}" />
                 <CheckBox Grid.Column="5" Margin="14,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Remote.AutoRefresh}" IsChecked="{Binding AutoRefresh}" />
+
+                <!-- On the selected service, through that machine's service control manager. -->
+                <StackPanel Grid.Column="6" HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xE768;" />
+                            <TextBlock Text="{DynamicResource S.Start}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StopCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE71A;" />
+                            <TextBlock Text="{DynamicResource S.Stop}" />
+                        </StackPanel>
+                    </Button>
+                    <Button Padding="12,6" Command="{Binding RestartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE72C;" />
+                            <TextBlock Text="{DynamicResource S.Restart}" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -55,6 +77,7 @@
                 BorderThickness="0"
                 ItemsSource="{Binding ServicesView}"
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                SelectedItem="{Binding SelectedService}"
                 VirtualizingPanel.IsVirtualizing="True">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">

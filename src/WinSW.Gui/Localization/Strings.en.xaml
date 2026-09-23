@@ -424,8 +424,8 @@
     <sys:String x:Key="M.Wiz.Branding">Creating {0}…</sys:String>
     <sys:String x:Key="M.Wiz.BrandFailed">Branding failed: {0}</sys:String>
     <sys:String x:Key="M.Nav.Remote">Remote</sys:String>
-    <sys:String x:Key="M.Nav.RemoteSub">Read-only status</sys:String>
-    <sys:String x:Key="M.Remote.Subtitle">Service status on another computer, through the service control manager. Read-only: changing a remote service needs the wrapper on that machine.</sys:String>
+    <sys:String x:Key="M.Nav.RemoteSub">Status and control</sys:String>
+    <sys:String x:Key="M.Remote.Subtitle">Services on another computer, through its service control manager, with your Windows credentials. Start, stop and restart are the service control manager's own; installing or changing a configuration there needs the wrapper on that machine.</sys:String>
     <sys:String x:Key="M.Remote.Machine">Computer</sys:String>
     <sys:String x:Key="M.Remote.Filter">Filter</sys:String>
     <sys:String x:Key="M.Remote.Connect">Connect</sys:String>
@@ -434,6 +434,12 @@
     <sys:String x:Key="M.Remote.Loaded">{0} services on {1}, {2} running.</sys:String>
     <sys:String x:Key="M.Remote.LoadedFiltered">{0} of {3} services on {1} match, {2} running.</sys:String>
     <sys:String x:Key="M.Remote.Failed">Could not query {0}: {1}</sys:String>
+    <sys:String x:Key="M.Remote.ControlTip">Acts on the selected service with your rights on that computer. Stop does not stop services that depend on it; it is refused instead.</sys:String>
+    <sys:String x:Key="M.Remote.Controlling">Running '{0}' for '{1}' on {2}…</sys:String>
+    <sys:String x:Key="M.Remote.Controlled">'{0}' completed for '{1}' on {2}.</sys:String>
+    <sys:String x:Key="M.Remote.ControlFailed">'{0}' failed for '{1}': {2}</sys:String>
+    <sys:String x:Key="M.Remote.TimedOut">The service did not settle within {0} seconds.</sys:String>
+    <sys:String x:Key="M.Remote.Denied">Access was denied. Changing a service on {0} needs administrator rights there.</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} is available.</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">Open release page</sys:String>
     <sys:String x:Key="M.Shell.ContextMenu">"Open in WinSW" on .xml files</sys:String>

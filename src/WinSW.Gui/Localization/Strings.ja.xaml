@@ -424,8 +424,8 @@
     <sys:String x:Key="M.Wiz.Branding">{0} を作成中…</sys:String>
     <sys:String x:Key="M.Wiz.BrandFailed">ブランド化に失敗しました: {0}</sys:String>
     <sys:String x:Key="M.Nav.Remote">リモート</sys:String>
-    <sys:String x:Key="M.Nav.RemoteSub">読み取り専用の状態</sys:String>
-    <sys:String x:Key="M.Remote.Subtitle">サービス コントロール マネージャー経由で別のコンピューターのサービス状態を表示します。読み取り専用: リモート サービスの変更にはそのマシン上のラッパーが必要です。</sys:String>
+    <sys:String x:Key="M.Nav.RemoteSub">状態と起動・停止</sys:String>
+    <sys:String x:Key="M.Remote.Subtitle">サービス コントロール マネージャー経由で、あなたの Windows 資格情報を使って別のコンピューターのサービスを表示・操作します。起動・停止・再起動はサービス コントロール マネージャー自身の操作です。そのマシンでのインストールや構成の変更にはラッパーが必要です。</sys:String>
     <sys:String x:Key="M.Remote.Machine">コンピューター</sys:String>
     <sys:String x:Key="M.Remote.Filter">フィルター</sys:String>
     <sys:String x:Key="M.Remote.Connect">接続</sys:String>
@@ -434,6 +434,12 @@
     <sys:String x:Key="M.Remote.Loaded">{1} に {0} 件のサービス、{2} 件が実行中。</sys:String>
     <sys:String x:Key="M.Remote.LoadedFiltered">{1} の {3} 件のサービスのうち {0} 件が一致、{2} 件が実行中。</sys:String>
     <sys:String x:Key="M.Remote.Failed">{0} を照会できませんでした: {1}</sys:String>
+    <sys:String x:Key="M.Remote.ControlTip">そのコンピューターでのあなたの権限で、選択したサービスを操作します。停止は依存するサービスを巻き込まず、代わりに拒否されます。</sys:String>
+    <sys:String x:Key="M.Remote.Controlling">{2} の '{1}' に '{0}' を実行しています…</sys:String>
+    <sys:String x:Key="M.Remote.Controlled">{2} の '{1}' で '{0}' が完了しました。</sys:String>
+    <sys:String x:Key="M.Remote.ControlFailed">'{1}' の '{0}' に失敗しました: {2}</sys:String>
+    <sys:String x:Key="M.Remote.TimedOut">サービスが {0} 秒以内に状態を切り替えませんでした。</sys:String>
+    <sys:String x:Key="M.Remote.Denied">アクセスが拒否されました。{0} のサービスを変更するには、そのマシンの管理者権限が必要です。</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} が利用可能です。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">リリース ページを開く</sys:String>
     <sys:String x:Key="M.Shell.ContextMenu">.xml ファイルの右クリックに「WinSW で開く」を追加</sys:String>
