@@ -41,6 +41,16 @@ namespace WinSW.Gui.ViewModels
         public void RefreshLocalized() => this.Raise(nameof(this.Label));
     }
 
+    /// <summary>A service's group as its heading: the ungrouped are headed as such, in the interface's language.</summary>
+    public sealed class GroupHeadingConverter : System.Windows.Data.IValueConverter
+    {
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            value is string group && group.Length > 0 ? group : Localizer.Get("M.Group.None");
+
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
+    }
+
     /// <summary>
     /// The service management panel: what is installed, what state it is in, and the
     /// operations that change that state.
@@ -91,6 +101,7 @@ namespace WinSW.Gui.ViewModels
         private string? pendingServiceName;
         private string healthFilter = "all";
         private bool sortByStatus = AppSettings.Current.SortServicesByStatus;
+        private bool groupServices = AppSettings.Current.GroupServices;
         private readonly Dictionary<string, (DateTime At, int Count)> notified = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
@@ -221,6 +232,12 @@ namespace WinSW.Gui.ViewModels
                     choice.RefreshLocalized();
                 }
 
+                // The ungrouped heading is in the interface's language.
+                if (this.groupServices)
+                {
+                    this.ApplySort();
+                }
+
                 if (this.restartScheduleNote.Length > 0)
                 {
                     this.RestartScheduleNote = Localizer.Get("M.Sched.Unreadable");
@@ -274,6 +291,66 @@ namespace WinSW.Gui.ViewModels
                     AppSettings.Current.Save();
                     this.ApplySort();
                 }
+            }
+        }
+
+        /// <summary>The list under group headings, ungrouped services last.</summary>
+        public bool GroupServices
+        {
+            get => this.groupServices;
+            set
+            {
+                if (this.Set(ref this.groupServices, value))
+                {
+                    AppSettings.Current.GroupServices = value;
+                    AppSettings.Current.Save();
+                    this.ApplySort();
+                }
+            }
+        }
+
+        /// <summary>Every group in use, for the picker in the detail panel.</summary>
+        public IReadOnlyList<string> KnownGroups =>
+            AppSettings.Current.ServiceGroups.Values
+                .Where(g => g.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(g => g, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+        /// <summary>
+        /// Files <paramref name="entry"/> under <paramref name="text"/>, or under nothing when it is
+        /// blank. Given the entry rather than reading the selection: the edit belongs to the
+        /// service the field was showing, whatever has been selected since.
+        /// </summary>
+        public void AssignGroup(ServiceEntry entry, string text)
+        {
+            string group = text.Trim();
+            if (string.Equals(group, entry.Group, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var groups = AppSettings.Current.ServiceGroups;
+            if (group.Length == 0)
+            {
+                groups.Remove(entry.ServiceName);
+            }
+            else
+            {
+                groups[entry.ServiceName] = group;
+            }
+
+            AppSettings.Current.Save();
+
+            // The picker's list first, the entry's group after it: an editable ComboBox whose
+            // items are replaced can clear its text, and the binding from the entry is what
+            // has to have the last word.
+            this.Raise(nameof(this.KnownGroups));
+            entry.Group = group;
+
+            if (this.groupServices || this.searchNeedle.Length > 0)
+            {
+                this.ServicesView.Refresh();
             }
         }
 
@@ -761,6 +838,7 @@ namespace WinSW.Gui.ViewModels
                         index++;
                     }
 
+                    entry.Group = AppSettings.Current.ServiceGroups.TryGetValue(entry.ServiceName, out string? group) ? group : string.Empty;
                     this.Services.Insert(index, entry);
                     added++;
                 }
@@ -1313,7 +1391,16 @@ namespace WinSW.Gui.ViewModels
 
             using (this.ServicesView.DeferRefresh())
             {
+                this.ServicesView.GroupDescriptions.Clear();
                 this.ServicesView.SortDescriptions.Clear();
+
+                // Grouped, the groups come first in the ordering, so each is one run of rows.
+                if (this.groupServices)
+                {
+                    this.ServicesView.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ServiceEntry.Group), new GroupHeadingConverter()));
+                    this.ServicesView.SortDescriptions.Add(new SortDescription(nameof(ServiceEntry.GroupSortKey), ListSortDirection.Ascending));
+                }
+
                 if (this.sortByStatus)
                 {
                     this.ServicesView.SortDescriptions.Add(new SortDescription(nameof(ServiceEntry.SortRank), ListSortDirection.Ascending));
@@ -1349,7 +1436,7 @@ namespace WinSW.Gui.ViewModels
                 return true;
             }
 
-            return Contains(entry.ServiceName) || Contains(entry.DisplayName) || Contains(entry.ConfigPath);
+            return Contains(entry.ServiceName) || Contains(entry.DisplayName) || Contains(entry.ConfigPath) || Contains(entry.Group);
 
             bool Contains(string? haystack) =>
                 haystack != null && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);

@@ -464,6 +464,10 @@
     <sys:String x:Key="M.Dur.Unit">Unit</sys:String>
     <sys:String x:Key="M.Dash.FilterTip">Click to show only these services</sys:String>
     <sys:String x:Key="M.Dash.SortByStatus">Sort by status</sys:String>
+    <sys:String x:Key="M.Dash.GroupServices">Group</sys:String>
+    <sys:String x:Key="M.Group.Label">Group</sys:String>
+    <sys:String x:Key="M.Group.None">Ungrouped</sys:String>
+    <sys:String x:Key="M.Group.Hint">Type a new group or pick one. Kept for this Windows user, not in the service's configuration; the search box matches it too.</sys:String>
     <sys:String x:Key="M.Dash.DoubleClickTip">Double-click a service to open its logs</sys:String>
     <sys:String x:Key="M.Dash.More">More</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopRepeated">'{0}' stopped unexpectedly {1} times in the last few minutes.</sys:String>

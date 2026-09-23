@@ -464,6 +464,10 @@
     <sys:String x:Key="M.Dur.Unit">單位</sys:String>
     <sys:String x:Key="M.Dash.FilterTip">按一下只顯示這類服務</sys:String>
     <sys:String x:Key="M.Dash.SortByStatus">依狀態排序</sys:String>
+    <sys:String x:Key="M.Dash.GroupServices">分組顯示</sys:String>
+    <sys:String x:Key="M.Group.Label">分組</sys:String>
+    <sys:String x:Key="M.Group.None">未分組</sys:String>
+    <sys:String x:Key="M.Group.Hint">輸入新分組或從清單中選擇。依 Windows 使用者儲存，不寫入服務設定；搜尋方塊也會比對分組名稱。</sys:String>
     <sys:String x:Key="M.Dash.DoubleClickTip">按兩下服務即可開啟記錄</sys:String>
     <sys:String x:Key="M.Dash.More">更多</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopRepeated">「{0}」幾分鐘內已意外停止 {1} 次。</sys:String>

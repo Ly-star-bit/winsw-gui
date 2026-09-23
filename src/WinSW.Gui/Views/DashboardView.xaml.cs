@@ -42,6 +42,26 @@ namespace WinSW.Gui.Views
             }
         }
 
+        // A group is committed when the field is left, on Enter, or when a group is picked, and
+        // it is committed to the service the field shows: its own data context, not whatever
+        // the list has selected by then.
+        private void OnGroupCommit(object? sender, System.EventArgs e)
+        {
+            if (sender is ComboBox combo && combo.DataContext is Model.ServiceEntry entry && this.attached != null)
+            {
+                this.attached.AssignGroup(entry, combo.Text ?? string.Empty);
+            }
+        }
+
+        private void OnGroupKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                this.OnGroupCommit(sender, e);
+                e.Handled = true;
+            }
+        }
+
         // ListBox.SelectedItems is not bindable; hand the multi-selection to the view model here.
         private void OnServiceSelectionChanged(object sender, SelectionChangedEventArgs e)
         {

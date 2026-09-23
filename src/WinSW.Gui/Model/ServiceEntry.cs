@@ -53,6 +53,7 @@ namespace WinSW.Gui.Model
         private DateTime lastMemoryPointAt;
         private int memoryProcessId;
         private int crashCount;
+        private string group = string.Empty;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -464,6 +465,29 @@ namespace WinSW.Gui.Model
         }
 
         public bool HasProblem => !string.IsNullOrEmpty(this.problem);
+
+        /// <summary>
+        /// The group the dashboard files this service under, or empty. Kept by the console per
+        /// user, not by the service; see <see cref="Services.AppSettings.ServiceGroups"/>.
+        /// </summary>
+        public string Group
+        {
+            get => this.group;
+            set
+            {
+                if (this.Set(ref this.group, value ?? string.Empty))
+                {
+                    this.Raise(nameof(this.GroupSortKey));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Groups in name order, with the ungrouped after all of them. A leading digit rather
+        /// than a high character: the view sorts with the culture's collation, which may
+        /// ignore a noncharacter altogether and put the ungrouped first.
+        /// </summary>
+        public string GroupSortKey => this.group.Length == 0 ? "1" : "0" + this.group;
 
         /// <summary>Unexpected stops seen in the current five-minute window; shown in the notification.</summary>
         public int CrashCount

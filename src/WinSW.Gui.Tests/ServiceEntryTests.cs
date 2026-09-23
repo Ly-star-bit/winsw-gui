@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using WinSW.Gui.Model;
 using Xunit;
 
@@ -214,6 +215,26 @@ namespace WinSW.Gui.Tests
             onScreen.MergeMetadataFrom(new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml") { ConfigWrittenAt = written });
 
             Assert.Equal(written, onScreen.ConfigWrittenAt);
+        }
+
+        /// <summary>
+        /// The ungrouped come after every group, under the collation of each interface language:
+        /// the view sorts with the culture's comparer, not by code point.
+        /// </summary>
+        [Theory]
+        [InlineData("en-US")]
+        [InlineData("zh-CN")]
+        [InlineData("zh-TW")]
+        [InlineData("ja-JP")]
+        public void UngroupedServicesSortAfterEveryGroup(string culture)
+        {
+            var comparer = System.StringComparer.Create(new System.Globalization.CultureInfo(culture), ignoreCase: true);
+            var keys = new[] { string.Empty, "web", "数据库", "Zeta" }
+                .Select(g => new ServiceEntry(g, g, @"C:\bin\WinSW.exe", null) { Group = g }.GroupSortKey)
+                .OrderBy(k => k, comparer)
+                .ToList();
+
+            Assert.Equal(new ServiceEntry("x", "x", @"C:\bin\WinSW.exe", null).GroupSortKey, keys[^1]);
         }
     }
 }

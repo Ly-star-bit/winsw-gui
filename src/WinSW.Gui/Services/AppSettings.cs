@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -63,6 +64,15 @@ namespace WinSW.Gui.Services
 
         public bool SortServicesByStatus { get; set; }
 
+        /// <summary>Show the service list under group headings.</summary>
+        public bool GroupServices { get; set; }
+
+        /// <summary>
+        /// The group each service is filed under, by service name. The console's own
+        /// bookkeeping, not the service's: nothing is written to its configuration.
+        /// </summary>
+        public Dictionary<string, string> ServiceGroups { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
         /// Where new services are installed: one folder per service under this root, with a
         /// single wrapper shared from <c>bin</c>. Null means the default, which is
@@ -99,7 +109,11 @@ namespace WinSW.Gui.Services
             {
                 if (File.Exists(FilePath))
                 {
-                    return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
+                    var loaded = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
+
+                    // Service names are not case-sensitive; the dictionary the reader builds is.
+                    loaded.ServiceGroups = new Dictionary<string, string>(loaded.ServiceGroups ?? new(), StringComparer.OrdinalIgnoreCase);
+                    return loaded;
                 }
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)

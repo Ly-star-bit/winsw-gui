@@ -140,6 +140,7 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Margin="0,0,10,0" VerticalAlignment="Center" Orientation="Horizontal">
+                <CheckBox Margin="0,0,12,0" VerticalAlignment="Center" Content="{DynamicResource M.Dash.GroupServices}" IsChecked="{Binding GroupServices}" />
                 <CheckBox Margin="0,0,12,0" VerticalAlignment="Center" Content="{DynamicResource M.Dash.SortByStatus}" IsChecked="{Binding SortByStatus}" />
                 <ui:TextBox
                     Width="240"
@@ -235,12 +236,27 @@
                     ItemContainerStyle="{StaticResource ServiceItem}"
                     ItemTemplate="{StaticResource ServiceRow}"
                     ItemsSource="{Binding ServicesView}"
+                    VirtualizingPanel.IsVirtualizingWhenGrouping="True"
                     VirtualizingPanel.VirtualizationMode="Recycling"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     SelectedItem="{Binding SelectedService}"
                     MouseDoubleClick="OnServiceDoubleClick"
                     SelectionChanged="OnServiceSelectionChanged"
-                    SelectionMode="Extended" />
+                    SelectionMode="Extended">
+                    <!-- Used only while the list is grouped; without it grouping would also switch virtualization off. -->
+                    <ListBox.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="6,12,0,4" Style="{StaticResource SectionTitle}">
+                                        <Run Text="{Binding Name, Mode=OneWay}" />
+                                        <Run Text="{Binding ItemCount, Mode=OneWay, StringFormat='· {0}'}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ListBox.GroupStyle>
+                </ListBox>
 
                 <!-- Getting started: nothing is installed yet -->
                 <Border Grid.Row="1" Padding="24" Style="{StaticResource Card}" VerticalAlignment="Top" Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}">
@@ -388,6 +404,7 @@
                                 <RowDefinition />
                                 <RowDefinition />
                                 <RowDefinition />
+                                <RowDefinition />
                             </Grid.RowDefinitions>
                             <Grid.Resources>
                                 <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
@@ -454,6 +471,22 @@
                                     Text="{Binding DataContext.RestartScheduleNote, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     TextWrapping="Wrap" />
                             </StackPanel>
+
+                            <TextBlock Grid.Row="9" Grid.Column="0" VerticalAlignment="Center" Text="{DynamicResource M.Group.Label}" ToolTip="{DynamicResource M.Group.Hint}" />
+                            <ComboBox
+                                Grid.Row="9"
+                                Grid.Column="1"
+                                MinWidth="200"
+                                Margin="0,0,0,6"
+                                HorizontalAlignment="Left"
+                                AutomationProperties.Name="{DynamicResource M.Group.Label}"
+                                DropDownClosed="OnGroupCommit"
+                                IsEditable="True"
+                                ItemsSource="{Binding DataContext.KnownGroups, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                KeyDown="OnGroupKeyDown"
+                                LostKeyboardFocus="OnGroupCommit"
+                                Text="{Binding Group, Mode=OneWay}"
+                                ToolTip="{DynamicResource M.Group.Hint}" />
                         </Grid>
 
                         <!-- Live metrics -->

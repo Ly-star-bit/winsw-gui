@@ -464,6 +464,10 @@
     <sys:String x:Key="M.Dur.Unit">単位</sys:String>
     <sys:String x:Key="M.Dash.FilterTip">クリックしてこれらのサービスのみ表示</sys:String>
     <sys:String x:Key="M.Dash.SortByStatus">状態で並べ替え</sys:String>
+    <sys:String x:Key="M.Dash.GroupServices">グループ表示</sys:String>
+    <sys:String x:Key="M.Group.Label">グループ</sys:String>
+    <sys:String x:Key="M.Group.None">グループなし</sys:String>
+    <sys:String x:Key="M.Group.Hint">新しいグループを入力するか一覧から選びます。サービスの構成ではなく Windows ユーザーごとに保存され、検索ボックスでもグループ名に一致します。</sys:String>
     <sys:String x:Key="M.Dash.DoubleClickTip">サービスをダブルクリックしてログを開く</sys:String>
     <sys:String x:Key="M.Dash.More">その他</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopRepeated">'{0}' はここ数分で {1} 回予期せず停止しました。</sys:String>

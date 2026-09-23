@@ -63,6 +63,9 @@ Across the pages:
   to, and deletes those last written more than a chosen number of days ago (30 by default)
   after asking. Age alone decides — the file being written now is never that old — and a file
   the user may not delete goes in one elevated batch.
+- **Groups**: a service can be filed under a group from the detail panel, and *Group* in the
+  header shows the list under group headings, the ungrouped last. Groups are kept per user,
+  not in the service's configuration, and the search box matches them.
 - **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside
