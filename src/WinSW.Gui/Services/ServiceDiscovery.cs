@@ -42,6 +42,12 @@ namespace WinSW.Gui.Services
 
         /// <summary>Local time; null when the process was not in the snapshot.</summary>
         public DateTime? StartedAt { get; init; }
+
+        /// <summary>While running: everything under the wrapper, to know later what outlived it.</summary>
+        public IReadOnlyList<ProcessMark>? Descendants { get; init; }
+
+        /// <summary>While stopped: the service's program, still running outside it; see <see cref="StrayProcesses"/>.</summary>
+        public ProcessMark? Stray { get; init; }
     }
 
     /// <summary>
@@ -113,6 +119,7 @@ namespace WinSW.Gui.Services
                         Problem = problem,
                         WrapperVersion = VersionOf(versions, wrapperPath),
                         ConfigWrittenAt = WrittenAt(configPath),
+                        ExecutablePath = ExecutableOf(configPath),
                         DependsOn = Names(() => controller.ServicesDependedOn),
                         DependedBy = Names(() => controller.DependentServices),
                     };
@@ -144,13 +151,26 @@ namespace WinSW.Gui.Services
             {
                 entry.Status = null;
                 entry.ProcessId = 0;
+                entry.NoteStray(null, DateTime.UtcNow);
                 entry.ClearSample();
                 return;
+            }
+
+            // A new wrapper is a new tree: what was noted under the last one describes a run
+            // that has ended, and is dropped before anything is noted under this one.
+            if (sample.ProcessId != 0 && sample.ProcessId != entry.ProcessId)
+            {
+                entry.Descendants = Array.Empty<ProcessMark>();
             }
 
             entry.Status = sample.Status;
             entry.ProcessId = sample.ProcessId;
             entry.LastExitCode = sample.LastExitCode;
+            entry.NoteStray(sample.Stray, DateTime.UtcNow);
+            if (sample.Descendants is { } descendants)
+            {
+                entry.Descendants = descendants;
+            }
 
             if (!sample.HasProcess)
             {
@@ -169,6 +189,42 @@ namespace WinSW.Gui.Services
         public static void RefreshWrapperVersion(ServiceEntry entry) => entry.WrapperVersion = ReadVersion(entry.WrapperPath);
 
         /// <summary>The wrapper's file version, read once per distinct path per sweep.</summary>
+        /// <summary>
+        /// The program the configuration runs, as a full path, for finding it running outside the
+        /// service once the service has stopped. Null when it is named bare — <c>java</c>, found
+        /// on the PATH — because a bare name matches every copy on the machine, and when the
+        /// configuration cannot be read.
+        /// </summary>
+        private static string? ExecutableOf(string? configPath)
+        {
+            if (configPath is null)
+            {
+                return null;
+            }
+
+            try
+            {
+                var model = ServiceConfigModel.Load(configPath);
+                if (string.IsNullOrWhiteSpace(model.Executable))
+                {
+                    return null;
+                }
+
+                string expanded = ConfigPaths.Expand(model.Executable!, configPath);
+                if (!Path.IsPathRooted(expanded))
+                {
+                    return null;
+                }
+
+                string full = Path.GetFullPath(expanded);
+                return Path.HasExtension(full) ? full : full + ".exe";
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException)
+            {
+                return null;
+            }
+        }
+
         /// <summary>
         /// When the configuration was last written, for telling whether the running process
         /// predates it. Read here, once a sweep, rather than on every status poll: the answer

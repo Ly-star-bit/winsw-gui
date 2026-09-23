@@ -56,6 +56,16 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Stopped, but its program is still running outside it. -->
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="{DynamicResource HealthBrokenBrush}"
+                        Style="{StaticResource Icon}"
+                        Text="&#xE7BA;"
+                        ToolTip="{Binding StrayProcessText}"
+                        Visibility="{Binding HasStrayProcess, Converter={StaticResource BoolToVisibility}}" />
                     <!-- Running on an older configuration than the file holds. -->
                     <TextBlock
                         Margin="0,0,8,0"
@@ -358,6 +368,36 @@
                                     <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
                                     <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
                                 </StackPanel>
+                            </Border>
+
+                            <!-- Stopped, with its program left running -->
+                            <Border
+                                Margin="0,0,0,14"
+                                Padding="12,8"
+                                Background="{DynamicResource DangerSoftBrush}"
+                                BorderBrush="{DynamicResource HealthBrokenBrush}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding HasStrayProcess, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayProcessText}" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,2,0,0" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Dash.StrayHint}" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <Button
+                                        Grid.Column="2"
+                                        Margin="10,0,0,0"
+                                        Padding="10,4"
+                                        VerticalAlignment="Center"
+                                        Command="{Binding DataContext.TerminateStrayCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        Content="{DynamicResource M.Dash.StrayAction}" />
+                                </Grid>
                             </Border>
 
                             <!-- The file has moved on since the process started -->

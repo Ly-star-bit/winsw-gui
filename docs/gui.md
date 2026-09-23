@@ -81,6 +81,14 @@ Across the pages:
   CPU sparkline and a memory line covering the last hour at one point a minute — drawn from
   zero, so a leak shows as a climb and a wobble stays a wobble — plus what the service
   depends on and what depends on it.
+- **A program left running**: a service reads as stopped once its wrapper has gone, whatever
+  became of the program the wrapper started. When that program is still up — typically after
+  the wrapper crashed or was ended from Task Manager — the row carries a marker and the detail
+  panel names it with its PID, with a button that ends it (and what it started) after asking;
+  Start then runs it under the service again. It is found either as a process the console saw
+  under the service's wrapper while it ran, or by the executable's full path when that can be
+  read. A program named bare in the configuration (`java`, `python`) is only found the first
+  way, and nothing under a WinSW wrapper or started by the console's own try run is claimed.
 - **A change that is not running yet**: the wrapper reads its configuration once, at start,
   and `winsw refresh` pushes only what the service control manager holds. When the file has
   been written since the running process started, the row carries a marker and the detail

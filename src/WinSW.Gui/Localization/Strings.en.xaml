@@ -374,6 +374,14 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">Could not read the configuration: {0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">The configuration was changed after the service started. It takes effect when the service restarts.</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">Restart now</sys:String>
+    <sys:String x:Key="M.Dash.StrayBanner">{0} (PID {1}) is still running, outside the service.</sys:String>
+    <sys:String x:Key="M.Dash.StrayHint">Most likely left behind when the wrapper stopped. While it runs, starting the service can fail on the files or the port it still holds.</sys:String>
+    <sys:String x:Key="M.Dash.StrayAction">End it</sys:String>
+    <sys:String x:Key="M.Dash.StrayTitle">End the process left running?</sys:String>
+    <sys:String x:Key="M.Dash.StrayBody">{0} (PID {1}) and every process it started will be ended without a graceful shutdown. Start '{2}' afterwards to run it under the service again.</sys:String>
+    <sys:String x:Key="M.Dash.StrayEnded">{0} (PID {1}) was ended.</sys:String>
+    <sys:String x:Key="M.Dash.StrayGone">That process has already exited.</sys:String>
+    <sys:String x:Key="M.Dash.StrayFailed">Could not end it: {0}</sys:String>
     <sys:String x:Key="M.Sched.Label">Scheduled restart</sys:String>
     <sys:String x:Key="M.Sched.Off">Off</sys:String>
     <sys:String x:Key="M.Sched.Daily">Every day</sys:String>

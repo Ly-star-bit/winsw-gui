@@ -136,6 +136,8 @@ namespace WinSW.Gui.ViewModels
             this.RestartCommand = new AsyncRelayCommand(() => this.RestartAsync(force: false), () => this.selectedService != null);
             this.RefreshConfigCommand = new AsyncRelayCommand(() => this.RunAsync("refresh", (w, c) => WinSwCli.RefreshAsync(w, c)), () => this.selectedService != null);
 
+            this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.HasStrayProcess == true);
+
             this.KillCommand = new RelayCommand(
                 () => this.Ask(
                     Localizer.Get("M.Dash.KillTitle"),
@@ -564,6 +566,53 @@ namespace WinSW.Gui.ViewModels
         {
             get => this.confirmActionLabel;
             set => this.Set(ref this.confirmActionLabel, value);
+        }
+
+        // A program left running ------------------------------------------------
+
+        /// <summary>Ends the selected service's program that is running outside it; see <see cref="StrayProcesses"/>.</summary>
+        public RelayCommand TerminateStrayCommand { get; }
+
+        private void AskTerminateStray()
+        {
+            if (this.selectedService is not { StrayProcess: { } stray } entry)
+            {
+                return;
+            }
+
+            this.Ask(
+                Localizer.Get("M.Dash.StrayTitle"),
+                Localizer.Format("M.Dash.StrayBody", stray.Name, stray.ProcessId, entry.ServiceName),
+                Localizer.Get("M.Dash.StrayAction"),
+                () => this.TerminateStrayAsync(entry, stray));
+        }
+
+        /// <summary>
+        /// Ends the process and what it started, then reads the states again. The service is not
+        /// started afterwards: whether to is the user's call, and Start is beside the banner.
+        /// </summary>
+        private async Task TerminateStrayAsync(ServiceEntry entry, ProcessMark stray)
+        {
+            this.IsBusy = true;
+            try
+            {
+                var result = await StrayProcesses.TerminateAsync(stray).ConfigureAwait(true);
+                ActionLog.Record("end stray process", $"{entry.ServiceName} ({stray.Name}, PID {stray.ProcessId})", result);
+
+                this.StatusMessage = result switch
+                {
+                    { Cancelled: true } => Localizer.Get("M.Common.ElevationDeclined"),
+                    { Succeeded: true } => Localizer.Format("M.Dash.StrayEnded", stray.Name, stray.ProcessId),
+                    _ => Localizer.Format("M.Dash.StrayFailed", result.Error ?? result.ExitCode.ToString(CultureInfo.InvariantCulture)),
+                };
+                this.Toast?.Invoke(this.StatusMessage, !result.Succeeded && !result.Cancelled);
+            }
+            finally
+            {
+                this.IsBusy = false;
+            }
+
+            await this.RefreshStatusesAsync().ConfigureAwait(true);
         }
 
         // Scheduled restart ----------------------------------------------------
@@ -1031,6 +1080,13 @@ namespace WinSW.Gui.ViewModels
             var selectedAtStart = this.selectedService;
             int selectedIndex = selectedAtStart is null ? -1 : Array.IndexOf(entries, selectedAtStart);
 
+            // What the stray-process check needs, read here where the rows belong: the worker
+            // gets plain values. Any wrapper on the list owns what runs under it, including a
+            // desktop task's, which shares the wrapper under the install root.
+            var executables = entries.Select(e => e.ExecutablePath).ToArray();
+            var remembered = entries.Select(e => e.Descendants).ToArray();
+            var wrapperNames = new HashSet<string>(entries.Select(e => Path.GetFileName(e.WrapperPath)), StringComparer.OrdinalIgnoreCase) { "WinSW.exe" };
+
             // Held across the writing as well as the reading. Dropped after the await, the
             // next tick could start a second reading while this one was still applying the
             // first — which is the pile-up the flag is here to prevent.
@@ -1045,6 +1101,18 @@ namespace WinSW.Gui.ViewModels
                     for (int i = 0; i < read.Length; i++)
                     {
                         read[i] = reading.Sample(entries[i].ServiceName);
+
+                        // Running: note what is under the wrapper. Stopped: see whether any of
+                        // it, or the program itself, is still up. Starting and stopping are
+                        // neither — the tree is in motion, and would only flash a warning.
+                        if (read[i].HasProcess)
+                        {
+                            read[i] = read[i] with { Descendants = reading.DescendantsOf(read[i].ProcessId) };
+                        }
+                        else if (read[i].Queried && read[i].Status == ServiceControllerStatus.Stopped)
+                        {
+                            read[i] = read[i] with { Stray = reading.FindStray(remembered[i], executables[i], wrapperNames) };
+                        }
                     }
 
                     // Built from the reading just taken rather than from the entry, so a
@@ -1376,6 +1444,7 @@ namespace WinSW.Gui.ViewModels
             this.OpenFolderCommand.RaiseCanExecuteChanged();
             this.OpenWorkingDirectoryCommand.RaiseCanExecuteChanged();
             this.ApplyRestartScheduleCommand.RaiseCanExecuteChanged();
+            this.TerminateStrayCommand.RaiseCanExecuteChanged();
         }
 
         private void ApplySort()

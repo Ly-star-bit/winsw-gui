@@ -374,6 +374,14 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">構成ファイルを読み取れません: {0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">サービスの起動後に構成が変更されています。サービスを再起動すると反映されます。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">今すぐ再起動</sys:String>
+    <sys:String x:Key="M.Dash.StrayBanner">{0}（PID {1}）がサービスの外で実行中です。</sys:String>
+    <sys:String x:Key="M.Dash.StrayHint">ラッパーの停止時に残されたものと思われます。これが動いている間は、使用中のファイルやポートのためにサービスの起動が失敗することがあります。</sys:String>
+    <sys:String x:Key="M.Dash.StrayAction">終了する</sys:String>
+    <sys:String x:Key="M.Dash.StrayTitle">残っているプロセスを終了しますか？</sys:String>
+    <sys:String x:Key="M.Dash.StrayBody">{0}（PID {1}）と、それが起動したすべてのプロセスを正常なシャットダウンなしで終了します。その後 '{2}' を起動すると、再びサービスの下で実行されます。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEnded">{0}（PID {1}）を終了しました。</sys:String>
+    <sys:String x:Key="M.Dash.StrayGone">そのプロセスはすでに終了しています。</sys:String>
+    <sys:String x:Key="M.Dash.StrayFailed">終了できませんでした: {0}</sys:String>
     <sys:String x:Key="M.Sched.Label">定期再起動</sys:String>
     <sys:String x:Key="M.Sched.Off">オフ</sys:String>
     <sys:String x:Key="M.Sched.Daily">毎日</sys:String>

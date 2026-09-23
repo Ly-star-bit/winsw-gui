@@ -250,6 +250,19 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Ends a process and its children with administrator rights. Filtered on the image name
+        /// as well as the ID, so that an ID the system has handed to another program since the
+        /// process was found matches nothing.
+        /// </summary>
+        public static Task<CommandResult> KillProcessElevatedAsync(int processId, string imageName) =>
+            RunElevatedAsync(
+                "taskkill.exe",
+                $"/F /T /PID {processId.ToString(System.Globalization.CultureInfo.InvariantCulture)} /FI {Quote("IMAGENAME eq " + imageName)}",
+                null,
+                QuickTimeout,
+                "taskkill");
+
+        /// <summary>
         /// Deletes files with administrator rights, in as few prompts as cmd allows: a
         /// service's logs are written by its own account, often where the user may only read.
         /// </summary>

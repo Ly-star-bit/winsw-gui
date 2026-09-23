@@ -374,6 +374,14 @@
     <sys:String x:Key="M.Dash.ConfigUnreadable">無法讀取設定檔：{0}</sys:String>
     <sys:String x:Key="M.Dash.ConfigPending">設定在服務啟動之後被修改過，重新啟動服務後才會生效。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">立即重新啟動</sys:String>
+    <sys:String x:Key="M.Dash.StrayBanner">{0}（PID {1}）仍在執行，但不在服務之下。</sys:String>
+    <sys:String x:Key="M.Dash.StrayHint">多半是 wrapper 停止時遺留下來的。它還在執行時，啟動服務可能因為檔案或連接埠被它佔用而失敗。</sys:String>
+    <sys:String x:Key="M.Dash.StrayAction">結束它</sys:String>
+    <sys:String x:Key="M.Dash.StrayTitle">結束遺留的處理程序？</sys:String>
+    <sys:String x:Key="M.Dash.StrayBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序，不做正常關閉。之後再啟動「{2}」，讓它重新在服務下執行。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEnded">已結束 {0}（PID {1}）。</sys:String>
+    <sys:String x:Key="M.Dash.StrayGone">那個處理程序已經結束了。</sys:String>
+    <sys:String x:Key="M.Dash.StrayFailed">無法結束：{0}</sys:String>
     <sys:String x:Key="M.Sched.Label">定時重新啟動</sys:String>
     <sys:String x:Key="M.Sched.Off">關閉</sys:String>
     <sys:String x:Key="M.Sched.Daily">每天</sys:String>

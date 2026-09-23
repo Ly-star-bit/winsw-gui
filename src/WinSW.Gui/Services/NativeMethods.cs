@@ -321,6 +321,44 @@ namespace WinSW.Gui.Services
         [DllImport("user32.dll")]
         internal static extern int GetSystemMetrics(int index);
 
+        internal const int PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        internal static extern IntPtr OpenProcess(int access, [MarshalAs(UnmanagedType.Bool)] bool inheritHandle, int processId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool CloseHandle(IntPtr handle);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool QueryFullProcessImageNameW(IntPtr process, int flags, [Out] char[] name, ref int size);
+
+        /// <summary>
+        /// The full path of a process's executable, or null when it cannot be read — a protected
+        /// process, or one running as an account whose processes this user may not look into.
+        /// Limited query rights are all it asks for, which a standard user holds over most.
+        /// </summary>
+        internal static string? ImagePathOf(int processId)
+        {
+            IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+            if (process == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            try
+            {
+                var buffer = new char[1024];
+                int size = buffer.Length;
+                return QueryFullProcessImageNameW(process, 0, buffer, ref size) ? new string(buffer, 0, size) : null;
+            }
+            finally
+            {
+                CloseHandle(process);
+            }
+        }
+
         /// <summary>Any process may take the foreground next; see <see cref="AllowSetForegroundWindow"/>.</summary>
         internal const int ASFW_ANY = -1;
 

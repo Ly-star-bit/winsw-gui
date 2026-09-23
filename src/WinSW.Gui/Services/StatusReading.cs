@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ServiceProcess;
 
 namespace WinSW.Gui.Services
@@ -85,6 +86,16 @@ namespace WinSW.Gui.Services
                 StartedAt = process.StartedAt,
             };
         }
+
+        /// <summary>Everything under a running service's wrapper, out of this reading's snapshot.</summary>
+        public IReadOnlyList<ProcessMark> DescendantsOf(int processId) =>
+            this.Processes is { } processes ? StrayProcesses.DescendantsOf(processes, processId) : Array.Empty<ProcessMark>();
+
+        /// <summary>What a stopped service has left running, if anything; see <see cref="StrayProcesses.Find"/>.</summary>
+        public ProcessMark? FindStray(IReadOnlyList<ProcessMark> remembered, string? executablePath, ISet<string> wrapperNames) =>
+            this.Processes is { } processes
+                ? StrayProcesses.Find(processes, remembered, executablePath, wrapperNames, Environment.ProcessId, NativeMethods.ImagePathOf)
+                : null;
 
         /// <summary>The tree under a process, out of the same snapshot the samples came from.</summary>
         public ProcessNode? Tree(int processId) =>

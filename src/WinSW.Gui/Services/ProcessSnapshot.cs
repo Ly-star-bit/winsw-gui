@@ -153,6 +153,9 @@ namespace WinSW.Gui.Services
 
         public bool TryGet(int processId, out ProcessRecord record) => this.byId.TryGetValue(processId, out record);
 
+        /// <summary>Every process in the snapshot, in no particular order.</summary>
+        public IEnumerable<ProcessRecord> All => this.byId.Values;
+
         /// <summary>The processes whose parent link names <paramref name="processId"/>, lowest ID first.</summary>
         public IReadOnlyList<int> ChildrenOf(int processId) =>
             this.childrenByParent.TryGetValue(processId, out var children) ? children : Array.Empty<int>();

@@ -31,6 +31,9 @@ namespace WinSW.Gui.Model
 
         private static readonly TimeSpan MemoryHistoryStep = TimeSpan.FromMinutes(1);
 
+        /// <summary>How long a process has to stay behind before it is called stray; see <see cref="NoteStray"/>.</summary>
+        private static readonly TimeSpan StrayConfirmation = TimeSpan.FromSeconds(3);
+
         private string wrapperVersion = string.Empty;
         private string description = string.Empty;
         private string startMode = string.Empty;
@@ -54,6 +57,11 @@ namespace WinSW.Gui.Model
         private int memoryProcessId;
         private int crashCount;
         private string group = string.Empty;
+        private string? executablePath;
+        private IReadOnlyList<Services.ProcessMark> descendants = Array.Empty<Services.ProcessMark>();
+        private Services.ProcessMark? strayProcess;
+        private Services.ProcessMark? strayCandidate;
+        private DateTime strayCandidateSince;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -205,6 +213,7 @@ namespace WinSW.Gui.Model
             this.Account = other.Account;
             this.WrapperVersion = other.WrapperVersion;
             this.ConfigWrittenAt = other.ConfigWrittenAt;
+            this.ExecutablePath = other.ExecutablePath;
             this.DependsOn = other.DependsOn;
             this.DependedBy = other.DependedBy;
             this.Problem = other.Problem;
@@ -489,6 +498,79 @@ namespace WinSW.Gui.Model
         /// </summary>
         public string GroupSortKey => this.group.Length == 0 ? "1" : "0" + this.group;
 
+        /// <summary>
+        /// The program the configuration runs, full path; null when it is named bare or cannot be
+        /// read. Brought forward by each rescan; the poll reads it off the UI thread.
+        /// </summary>
+        public string? ExecutablePath
+        {
+            get => this.executablePath;
+            set => this.Set(ref this.executablePath, value);
+        }
+
+        /// <summary>What was under the wrapper at the last reading while the service ran.</summary>
+        public IReadOnlyList<Services.ProcessMark> Descendants
+        {
+            get => this.descendants;
+            set => this.descendants = value ?? Array.Empty<Services.ProcessMark>();
+        }
+
+        /// <summary>
+        /// The service's program, still running though the service is stopped; see
+        /// <see cref="Services.StrayProcesses"/>.
+        /// </summary>
+        public Services.ProcessMark? StrayProcess
+        {
+            get => this.strayProcess;
+            private set
+            {
+                if (this.Set(ref this.strayProcess, value))
+                {
+                    this.Raise(nameof(this.HasStrayProcess));
+                    this.Raise(nameof(this.StrayProcessText));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes one reading of what the stopped service has left running. A process is called
+        /// stray only once it has been there for a few seconds: a clean stop can leave the
+        /// program's own children a moment to exit, and a warning that flashed on every stop
+        /// would be the one nobody reads when it matters.
+        /// </summary>
+        public void NoteStray(Services.ProcessMark? seen, DateTime now)
+        {
+            if (seen is not { } process)
+            {
+                this.strayCandidate = null;
+                this.StrayProcess = null;
+                return;
+            }
+
+            if (this.strayCandidate != process)
+            {
+                this.strayCandidate = process;
+                this.strayCandidateSince = now;
+                if (this.strayProcess != process)
+                {
+                    this.StrayProcess = null;
+                }
+
+                return;
+            }
+
+            if (now - this.strayCandidateSince >= StrayConfirmation)
+            {
+                this.StrayProcess = process;
+            }
+        }
+
+        public bool HasStrayProcess => this.strayProcess != null;
+
+        public string StrayProcessText => this.strayProcess is { } stray
+            ? Localizer.Format("M.Dash.StrayBanner", stray.Name, stray.ProcessId)
+            : string.Empty;
+
         /// <summary>Unexpected stops seen in the current five-minute window; shown in the notification.</summary>
         public int CrashCount
         {
@@ -531,6 +613,7 @@ namespace WinSW.Gui.Model
         {
             this.Raise(nameof(this.StatusText));
             this.Raise(nameof(this.UptimeText));
+            this.Raise(nameof(this.StrayProcessText));
         }
 
         public bool CanStart => this.status == ServiceControllerStatus.Stopped;
