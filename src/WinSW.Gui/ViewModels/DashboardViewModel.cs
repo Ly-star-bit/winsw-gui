@@ -575,7 +575,7 @@ namespace WinSW.Gui.ViewModels
 
         private void AskTerminateStray()
         {
-            if (this.selectedService is not { StrayProcess: { } stray } entry)
+            if (this.selectedService is not { StrayProcess: { Process: var stray } } entry)
             {
                 return;
             }

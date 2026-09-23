@@ -93,7 +93,7 @@ namespace WinSW.Gui.Services
             this.Processes is { } processes ? StrayProcesses.DescendantsOf(processes, processId) : ImmutableArray<ProcessMark>.Empty;
 
         /// <summary>What a stopped service has left running, if anything; see <see cref="StrayProcesses.Find"/>.</summary>
-        public ProcessMark? FindStray(IReadOnlyList<ProcessMark> remembered, string? executablePath, ISet<string> wrapperNames) =>
+        public StrayFinding? FindStray(IReadOnlyList<ProcessMark> remembered, string? executablePath, ISet<string> wrapperNames) =>
             this.Processes is { } processes
                 ? StrayProcesses.Find(processes, remembered, executablePath, wrapperNames, Environment.ProcessId, NativeMethods.ImagePathOf)
                 : null;

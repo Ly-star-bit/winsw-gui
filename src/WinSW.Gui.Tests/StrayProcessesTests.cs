@@ -38,7 +38,7 @@ namespace WinSW.Gui.Tests
 
             var stray = StrayProcesses.Find(snapshot, new[] { Mark(200, 1, "server.exe") }, null, Wrappers, Console, _ => null);
 
-            Assert.Equal(200, stray?.ProcessId);
+            Assert.Equal(200, stray?.Process.ProcessId);
         }
 
         /// <summary>The same ID on a process that started later is somebody else's.</summary>
@@ -57,7 +57,7 @@ namespace WinSW.Gui.Tests
 
             var stray = StrayProcesses.Find(snapshot, Nothing, Program, Wrappers, Console, pid => pid == 500 ? Program : null);
 
-            Assert.Equal(500, stray?.ProcessId);
+            Assert.Equal(500, stray?.Process.ProcessId);
         }
 
         /// <summary>Another service, or a desktop task, running the same program is not stray.</summary>
@@ -120,7 +120,7 @@ namespace WinSW.Gui.Tests
         public void AProcessIsCalledStrayOnlyOnceItHasStayed()
         {
             var entry = new Model.ServiceEntry("demo", "Demo", "C:/bin/WinSW.exe", "C:/svc/demo.xml");
-            var stray = Mark(200, 1, "server.exe");
+            var stray = new StrayFinding(Mark(200, 1, "server.exe"), null);
 
             entry.NoteStray(stray, T0);
             Assert.False(entry.HasStrayProcess);
@@ -133,6 +133,45 @@ namespace WinSW.Gui.Tests
 
             entry.NoteStray(null, T0.AddSeconds(4));
             Assert.False(entry.HasStrayProcess);
+        }
+
+        /// <summary>
+        /// A parent exiting while the banner is up is news for the banner, not a new process: it
+        /// stays up and says so, rather than vanishing for another three seconds.
+        /// </summary>
+        [Fact]
+        public void AParentExitingChangesTheBannerWithoutHidingIt()
+        {
+            var entry = new Model.ServiceEntry("demo", "Demo", "C:/bin/WinSW.exe", "C:/svc/demo.xml");
+            var withParent = new StrayFinding(Mark(200, 1, "server.exe"), Mark(150, 0, "cmd.exe"));
+            var orphaned = withParent with { Parent = null };
+
+            entry.NoteStray(withParent, T0);
+            entry.NoteStray(withParent, T0.AddSeconds(3));
+            Assert.Equal(withParent, entry.StrayProcess);
+
+            entry.NoteStray(orphaned, T0.AddSeconds(4));
+            Assert.Equal(orphaned, entry.StrayProcess);
+        }
+
+        /// <summary>What keeps bringing a program back is its parent, when that is still running.</summary>
+        [Fact]
+        public void ALiveParentIsNamed()
+        {
+            var snapshot = Snapshot(P(150, 1, "cmd.exe", 0), P(500, 150, "server.exe", 5));
+
+            var stray = StrayProcesses.Find(snapshot, Nothing, Program, Wrappers, Console, _ => Program);
+
+            Assert.Equal(150, stray?.Parent?.ProcessId);
+            Assert.Equal("cmd.exe", stray?.Parent?.Name);
+        }
+
+        /// <summary>A parent gone, or an ID since reused by a later process, is no parent.</summary>
+        [Fact]
+        public void AnExitedOrReusedParentIsNone()
+        {
+            Assert.Null(StrayProcesses.FindingFor(Snapshot(P(500, 150, "server.exe", 5)), P(500, 150, "server.exe", 5)).Parent);
+            Assert.Null(StrayProcesses.FindingFor(Snapshot(P(150, 1, "notepad.exe", 30), P(500, 150, "server.exe", 5)), P(500, 150, "server.exe", 5)).Parent);
         }
 
         private static ProcessRecord P(int id, int parent, string name, int minutes) =>

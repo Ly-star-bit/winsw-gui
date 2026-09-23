@@ -375,6 +375,8 @@
     <sys:String x:Key="M.Dash.ConfigPending">設定在服務啟動之後被修改過，重新啟動服務後才會生效。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">立即重新啟動</sys:String>
     <sys:String x:Key="M.Dash.StrayBanner">{0}（PID {1}）仍在執行，但不在服務之下。</sys:String>
+    <sys:String x:Key="M.Dash.StrayParent">由 {0}（PID {1}）啟動，它仍在執行：如果這個處理程序結束後又反覆出現，就是它在重新拉起。</sys:String>
+    <sys:String x:Key="M.Dash.StrayOrphan">啟動它的處理程序已經結束：它是被遺留下來的，沒有別的處理程序在拉起它。</sys:String>
     <sys:String x:Key="M.Dash.StrayHint">多半是 wrapper 停止時遺留下來的。它還在執行時，啟動服務可能因為檔案或連接埠被它佔用而失敗。</sys:String>
     <sys:String x:Key="M.Dash.StrayAction">結束它</sys:String>
     <sys:String x:Key="M.Dash.StrayTitle">結束遺留的處理程序？</sys:String>

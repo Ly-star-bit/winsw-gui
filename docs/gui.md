@@ -84,8 +84,10 @@ Across the pages:
 - **A program left running**: a service reads as stopped once its wrapper has gone, whatever
   became of the program the wrapper started. When that program is still up — typically after
   the wrapper crashed or was ended from Task Manager — the row carries a marker and the detail
-  panel names it with its PID, with a button that ends it (and what it started) after asking;
-  Start then runs it under the service again. It is found either as a process the console saw
+  panel names it with its PID, and with the process that started it: when that is still
+  running, it is what brings the program back after it is ended; when it has exited, the
+  program was simply left behind. A button ends it (and what it started) after asking; Start
+  then runs it under the service again. It is found either as a process the console saw
   under the service's wrapper while it ran, or by the executable's full path when that can be
   read. A program named bare in the configuration (`java`, `python`) is only found the first
   way, and nothing under a WinSW wrapper or started by the console's own try run is claimed.

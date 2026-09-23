@@ -388,6 +388,7 @@
                                     <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xE7BA;" />
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayProcessText}" TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,2,0,0" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding StrayParentText}" TextWrapping="Wrap" />
                                         <TextBlock Margin="0,2,0,0" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Dash.StrayHint}" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <Button

@@ -375,6 +375,8 @@
     <sys:String x:Key="M.Dash.ConfigPending">サービスの起動後に構成が変更されています。サービスを再起動すると反映されます。</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">今すぐ再起動</sys:String>
     <sys:String x:Key="M.Dash.StrayBanner">{0}（PID {1}）がサービスの外で実行中です。</sys:String>
+    <sys:String x:Key="M.Dash.StrayParent">{0}（PID {1}）が起動しており、まだ実行中です。終了してもこのプロセスが繰り返し現れる場合は、これが再起動しています。</sys:String>
+    <sys:String x:Key="M.Dash.StrayOrphan">起動したプロセスはすでに終了しています。取り残されたもので、再起動しているものはありません。</sys:String>
     <sys:String x:Key="M.Dash.StrayHint">ラッパーの停止時に残されたものと思われます。これが動いている間は、使用中のファイルやポートのためにサービスの起動が失敗することがあります。</sys:String>
     <sys:String x:Key="M.Dash.StrayAction">終了する</sys:String>
     <sys:String x:Key="M.Dash.StrayTitle">残っているプロセスを終了しますか？</sys:String>

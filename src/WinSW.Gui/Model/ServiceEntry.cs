@@ -59,8 +59,8 @@ namespace WinSW.Gui.Model
         private string group = string.Empty;
         private string? executablePath;
         private IReadOnlyList<Services.ProcessMark> descendants = Array.Empty<Services.ProcessMark>();
-        private Services.ProcessMark? strayProcess;
-        private Services.ProcessMark? strayCandidate;
+        private Services.StrayFinding? strayProcess;
+        private Services.StrayFinding? strayCandidate;
         private DateTime strayCandidateSince;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
@@ -519,7 +519,7 @@ namespace WinSW.Gui.Model
         /// The service's program, still running though the service is stopped; see
         /// <see cref="Services.StrayProcesses"/>.
         /// </summary>
-        public Services.ProcessMark? StrayProcess
+        public Services.StrayFinding? StrayProcess
         {
             get => this.strayProcess;
             private set
@@ -528,6 +528,7 @@ namespace WinSW.Gui.Model
                 {
                     this.Raise(nameof(this.HasStrayProcess));
                     this.Raise(nameof(this.StrayProcessText));
+                    this.Raise(nameof(this.StrayParentText));
                 }
             }
         }
@@ -538,38 +539,48 @@ namespace WinSW.Gui.Model
         /// program's own children a moment to exit, and a warning that flashed on every stop
         /// would be the one nobody reads when it matters.
         /// </summary>
-        public void NoteStray(Services.ProcessMark? seen, DateTime now)
+        public void NoteStray(Services.StrayFinding? seen, DateTime now)
         {
-            if (seen is not { } process)
+            if (seen is not { } finding)
             {
                 this.strayCandidate = null;
                 this.StrayProcess = null;
                 return;
             }
 
-            if (this.strayCandidate != process)
+            // The same process is judged by its ID and start alone. Its parent may exit between
+            // two readings, and that is news for the banner, not a new process to wait out.
+            if (this.strayCandidate is not { } candidate || !candidate.Process.IsSameProcessAs(finding.Process))
             {
-                this.strayCandidate = process;
+                this.strayCandidate = finding;
                 this.strayCandidateSince = now;
-                if (this.strayProcess != process)
-                {
-                    this.StrayProcess = null;
-                }
-
+                this.StrayProcess = this.strayProcess is { } shown && shown.Process.IsSameProcessAs(finding.Process) ? finding : null;
                 return;
             }
 
-            if (now - this.strayCandidateSince >= StrayConfirmation)
+            this.strayCandidate = finding;
+            if (now - this.strayCandidateSince >= StrayConfirmation || this.strayProcess != null)
             {
-                this.StrayProcess = process;
+                this.StrayProcess = finding;
             }
         }
 
         public bool HasStrayProcess => this.strayProcess != null;
 
         public string StrayProcessText => this.strayProcess is { } stray
-            ? Localizer.Format("M.Dash.StrayBanner", stray.Name, stray.ProcessId)
+            ? Localizer.Format("M.Dash.StrayBanner", stray.Process.Name, stray.Process.ProcessId)
             : string.Empty;
+
+        /// <summary>
+        /// Who started the stray process: the answer to "why does it keep coming back" when the
+        /// parent is still running, and a true orphan when it is not.
+        /// </summary>
+        public string StrayParentText => this.strayProcess switch
+        {
+            { Parent: { } parent } => Localizer.Format("M.Dash.StrayParent", parent.Name, parent.ProcessId),
+            { } => Localizer.Get("M.Dash.StrayOrphan"),
+            _ => string.Empty,
+        };
 
         /// <summary>Unexpected stops seen in the current five-minute window; shown in the notification.</summary>
         public int CrashCount
@@ -614,6 +625,7 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.StatusText));
             this.Raise(nameof(this.UptimeText));
             this.Raise(nameof(this.StrayProcessText));
+            this.Raise(nameof(this.StrayParentText));
         }
 
         public bool CanStart => this.status == ServiceControllerStatus.Stopped;

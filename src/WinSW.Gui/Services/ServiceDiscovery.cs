@@ -52,7 +52,7 @@ namespace WinSW.Gui.Services
         public ImmutableArray<ProcessMark> Descendants { get; init; }
 
         /// <summary>While stopped: the service's program, still running outside it; see <see cref="StrayProcesses"/>.</summary>
-        public ProcessMark? Stray { get; init; }
+        public StrayFinding? Stray { get; init; }
     }
 
     /// <summary>

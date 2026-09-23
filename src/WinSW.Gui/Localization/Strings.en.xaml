@@ -375,6 +375,8 @@
     <sys:String x:Key="M.Dash.ConfigPending">The configuration was changed after the service started. It takes effect when the service restarts.</sys:String>
     <sys:String x:Key="M.Dash.RestartNow">Restart now</sys:String>
     <sys:String x:Key="M.Dash.StrayBanner">{0} (PID {1}) is still running, outside the service.</sys:String>
+    <sys:String x:Key="M.Dash.StrayParent">Started by {0} (PID {1}), which is still running: if this process keeps coming back after being ended, that is what starts it again.</sys:String>
+    <sys:String x:Key="M.Dash.StrayOrphan">The process that started it has exited: it was left behind, and nothing is restarting it.</sys:String>
     <sys:String x:Key="M.Dash.StrayHint">Most likely left behind when the wrapper stopped. While it runs, starting the service can fail on the files or the port it still holds.</sys:String>
     <sys:String x:Key="M.Dash.StrayAction">End it</sys:String>
     <sys:String x:Key="M.Dash.StrayTitle">End the process left running?</sys:String>

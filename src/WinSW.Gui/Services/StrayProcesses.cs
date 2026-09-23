@@ -10,7 +10,17 @@ using WinSW.Gui.Localization;
 namespace WinSW.Gui.Services
 {
     /// <summary>One process, told apart from a later one given the same ID by its start time.</summary>
-    public readonly record struct ProcessMark(int ProcessId, DateTime? StartedAt, string Name);
+    public readonly record struct ProcessMark(int ProcessId, DateTime? StartedAt, string Name)
+    {
+        /// <summary>The same process: the same ID and the same start. The name is not identity.</summary>
+        public bool IsSameProcessAs(ProcessMark other) => this.ProcessId == other.ProcessId && this.StartedAt == other.StartedAt;
+    }
+
+    /// <summary>
+    /// A process left running, and the process that started it when that is still alive: what
+    /// keeps bringing back a program that has been ended, if something does.
+    /// </summary>
+    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent);
 
     /// <summary>
     /// The program of a stopped service, still running outside it.
@@ -71,7 +81,7 @@ namespace WinSW.Gui.Services
         /// <param name="wrapperNames">Image names of the WinSW wrappers on this machine.</param>
         /// <param name="consoleProcessId">This console, whose try runs are its own business.</param>
         /// <param name="imagePathOf">Reads a process's full image path; null when it cannot.</param>
-        public static ProcessMark? Find(
+        public static StrayFinding? Find(
             ProcessSnapshot snapshot,
             IReadOnlyList<ProcessMark> remembered,
             string? executablePath,
@@ -83,7 +93,7 @@ namespace WinSW.Gui.Services
             {
                 if (snapshot.TryGet(mark.ProcessId, out var record) && SameStart(record.StartedAt, mark.StartedAt))
                 {
-                    return mark;
+                    return FindingFor(snapshot, record);
                 }
             }
 
@@ -105,11 +115,29 @@ namespace WinSW.Gui.Services
                 // candidates a poll, not every process on the machine.
                 if (string.Equals(imagePathOf(record.ProcessId), executablePath, StringComparison.OrdinalIgnoreCase))
                 {
-                    return new ProcessMark(record.ProcessId, record.StartedAt, record.Name);
+                    return FindingFor(snapshot, record);
                 }
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The process, with its parent when that is still running. A parent that started after
+        /// its child holds a reused ID and is not the parent; one that has exited is none.
+        /// </summary>
+        internal static StrayFinding FindingFor(ProcessSnapshot snapshot, ProcessRecord record)
+        {
+            var process = new ProcessMark(record.ProcessId, record.StartedAt, record.Name);
+
+            if (record.ParentProcessId != record.ProcessId
+                && snapshot.TryGet(record.ParentProcessId, out var parent)
+                && !(parent.StartedAt is DateTime parentStart && record.StartedAt is DateTime childStart && parentStart > childStart))
+            {
+                return new StrayFinding(process, new ProcessMark(parent.ProcessId, parent.StartedAt, parent.Name));
+            }
+
+            return new StrayFinding(process, null);
         }
 
         /// <summary>
