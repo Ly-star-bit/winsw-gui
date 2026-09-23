@@ -47,8 +47,10 @@ Across the pages:
 - **Full configuration coverage**: lifecycle hooks (`prestart` … `poststop`), network drive
   mappings, and the `<extensions>` element as raw XML. The preview pane can also be switched
   to a raw XML editor and applied back to the form.
-- **Runtime metrics** in the detail panel: uptime, CPU, memory, handles, last exit code and a
-  CPU sparkline, plus what the service depends on and what depends on it.
+- **Runtime metrics** in the detail panel: uptime, CPU, memory, handles, last exit code, a
+  CPU sparkline and a memory line covering the last hour at one point a minute — drawn from
+  zero, so a leak shows as a climb and a wobble stays a wobble — plus what the service
+  depends on and what depends on it.
 - **Batch operations**: Ctrl/Shift-select several services and start, stop or restart them
   under one elevation prompt.
 - **Clone**: the wizard can start from an existing service; it can also brand the wrapper

@@ -112,7 +112,10 @@ namespace WinSW.Gui
 
     /// <summary>
     /// Turns a list of samples (0–100) into the points of a sparkline. The parameter is
-    /// "width,height"; defaults suit the detail panel's metric card.
+    /// "width,height"; defaults suit the detail panel's metric card. "width,height,auto" is
+    /// for a series with no fixed ceiling, memory in megabytes: it is drawn from zero to its
+    /// own highest point. Zero rather than its lowest, so that a wobble of a few megabytes
+    /// stays a wobble instead of filling the height and passing for a leak.
     /// </summary>
     public sealed class SparklineConverter : IValueConverter
     {
@@ -120,13 +123,15 @@ namespace WinSW.Gui
         {
             double width = 140;
             double height = 32;
+            bool scaleToSeries = false;
             if (parameter is string spec)
             {
                 var parts = spec.Split(',');
-                if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double w) && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double h))
+                if (parts.Length is 2 or 3 && double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double w) && double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double h))
                 {
                     width = w;
                     height = h;
+                    scaleToSeries = parts.Length == 3 && parts[2].Trim() == "auto";
                 }
             }
 
@@ -136,10 +141,25 @@ namespace WinSW.Gui
                 return points;
             }
 
+            double ceiling = 100;
+            if (scaleToSeries)
+            {
+                ceiling = 0;
+                foreach (double sample in samples)
+                {
+                    ceiling = Math.Max(ceiling, sample);
+                }
+
+                if (ceiling <= 0)
+                {
+                    ceiling = 1;
+                }
+            }
+
             double step = width / (samples.Count - 1);
             for (int i = 0; i < samples.Count; i++)
             {
-                double y = height - (Math.Clamp(samples[i], 0, 100) / 100.0 * (height - 2)) - 1;
+                double y = height - (Math.Clamp(samples[i], 0, ceiling) / ceiling * (height - 2)) - 1;
                 points.Add(new Point(i * step, y));
             }
 

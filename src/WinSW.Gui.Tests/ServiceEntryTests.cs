@@ -136,5 +136,42 @@ namespace WinSW.Gui.Tests
             Assert.True(a.IsSameInstallationAs(b));
             Assert.False(a.IsSameInstallationAs(new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml")));
         }
+
+        /// <summary>
+        /// The memory trace takes one point a minute: the first sample of a process is one,
+        /// and the samples that follow within the minute are not.
+        /// </summary>
+        [Fact]
+        public void MemoryIsTracedOncePerMinute()
+        {
+            var entry = new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml") { ProcessId = 100 };
+
+            entry.Sample(System.TimeSpan.Zero, 64 * 1024 * 1024, 10, null);
+            entry.Sample(System.TimeSpan.Zero, 96 * 1024 * 1024, 10, null);
+
+            Assert.Equal(new[] { 64.0 }, entry.MemoryHistory);
+        }
+
+        /// <summary>
+        /// A poll that misses the process in its snapshot keeps the hour already traced; a
+        /// different process, or none, starts the trace over.
+        /// </summary>
+        [Fact]
+        public void TheMemoryTraceBelongsToOneProcess()
+        {
+            var entry = new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml") { ProcessId = 100 };
+            entry.Sample(System.TimeSpan.Zero, 64 * 1024 * 1024, 10, null);
+
+            entry.ClearSample();
+            Assert.Single(entry.MemoryHistory);
+
+            entry.ProcessId = 200;
+            entry.Sample(System.TimeSpan.Zero, 32 * 1024 * 1024, 10, null);
+            Assert.Equal(new[] { 32.0 }, entry.MemoryHistory);
+
+            entry.ProcessId = 0;
+            entry.ClearSample();
+            Assert.Empty(entry.MemoryHistory);
+        }
     }
 }

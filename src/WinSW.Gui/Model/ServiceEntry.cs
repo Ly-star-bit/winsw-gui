@@ -23,6 +23,14 @@ namespace WinSW.Gui.Model
     {
         private const int HistoryLength = 40;
 
+        /// <summary>
+        /// Memory is traced slowly and for longer than CPU. A leak is a climb over an hour, not
+        /// over the eighty seconds the CPU trace covers at the poll rate, where it is noise.
+        /// </summary>
+        private const int MemoryHistoryLength = 60;
+
+        private static readonly TimeSpan MemoryHistoryStep = TimeSpan.FromMinutes(1);
+
         private string wrapperVersion = string.Empty;
         private string description = string.Empty;
         private string startMode = string.Empty;
@@ -40,6 +48,9 @@ namespace WinSW.Gui.Model
         private TimeSpan lastCpuTime;
         private DateTime lastSampleAt;
         private readonly List<double> cpuHistory = new();
+        private readonly List<double> memoryHistory = new();
+        private DateTime lastMemoryPointAt;
+        private int memoryProcessId;
         private int crashCount;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
@@ -286,6 +297,9 @@ namespace WinSW.Gui.Model
         /// <summary>Recent CPU samples, oldest first, for the sparkline.</summary>
         public IReadOnlyList<double> CpuHistory => this.cpuHistory;
 
+        /// <summary>Working set in megabytes, one point a minute for the last hour, oldest first.</summary>
+        public IReadOnlyList<double> MemoryHistory => this.memoryHistory;
+
         /// <summary>
         /// Feeds one process sample. CPU is the processor time consumed since the previous
         /// sample, spread over the wall-clock interval and the machine's cores.
@@ -309,6 +323,23 @@ namespace WinSW.Gui.Model
                 this.Raise(nameof(this.CpuHistory));
             }
 
+            if (this.processId != this.memoryProcessId)
+            {
+                this.ResetMemoryHistory(this.processId);
+            }
+
+            if (now - this.lastMemoryPointAt >= MemoryHistoryStep)
+            {
+                this.lastMemoryPointAt = now;
+                this.memoryHistory.Add(workingSet / (1024.0 * 1024.0));
+                if (this.memoryHistory.Count > MemoryHistoryLength)
+                {
+                    this.memoryHistory.RemoveAt(0);
+                }
+
+                this.Raise(nameof(this.MemoryHistory));
+            }
+
             this.lastSampleAt = now;
             this.lastCpuTime = totalProcessorTime;
             this.WorkingSetBytes = workingSet;
@@ -329,6 +360,30 @@ namespace WinSW.Gui.Model
             {
                 this.cpuHistory.Clear();
                 this.Raise(nameof(this.CpuHistory));
+            }
+
+            // Only a service that is not running loses its memory trace here. A running one
+            // arrives in this method too, whenever a poll misses its process in the snapshot,
+            // and an hour of trace is not worth dropping for one missed poll.
+            if (this.processId == 0)
+            {
+                this.ResetMemoryHistory(0);
+            }
+        }
+
+        /// <summary>
+        /// Starts the memory trace over for <paramref name="processId"/>. A new process is a
+        /// new trace: it starts from its own first minute, not from the end of a line that
+        /// described the process before it.
+        /// </summary>
+        private void ResetMemoryHistory(int processId)
+        {
+            this.memoryProcessId = processId;
+            this.lastMemoryPointAt = default;
+            if (this.memoryHistory.Count > 0)
+            {
+                this.memoryHistory.Clear();
+                this.Raise(nameof(this.MemoryHistory));
             }
         }
 

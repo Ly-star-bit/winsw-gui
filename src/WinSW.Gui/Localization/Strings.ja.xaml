@@ -316,6 +316,7 @@
     <sys:String x:Key="M.Metric.UptimeDays">{0}日 {1}時間 {2}分</sys:String>
     <sys:String x:Key="M.Metric.Uptime">稼働時間</sys:String>
     <sys:String x:Key="M.Metric.Memory">メモリ</sys:String>
+    <sys:String x:Key="M.Metric.MemoryTrend">直近 1 時間のメモリ（1 分ごとに 1 点、ゼロを基準に描画）</sys:String>
     <sys:String x:Key="M.Metric.Handles">ハンドル</sys:String>
     <sys:String x:Key="M.Metric.ExitCode">前回の終了コード</sys:String>
     <sys:String x:Key="M.Dash.DependsOn">依存先</sys:String>

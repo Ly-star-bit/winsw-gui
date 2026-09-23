@@ -316,6 +316,7 @@
     <sys:String x:Key="M.Metric.UptimeDays">{0}d {1}h {2}m</sys:String>
     <sys:String x:Key="M.Metric.Uptime">UPTIME</sys:String>
     <sys:String x:Key="M.Metric.Memory">MEMORY</sys:String>
+    <sys:String x:Key="M.Metric.MemoryTrend">Memory over the last hour, one point a minute, drawn against zero</sys:String>
     <sys:String x:Key="M.Metric.Handles">HANDLES</sys:String>
     <sys:String x:Key="M.Metric.ExitCode">LAST EXIT CODE</sys:String>
     <sys:String x:Key="M.Dash.DependsOn">Depends on</sys:String>

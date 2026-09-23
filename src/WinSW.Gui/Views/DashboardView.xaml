@@ -429,17 +429,26 @@
                                     <TextBlock Style="{StaticResource MetricLabel}" Text="{DynamicResource M.Metric.ExitCode}" />
                                     <TextBlock Style="{StaticResource MetricValue}" Text="{Binding LastExitCodeText}" />
                                 </StackPanel>
-                                <Polyline
-                                    Grid.Column="5"
-                                    Width="140"
-                                    Height="32"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Bottom"
-                                    Points="{Binding CpuHistory, Converter={StaticResource Sparkline}}"
-                                    Stroke="{DynamicResource AccentBrush}"
-                                    StrokeLineJoin="Round"
-                                    StrokeThickness="1.5"
-                                    ToolTip="CPU" />
+                                <!-- CPU over the last minute and a half; memory over the last hour, for leaks. -->
+                                <StackPanel Grid.Column="5" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                                    <Polyline
+                                        Width="140"
+                                        Height="16"
+                                        Margin="0,0,0,2"
+                                        Points="{Binding CpuHistory, Converter={StaticResource Sparkline}, ConverterParameter='140,16'}"
+                                        Stroke="{DynamicResource AccentBrush}"
+                                        StrokeLineJoin="Round"
+                                        StrokeThickness="1.5"
+                                        ToolTip="CPU" />
+                                    <Polyline
+                                        Width="140"
+                                        Height="16"
+                                        Points="{Binding MemoryHistory, Converter={StaticResource Sparkline}, ConverterParameter='140,16,auto'}"
+                                        Stroke="{DynamicResource HealthRunningBrush}"
+                                        StrokeLineJoin="Round"
+                                        StrokeThickness="1.5"
+                                        ToolTip="{DynamicResource M.Metric.MemoryTrend}" />
+                                </StackPanel>
                             </Grid>
                         </Border>
 

@@ -316,6 +316,7 @@
     <sys:String x:Key="M.Metric.UptimeDays">{0} 天 {1} 小时 {2} 分</sys:String>
     <sys:String x:Key="M.Metric.Uptime">运行时长</sys:String>
     <sys:String x:Key="M.Metric.Memory">内存</sys:String>
+    <sys:String x:Key="M.Metric.MemoryTrend">最近一小时的内存，每分钟一个点，以零为基线</sys:String>
     <sys:String x:Key="M.Metric.Handles">句柄</sys:String>
     <sys:String x:Key="M.Metric.ExitCode">上次退出码</sys:String>
     <sys:String x:Key="M.Dash.DependsOn">依赖</sys:String>
