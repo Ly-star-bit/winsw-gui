@@ -126,17 +126,27 @@ namespace WinSW.Gui.Tests
             }
 
             var properties = new HashSet<string>(StringComparer.Ordinal);
+            var text = new HashSet<string>(StringComparer.Ordinal);
             foreach (string source in sources)
             {
                 foreach (Match match in PublicProperty.Matches(source))
                 {
-                    if (enums.Contains(match.Groups["type"].Value.Split('.')[^1]))
+                    string type = match.Groups["type"].Value.Split('.')[^1];
+                    if (enums.Contains(type))
                     {
                         properties.Add(match.Groups["name"].Value);
+                    }
+                    else if (type is "string" or "String")
+                    {
+                        text.Add(match.Groups["name"].Value);
                     }
                 }
             }
 
+            // A binding names a property, not the class it belongs to: a name one class declares
+            // as text and another as an enumeration (ServiceEntry.Problem, a string, and
+            // SelfUpdate's Problem) cannot be told apart from the view, so it is not judged.
+            properties.ExceptWith(text);
             return properties;
         }
 
