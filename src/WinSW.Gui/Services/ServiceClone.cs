@@ -37,10 +37,28 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// <c>--port 8000</c>, <c>--port=8000</c>, <c>--http-port 81</c>, <c>-Dserver.port=8080</c>:
-        /// an option whose name ends in "port", as its own word, followed by a number.
+        /// an option whose name ends in "port", as its own word, followed by a number. What comes
+        /// before "port" in the name is kept, for <see cref="ClientPortName"/>.
         /// </summary>
         private static readonly Regex PortOption = new(
-            @"(?<![\w-])-{1,2}(?:[\w.-]*[._-])?port(?=[=:\s])[=:\s]\s*[""']?(?<port>\d{1,5})(?!\d)",
+            @"(?<![\w-])-{1,2}(?<name>(?:[\w.-]*[._-])?)port(?=[=:\s])[=:\s]\s*[""']?(?<port>\d{1,5})(?!\d)",
+            RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// <c>DB_PORT</c>, <c>REDIS_PORT</c>, <c>--db-port</c>, <c>-Dspring.redis.port</c>: a port
+        /// named after something the program connects to, which it does not listen on. A word of
+        /// the name that starts with one of these is enough; a Java system property's <c>D</c>
+        /// comes off the first word.
+        /// </summary>
+        /// <remarks>
+        /// A list of what to leave out rather than of what to keep: a port the program listens on
+        /// is called anything — <c>PORT</c>, <c>HTTP_PORT</c>, <c>--admin-port</c>,
+        /// <c>METRICS_PORT</c> — while the ones it connects to are named after a few kinds of
+        /// server. Counted as its own, <c>DB_PORT=5432</c> on a machine that runs PostgreSQL had
+        /// the preflight name postgres.exe as in the way, and offer to end it.
+        /// </remarks>
+        private static readonly Regex ClientPortName = new(
+            @"(?:^(?-i:D)?|[._-])(?:db|database|redis|mysql|postgres|pg|mongo|smtp|mail|amqp|rabbit|broker|cache|proxy|remote|upstream|backend)",
             RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
         /// <summary><c>-p 3000</c>, the short form many servers take.</summary>
@@ -290,7 +308,9 @@ namespace WinSW.Gui.Services
         /// <remarks>
         /// A reading of what is written, not of what the program does: a port given only by
         /// position, or in a file the program reads, is not found. It is enough to say that a
-        /// copy with the source's arguments will want the source's port.
+        /// copy with the source's arguments will want the source's port. A port named for what
+        /// the program connects to, such as <c>DB_PORT</c>, is not one it listens on and is left
+        /// out; see <see cref="ClientPortName"/>.
         /// </remarks>
         public static IReadOnlyList<int> FindPorts(string? arguments, IEnumerable<EnvironmentVariable> environment)
         {
@@ -299,7 +319,8 @@ namespace WinSW.Gui.Services
             Read(arguments);
             foreach (var variable in environment)
             {
-                if (PortVariable.IsMatch(variable.Name.Trim()))
+                string name = variable.Name.Trim();
+                if (PortVariable.IsMatch(name) && !ClientPortName.IsMatch(name))
                 {
                     Add(variable.Value.Trim());
                 }
@@ -320,7 +341,10 @@ namespace WinSW.Gui.Services
 
                 foreach (Match match in PortOption.Matches(text))
                 {
-                    Add(match.Groups["port"].Value);
+                    if (!ClientPortName.IsMatch(match.Groups["name"].Value))
+                    {
+                        Add(match.Groups["port"].Value);
+                    }
                 }
 
                 foreach (Match match in ShortPortOption.Matches(text))

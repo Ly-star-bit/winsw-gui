@@ -40,6 +40,8 @@ namespace WinSW.Gui.Tests
         [InlineData("-S 0.0.0.0:8888 -t public", new[] { 8888 })]
         [InlineData("serve http://0.0.0.0:8000/", new[] { 8000 })]
         [InlineData("--port 8000 --admin-port 8001 --port 8000", new[] { 8000, 8001 })]
+        [InlineData("--port 8000 --db-port 5432 --metrics-port 9100", new[] { 8000, 9100 })]
+        [InlineData("-Dserver.port=8080 -Dspring.redis.port=6379 -jar app.jar", new[] { 8080 })]
         public void FindsThePortsACommandLineListensOn(string arguments, int[] expected)
         {
             Assert.Equal(expected, ServiceClone.FindPorts(arguments, Array.Empty<EnvironmentVariable>()));
@@ -47,8 +49,8 @@ namespace WinSW.Gui.Tests
 
         /// <summary>
         /// Numbers that are not ports: a worker count, an option that only contains the
-        /// letters, a path, a time of day, and addresses the program connects to rather
-        /// than listens on.
+        /// letters, a path, a time of day, and addresses and ports the program connects to
+        /// rather than listens on.
         /// </summary>
         [Theory]
         [InlineData("main:app --workers 4")]
@@ -57,6 +59,9 @@ namespace WinSW.Gui.Tests
         [InlineData("--at 10:30")]
         [InlineData("--redis localhost:6379 --db postgres://user:secret@db:5432/app")]
         [InlineData("--port 0 --port 70000")]
+        [InlineData("--db-port 5432 --redis-port=6379 --smtp-port 25")]
+        [InlineData("-Ddb.port=5432 -Dspring.datasource.mysql.port=3306 -Dmail.smtp.port=587")]
+        [InlineData("--upstream-port 80 --proxy_port 3128 --backend.port 9000 --pg-port 5432")]
         [InlineData("")]
         public void FindsNoPortWhereThereIsNone(string arguments)
         {
@@ -74,9 +79,16 @@ namespace WinSW.Gui.Tests
                 new EnvironmentVariable { Name = "admin_port", Value = "9001" },
                 new EnvironmentVariable { Name = "REDIS_URL", Value = "redis://localhost:6379/0" },
                 new EnvironmentVariable { Name = "SUPPORT", Value = "1234" },
+
+                // Ports it connects to, named after the server at the other end.
+                new EnvironmentVariable { Name = "DB_PORT", Value = "5432" },
+                new EnvironmentVariable { Name = "REDIS_PORT", Value = "6379" },
+                new EnvironmentVariable { Name = "SPRING_RABBITMQ_PORT", Value = "5672" },
+                new EnvironmentVariable { Name = "mail.port", Value = "25" },
+                new EnvironmentVariable { Name = "METRICS_PORT", Value = "9100" },
             };
 
-            Assert.Equal(new[] { 8000, 5000, 7000, 9001 }, ServiceClone.FindPorts(null, environment));
+            Assert.Equal(new[] { 8000, 5000, 7000, 9001, 9100 }, ServiceClone.FindPorts(null, environment));
         }
 
         [Theory]
