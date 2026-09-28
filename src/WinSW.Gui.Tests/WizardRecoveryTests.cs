@@ -114,7 +114,7 @@ namespace WinSW.Gui.Tests
 
             var written = ServiceConfigModel.FromXml(wizard.BuildModel().ToXmlString(), null);
 
-            Assert.Equal(new[] { ("restart", "30 sec"), ("restart", "1 min"), ("restart", "5 min") }, written.FailureActions.Select(a => (a.Action, a.Delay)));
+            Assert.Equal(new (string, string?)[] { ("restart", "30 sec"), ("restart", "1 min"), ("restart", "5 min") }, written.FailureActions.Select(a => (a.Action, a.Delay)));
             Assert.Equal("1 hour", written.ResetFailureAfter);
         }
 

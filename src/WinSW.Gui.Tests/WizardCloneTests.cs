@@ -284,6 +284,20 @@ namespace WinSW.Gui.Tests
             Assert.Equal(WizardViewModel.RestartDelays("10 sec"), Written(wizard).FailureActions.Select(a => a.Delay));
         }
 
+        /// <summary>
+        /// A none ahead of a restart waits for nothing: the copy is shown by its restart's delay,
+        /// and written with both rows while that is left alone.
+        /// </summary>
+        [Fact]
+        public void TheSourcesRecoveryIsShownByItsFirstRestart()
+        {
+            var wizard = this.Clone(@"<executable>server.exe</executable><onfailure action=""none"" /><onfailure action=""restart"" delay=""30 sec"" />");
+
+            Assert.True(wizard.RestartOnFailure);
+            Assert.Equal("30 sec", wizard.RestartDelay);
+            Assert.Equal(new[] { "none", "restart" }, Written(wizard).FailureActions.Select(a => a.Action));
+        }
+
         [Fact]
         public void ACopyRegisteredAsADesktopTaskLeavesTheRecoveryBehind()
         {

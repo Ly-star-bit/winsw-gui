@@ -113,6 +113,37 @@ namespace WinSW.Gui.Services
         /// <summary>True when one of <see cref="Recovery"/> does something when the program fails.</summary>
         public bool HasRecovery => this.Recovery.Any(a => !string.Equals(a.Action, "none", StringComparison.OrdinalIgnoreCase));
 
+        /// <summary>
+        /// The row the wizard shows the copied recovery by, in its one "restart after" field: the
+        /// first restart, or with no restart among the rows, the first that does something. Null
+        /// when <see cref="HasRecovery"/> is false.
+        /// </summary>
+        /// <remarks>
+        /// Not simply the first row. A <c>none</c> ahead of a restart waits for nothing, and the
+        /// field would show a restart at once that the file never asks for.
+        /// </remarks>
+        public (string Action, string? Delay)? ShownRecovery
+        {
+            get
+            {
+                (string Action, string? Delay)? first = null;
+                foreach (var row in this.Recovery)
+                {
+                    if (row.Action == "restart")
+                    {
+                        return row;
+                    }
+
+                    if (first is null && !string.Equals(row.Action, "none", StringComparison.OrdinalIgnoreCase))
+                    {
+                        first = row;
+                    }
+                }
+
+                return first;
+            }
+        }
+
         /// <summary>The source's <c>&lt;resetfailure&gt;</c>, or null for the wrapper's own <see cref="WrapperResetPeriod"/>.</summary>
         public string? ResetFailureAfter { get; }
 
@@ -178,7 +209,18 @@ namespace WinSW.Gui.Services
         /// builds its model once for the preview and again to install, and rows it adds to
         /// one must not be there waiting in the next.
         /// </summary>
-        public ServiceConfigModel NewModel() => ServiceConfigModel.FromXml(this.xml, null);
+        /// <remarks>
+        /// The copy is a new service. The source's rows taken out — recovery unticked, or a
+        /// source whose only row said <c>none</c> — leave Windows nothing to clear, and are
+        /// written as no <c>&lt;onfailure&gt;</c> at all, as for any new service; see
+        /// <see cref="ServiceConfigModel.DeclaredFailureActions"/>.
+        /// </remarks>
+        public ServiceConfigModel NewModel()
+        {
+            var model = ServiceConfigModel.FromXml(this.xml, null);
+            model.ForgetDeclaredFailureActions();
+            return model;
+        }
 
         /// <summary>
         /// The settings of <paramref name="model"/> that were rewritten to name the source's

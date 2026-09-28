@@ -503,6 +503,13 @@ namespace WinSW.Gui.Model
             this.declaredFailureActions |= earlier.declaredFailureActions;
 
         /// <summary>
+        /// Forgets that the file declared failure actions, for a model that is to become another
+        /// service's file: a service still to be installed has no recovery in Windows for
+        /// <c>&lt;onfailure action="none"/&gt;</c> to clear, so no rows there is no element.
+        /// </summary>
+        internal void ForgetDeclaredFailureActions() => this.declaredFailureActions = false;
+
+        /// <summary>
         /// Gives back the secrets an AI prompt masked: wherever this model, read from an
         /// assistant's answer, holds <see cref="ConfigRedactor.Mask"/> and
         /// <paramref name="earlier"/>, the configuration the answer replaces, has the real

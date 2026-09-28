@@ -2131,11 +2131,13 @@ namespace WinSW.Gui.ViewModels
             this.KeepFiles = (byTime ? null : model.KeepFiles) ?? "8";
             this.KeepDays = byTime ? model.KeepFiles ?? string.Empty : "30";
 
-            // The source's actions are shown by the first delay, and written as they are for
-            // as long as that is left alone; see UsesSourceRecovery.
+            // The source's actions are shown by their first restart's delay, and written as they
+            // are for as long as that is left alone; see UsesSourceRecovery. A source whose only
+            // row says none — the editor writes that when the last row is removed — has none
+            // to copy, and must not come back as a restart.
             this.RestartOnFailure = copied.HasRecovery;
-            this.cloneRestartDelay = copied.HasRecovery
-                ? DescribeDelay(copied.Recovery[0].Delay)
+            this.cloneRestartDelay = copied.ShownRecovery is { } shown
+                ? DescribeDelay(shown.Delay)
                 : "10 sec";
             this.RestartDelay = this.cloneRestartDelay;
 
