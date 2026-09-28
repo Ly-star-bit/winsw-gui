@@ -495,6 +495,31 @@ namespace WinSW.Gui.Model
         }
 
         /// <summary>
+        /// Adds a failure row, as the editor's Add button does: a restart after the default delay.
+        /// </summary>
+        /// <remarks>
+        /// When every row there is says <c>none</c>, which is usually the
+        /// <c>&lt;onfailure action="none"/&gt;</c> written when the rows were removed, read back as
+        /// the row it is, the new row takes their place. Added after it, the <c>none</c> would
+        /// still be what Windows does at the first failure, and the restart just added would wait
+        /// for a second one. The rows are removed one by one rather than cleared, so that the
+        /// editor unhooks each as it goes; and <see cref="DeclaredFailureActions"/> stays as it
+        /// is, so that removing the new row again still writes <c>none</c>.
+        /// </remarks>
+        public void AddFailureAction()
+        {
+            if (this.FailureActions.Count > 0 && this.FailureActions.All(row => row.Action == "none"))
+            {
+                for (int i = this.FailureActions.Count - 1; i >= 0; i--)
+                {
+                    this.FailureActions.RemoveAt(i);
+                }
+            }
+
+            this.FailureActions.Add(new FailureAction());
+        }
+
+        /// <summary>
         /// Carries <see cref="DeclaredFailureActions"/> over from the model this one replaces, when
         /// both are the same file edited another way: deleting the rows as XML text is removing
         /// them all the same.

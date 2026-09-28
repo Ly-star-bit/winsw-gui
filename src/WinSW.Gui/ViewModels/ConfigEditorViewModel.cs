@@ -173,8 +173,7 @@ namespace WinSW.Gui.ViewModels
             this.RemoveDownloadCommand = new RelayCommand(
                 p => Remove(this.Model.Downloads, p as DownloadItem));
 
-            this.AddFailureActionCommand = new RelayCommand(() =>
-                this.Model.FailureActions.Add(new FailureAction()));
+            this.AddFailureActionCommand = new RelayCommand(() => this.Model.AddFailureAction());
             this.RemoveFailureActionCommand = new RelayCommand(
                 p => Remove(this.Model.FailureActions, p as FailureAction));
 

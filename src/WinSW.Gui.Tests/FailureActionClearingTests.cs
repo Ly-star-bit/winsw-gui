@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -137,6 +139,72 @@ namespace WinSW.Gui.Tests
             model.Save(path);
 
             Assert.Empty(OnFailure(File.ReadAllText(path)));
+        }
+
+        /// <summary>
+        /// Adding a row to a file whose rows were removed: the "none" read back is replaced, not
+        /// followed. Behind it, the restart would come only at the second failure.
+        /// </summary>
+        [Fact]
+        public void AddingARowReplacesTheNone()
+        {
+            string path = this.Write(Restarting);
+            var model = ServiceConfigModel.Load(path);
+            model.FailureActions.Clear();
+            model.Save(path);
+
+            model = ServiceConfigModel.Load(path);
+            Assert.Equal("none", Assert.Single(model.FailureActions).Action);
+
+            model.AddFailureAction();
+
+            var row = Assert.Single(model.FailureActions);
+            Assert.Equal("restart", row.Action);
+            Assert.Equal(new[] { @"<onfailure action=""restart"" delay=""10 sec"" />" }, OnFailure(model.ToXmlString()));
+
+            // Still a file that declared rows: removing the new one goes back to "none".
+            Assert.True(model.DeclaredFailureActions);
+            model.FailureActions.Clear();
+            Assert.Equal(new[] { @"<onfailure action=""none"" />" }, OnFailure(model.ToXmlString()));
+        }
+
+        /// <summary>Several rows that all say "none" go the same way; any other row is added to.</summary>
+        [Fact]
+        public void AddingARowAppendsUnlessEveryRowIsNone()
+        {
+            var model = ServiceConfigModel.FromXml(@"<service><id>demo</id><executable>demo.exe</executable><onfailure action=""none"" /><onfailure action=""none"" delay=""1 min"" /></service>", null);
+            model.AddFailureAction();
+            Assert.Equal(new[] { "restart" }, model.FailureActions.Select(a => a.Action));
+
+            model.AddFailureAction();
+            Assert.Equal(new[] { "restart", "restart" }, model.FailureActions.Select(a => a.Action));
+
+            // A none a restart follows is somebody's choice: wait out the first failure.
+            model = ServiceConfigModel.FromXml(@"<service><id>demo</id><executable>demo.exe</executable><onfailure action=""none"" /><onfailure action=""restart"" /></service>", null);
+            model.AddFailureAction();
+            Assert.Equal(new[] { "none", "restart", "restart" }, model.FailureActions.Select(a => a.Action));
+
+            model = ServiceConfigModel.CreateNew();
+            model.AddFailureAction();
+            Assert.Equal(new[] { "restart" }, model.FailureActions.Select(a => a.Action));
+        }
+
+        /// <summary>The rows go one at a time, so whoever watches the collection is told which went.</summary>
+        [Fact]
+        public void TheReplacedRowsAreReportedAsRemoved()
+        {
+            var model = ServiceConfigModel.FromXml(@"<service><id>demo</id><executable>demo.exe</executable><onfailure action=""none"" /></service>", null);
+            var none = model.FailureActions[0];
+            var removed = new List<object>();
+            model.FailureActions.CollectionChanged += (_, e) =>
+            {
+                Assert.NotEqual(NotifyCollectionChangedAction.Reset, e.Action);
+                removed.AddRange(e.OldItems?.Cast<object>() ?? Enumerable.Empty<object>());
+            };
+
+            model.AddFailureAction();
+
+            Assert.Same(none, Assert.Single(removed));
         }
 
         [Fact]
