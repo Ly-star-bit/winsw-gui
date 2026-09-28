@@ -49,13 +49,16 @@ namespace WinSW.Gui.Services
     /// </para>
     /// <para>
     /// This is the console's alert, and it comes only while the console runs. For when nobody
-    /// is signed in there is <see cref="UnattendedAlert"/>, and while that is on it is the one
-    /// that posts.
+    /// is signed in there is <see cref="UnattendedAlert"/>, and while that is on and posts to
+    /// the same webhook it is the one that posts.
     /// </para>
     /// </remarks>
     public static class AlertWebhook
     {
-        private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(10) };
+        /// <summary>How long one attempt to post may take. Declared before <see cref="Http"/>, which is made with it.</summary>
+        internal static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(10);
+
+        private static readonly HttpClient Http = new() { Timeout = SendTimeout };
 
         /// <summary>
         /// Chinese text and a Base64 signature's plus signs are posted as they are, not as
@@ -130,8 +133,10 @@ namespace WinSW.Gui.Services
 
             // While the unattended alert is on, the failure Windows records is what posts it,
             // whether or not this console is running; posting here as well would say it twice.
+            // Only when it posts to this same webhook, though: one set up with another robot
+            // — since deleted, or another administrator's — is no reason to stay silent here.
             // A program that ended with 0 is no failure to Windows, and still posted from here.
-            if (UnattendedAlert.CoversStop(lastExitCode) && await Task.Run(UnattendedAlert.IsActive).ConfigureAwait(false))
+            if (UnattendedAlert.CoversStop(lastExitCode) && await Task.Run(() => UnattendedAlert.PostsTo(url, secret)).ConfigureAwait(false))
             {
                 ActionLog.Record("alert", service, "left to the unattended alert");
                 return null;

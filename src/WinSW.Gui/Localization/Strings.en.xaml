@@ -320,7 +320,7 @@
     <sys:String x:Key="M.Alert.LastNotSent">not sent: {0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">(posted by the unattended alert)</sys:String>
     <sys:String x:Key="M.Alert.Unattended">Also alert when nobody is signed in</sys:String>
-    <sys:String x:Key="M.Alert.UnattendedHint">When Windows records that a WinSW service stopped unexpectedly, failed to start or did not start in time, a task (\WinSW\Alert) running as SYSTEM posts it to this webhook — also after a reboot at night, with nobody signed in. Turning it on or off takes one elevation prompt. It keeps its own copy of the address and secret, and of this console, in %ProgramData%\WinSW.Gui, where only administrators and SYSTEM can open them. While it is on, this console leaves those failures to it and keeps its tray notifications. SYSTEM must be able to reach the robot directly: a proxy set for your Windows user does not apply to it.</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedHint">When Windows records that a WinSW service stopped unexpectedly, failed to start or did not start in time, a task (\WinSW\Alert) running as SYSTEM posts it to this webhook — also after a reboot at night, with nobody signed in. Turning it on or off takes one elevation prompt. It keeps its own copy of the address and secret, and of this console, in %ProgramData%\WinSW.Gui, where only administrators and SYSTEM can open them. While it is on and posts to the address above, this console leaves those failures to it and keeps its tray notifications. SYSTEM must be able to reach the robot directly: a proxy set for your Windows user does not apply to it.</sys:String>
     <sys:String x:Key="M.Alert.UnattendedWorking">Waiting for the elevated step…</sys:String>
     <sys:String x:Key="M.Alert.UnattendedNoUrl">Set a webhook address first.</sys:String>
     <sys:String x:Key="M.Alert.UnattendedStale">The unattended alert still posts with the address and secret it was turned on with; the ones above have changed since.</sys:String>
@@ -513,6 +513,8 @@
     <sys:String x:Key="M.Update.NoChecksum">The release lists no checksum for {0} in {1}, so it is not installed from here. Use the release page.</sys:String>
     <sys:String x:Key="M.Update.FolderNotWritable">The console's folder cannot be written to ({0}). Restart as administrator, or use the release page.</sys:String>
     <sys:String x:Key="M.Update.DownloadFailed">The download failed: {0}</sys:String>
+    <sys:String x:Key="M.Update.Stalled">Nothing arrived for {0} seconds.</sys:String>
+    <sys:String x:Key="M.Update.Truncated">The connection closed before the whole file had arrived.</sys:String>
     <sys:String x:Key="M.Update.Mismatch">The downloaded {0} does not match {1}. It has been deleted, and nothing was changed.</sys:String>
 
     <sys:String x:Key="M.Shell.ContextMenu">"Open in WinSW" on .xml files</sys:String>

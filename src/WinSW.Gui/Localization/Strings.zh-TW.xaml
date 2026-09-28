@@ -320,7 +320,7 @@
     <sys:String x:Key="M.Alert.LastNotSent">未傳送：{0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">（由無人登入告警推送）</sys:String>
     <sys:String x:Key="M.Alert.Unattended">無人登入時也告警</sys:String>
-    <sys:String x:Key="M.Alert.UnattendedHint">Windows 記錄到 WinSW 服務意外停止、啟動失敗或啟動逾時時，由以 SYSTEM 身分執行的排程工作（\WinSW\Alert）推送到這個 webhook——夜間重新開機後無人登入也照樣推送。開啟或關閉各需一次提升權限。位址、密鑰和本主控台程式會另存一份到 %ProgramData%\WinSW.Gui，只有系統管理員和 SYSTEM 能開啟。開啟期間，這類故障由它推送，本主控台不再重複推送，系統匣通知照舊。SYSTEM 必須能直接連到機器人位址：為目前 Windows 使用者設定的 Proxy 對它無效。</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedHint">Windows 記錄到 WinSW 服務意外停止、啟動失敗或啟動逾時時，由以 SYSTEM 身分執行的排程工作（\WinSW\Alert）推送到這個 webhook——夜間重新開機後無人登入也照樣推送。開啟或關閉各需一次提升權限。位址、密鑰和本主控台程式會另存一份到 %ProgramData%\WinSW.Gui，只有系統管理員和 SYSTEM 能開啟。開啟期間，只要它推送的是上面這個位址，這類故障就由它推送，本主控台不再重複推送，系統匣通知照舊。SYSTEM 必須能直接連到機器人位址：為目前 Windows 使用者設定的 Proxy 對它無效。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedWorking">正在等待提升權限的步驟完成…</sys:String>
     <sys:String x:Key="M.Alert.UnattendedNoUrl">請先填寫 webhook 位址。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedStale">無人登入告警仍使用開啟時的位址和密鑰推送；上面的位址或密鑰已經變更。</sys:String>
@@ -513,6 +513,8 @@
     <sys:String x:Key="M.Update.NoChecksum">此發布的 {1} 中沒有 {0} 的檢查碼，因此不從這裡安裝。請使用發布頁面。</sys:String>
     <sys:String x:Key="M.Update.FolderNotWritable">無法寫入主控台所在的資料夾（{0}）。請以系統管理員身分重新啟動，或使用發布頁面。</sys:String>
     <sys:String x:Key="M.Update.DownloadFailed">下載失敗：{0}</sys:String>
+    <sys:String x:Key="M.Update.Stalled">{0} 秒內沒有收到任何資料。</sys:String>
+    <sys:String x:Key="M.Update.Truncated">檔案尚未下載完成，連線就中斷了。</sys:String>
     <sys:String x:Key="M.Update.Mismatch">下載的 {0} 與 {1} 不符，已刪除，未做任何變更。</sys:String>
 
     <sys:String x:Key="M.Shell.ContextMenu">在 .xml 右鍵選單加入「以 WinSW 開啟」</sys:String>

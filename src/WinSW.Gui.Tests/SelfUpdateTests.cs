@@ -224,6 +224,59 @@ namespace WinSW.Gui.Tests
             Assert.False(File.Exists(SelfUpdate.NewPath(this.Executable)));
         }
 
+        /// <summary>
+        /// A download that went silent is a problem of its own, which the console words from its
+        /// dictionaries; the English detail is for the action log.
+        /// </summary>
+        [Fact]
+        public async Task ADownloadThatStalledIsSaidAsSuchAndLeavesNothingBehind()
+        {
+            var download = await this.DownloadAsync(
+                Sha256(Release),
+                async (url, output, progress, cancellationToken) =>
+                {
+                    await output.WriteAsync(Release.AsMemory(0, 4), cancellationToken);
+                    throw new DownloadStalledException(TimeSpan.FromSeconds(60));
+                });
+
+            Assert.Equal(UpdateProblem.DownloadStalled, download.Problem);
+            Assert.Equal("Nothing arrived for 60 seconds.", download.Detail);
+            Assert.Null(download.File);
+            Assert.False(File.Exists(SelfUpdate.NewPath(this.Executable)));
+        }
+
+        [Fact]
+        public async Task ADownloadCutShortIsSaidAsSuchAndLeavesNothingBehind()
+        {
+            var download = await this.DownloadAsync(
+                Sha256(Release),
+                async (url, output, progress, cancellationToken) =>
+                {
+                    await output.WriteAsync(Release.AsMemory(0, 4), cancellationToken);
+                    throw new DownloadTruncatedException(4, Release.Length);
+                });
+
+            Assert.Equal(UpdateProblem.DownloadTruncated, download.Problem);
+            Assert.Equal($"The download ended after 4 of {Release.Length} bytes.", download.Detail);
+            Assert.Null(download.File);
+            Assert.False(File.Exists(SelfUpdate.NewPath(this.Executable)));
+        }
+
+        /// <summary>
+        /// Any other failure to write or wait is still a plain failed download: only the two the
+        /// console words itself are told apart.
+        /// </summary>
+        [Fact]
+        public async Task AnyOtherTimeoutOrFileErrorIsAFailedDownload()
+        {
+            var timedOut = await this.DownloadAsync(Sha256(Release), (url, output, progress, cancellationToken) => throw new TimeoutException("elsewhere"));
+            var diskFull = await this.DownloadAsync(Sha256(Release), (url, output, progress, cancellationToken) => throw new IOException("There is not enough space on the disk."));
+
+            Assert.Equal(UpdateProblem.DownloadFailed, timedOut.Problem);
+            Assert.Equal(UpdateProblem.DownloadFailed, diskFull.Problem);
+            Assert.Equal("There is not enough space on the disk.", diskFull.Detail);
+        }
+
         /// <summary>A release from before the list existed is updated to from its page, not from here.</summary>
         [Fact]
         public async Task AReleaseWithoutAChecksumListIsNotFetched()

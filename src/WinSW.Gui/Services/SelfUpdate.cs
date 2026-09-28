@@ -33,6 +33,12 @@ namespace WinSW.Gui.Services
 
         DownloadFailed,
 
+        /// <summary>Nothing more of the file arrived for <see cref="UpdateChecker.StallTimeout"/>, and it was given up.</summary>
+        DownloadStalled,
+
+        /// <summary>The connection closed before the whole file had arrived.</summary>
+        DownloadTruncated,
+
         /// <summary>What arrived is not the file the release lists. It has been deleted.</summary>
         ChecksumMismatch,
     }
@@ -52,7 +58,11 @@ namespace WinSW.Gui.Services
 
         public UpdateProblem Problem { get; }
 
-        /// <summary>The asset concerned, or what the network or the file system said.</summary>
+        /// <summary>
+        /// The asset concerned, or what the network or the file system said. For a download that
+        /// stalled or was cut short it is this console's own English, for the action log only:
+        /// <see cref="Problem"/> alone says what to show.
+        /// </summary>
         public string? Detail { get; }
 
         internal static UpdateDownload Ready(string file) => new(file, UpdateProblem.None, null);
@@ -275,6 +285,19 @@ namespace WinSW.Gui.Services
                 {
                     await fetchFile(url, output, progress, cancellationToken).ConfigureAwait(false);
                 }
+            }
+            catch (DownloadStalledException e)
+            {
+                // This and the next come before the general case, which they are part of: they
+                // are said in the console's own words, where anything else can only repeat
+                // what .NET said.
+                TryDelete(file);
+                return UpdateDownload.Failed(UpdateProblem.DownloadStalled, e.Message);
+            }
+            catch (DownloadTruncatedException e)
+            {
+                TryDelete(file);
+                return UpdateDownload.Failed(UpdateProblem.DownloadTruncated, e.Message);
             }
             catch (Exception e) when (e is HttpRequestException or IOException or TimeoutException or OperationCanceledException or InvalidOperationException or UriFormatException)
             {

@@ -320,7 +320,7 @@
     <sys:String x:Key="M.Alert.LastNotSent">送信できませんでした: {0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">（無人時アラートによる投稿）</sys:String>
     <sys:String x:Key="M.Alert.Unattended">誰もサインインしていないときも通知する</sys:String>
-    <sys:String x:Key="M.Alert.UnattendedHint">WinSW サービスが予期せず停止した、開始に失敗した、または時間内に開始しなかったことを Windows が記録すると、SYSTEM として実行されるタスク（\WinSW\Alert）がこの Webhook に投稿します。夜間の再起動後で誰もサインインしていなくても投稿されます。オン・オフにはそれぞれ 1 回の昇格が必要です。アドレスとシークレット、およびこのコンソールのコピーを %ProgramData%\WinSW.Gui に保存し、開けるのは Administrators と SYSTEM だけです。オンの間、これらの障害はタスクが投稿し、このコンソールは重ねて投稿しません。トレイ通知はそのままです。SYSTEM がボットに直接接続できる必要があります。Windows ユーザーに設定したプロキシは適用されません。</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedHint">WinSW サービスが予期せず停止した、開始に失敗した、または時間内に開始しなかったことを Windows が記録すると、SYSTEM として実行されるタスク（\WinSW\Alert）がこの Webhook に投稿します。夜間の再起動後で誰もサインインしていなくても投稿されます。オン・オフにはそれぞれ 1 回の昇格が必要です。アドレスとシークレット、およびこのコンソールのコピーを %ProgramData%\WinSW.Gui に保存し、開けるのは Administrators と SYSTEM だけです。オンで上のアドレスに投稿している間、これらの障害はタスクが投稿し、このコンソールは重ねて投稿しません。トレイ通知はそのままです。SYSTEM がボットに直接接続できる必要があります。Windows ユーザーに設定したプロキシは適用されません。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedWorking">昇格した手順の完了を待っています…</sys:String>
     <sys:String x:Key="M.Alert.UnattendedNoUrl">先に Webhook アドレスを設定してください。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedStale">無人時アラートは、オンにしたときのアドレスとシークレットで投稿しています。上のアドレスまたはシークレットはその後変更されています。</sys:String>
@@ -513,6 +513,8 @@
     <sys:String x:Key="M.Update.NoChecksum">このリリースの {1} に {0} のチェックサムがないため、ここからはインストールしません。リリース ページを使ってください。</sys:String>
     <sys:String x:Key="M.Update.FolderNotWritable">コンソールのフォルダーに書き込めません ({0})。管理者として再起動するか、リリース ページを使ってください。</sys:String>
     <sys:String x:Key="M.Update.DownloadFailed">ダウンロードに失敗しました: {0}</sys:String>
+    <sys:String x:Key="M.Update.Stalled">{0} 秒間、何も受信できませんでした。</sys:String>
+    <sys:String x:Key="M.Update.Truncated">ファイルをすべて受信する前に接続が切れました。</sys:String>
     <sys:String x:Key="M.Update.Mismatch">ダウンロードした {0} が {1} と一致しません。削除しました。何も変更していません。</sys:String>
 
     <sys:String x:Key="M.Shell.ContextMenu">.xml ファイルの右クリックに「WinSW で開く」を追加</sys:String>

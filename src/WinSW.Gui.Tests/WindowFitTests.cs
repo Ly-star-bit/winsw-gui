@@ -11,7 +11,8 @@ namespace WinSW.Gui.Tests
     /// </summary>
     public class WindowFitTests
     {
-        // The main window as it is laid out: 1280 by 820, never smaller than 960 by 600.
+        // The main window as it is laid out: 1280 by 820, no smaller than 960 by 600 where the
+        // screen has room for that.
         private const double MinWidth = 960;
         private const double MinHeight = 600;
         private const double DesignWidth = 1280;
@@ -149,16 +150,64 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
-        /// A screen smaller than the window's minimum: the window cannot be made small enough, so
-        /// its top left — the title bar and the start of every row — is what stays on screen.
+        /// A screen smaller than the window's minimum: the minimum gives way to the screen, so
+        /// that the normal bounds a restore returns to fit it as well as the maximized window.
         /// </summary>
         [Fact]
-        public void AWindowIsNeverMadeSmallerThanItsMinimum()
+        public void AScreenSmallerThanTheMinimumLowersTheMinimumToIt()
         {
             var fitted = Fit(new WindowBounds(50, 50, 1280, 820), new WindowBounds(0, 0, 900, 560));
 
-            Assert.Equal(new WindowBounds(0, 0, MinWidth, MinHeight), fitted.Bounds);
+            Assert.Equal(new WindowBounds(0, 0, 900, 560), fitted.Bounds);
             Assert.True(fitted.Maximize);
+            Assert.Equal(900, fitted.MinWidth);
+            Assert.Equal(560, fitted.MinHeight);
+        }
+
+        /// <summary>
+        /// 1024 by 768 over remote desktop at 125 % and at 150 %, with a 40-pixel taskbar: both
+        /// are under the main window's minimum of 960 by 600. Restoring down from maximized
+        /// used to put the window's right side some 140 pixels past the screen's edge.
+        /// </summary>
+        [Theory]
+        [InlineData(1.25)]
+        [InlineData(1.5)]
+        public void At1024By768ScaledUpTheRestoredWindowFitsTheScreen(double scale)
+        {
+            var workArea = new WindowBounds(0, 0, 1024 / scale, (768 - 40) / scale);
+
+            var fitted = Fit(new WindowBounds(0, 0, 1280, 820), workArea);
+
+            Assert.Equal(workArea, fitted.Bounds);
+            Assert.True(fitted.Maximize);
+            Assert.Equal(workArea.Width, fitted.MinWidth);
+            Assert.Equal(workArea.Height, fitted.MinHeight);
+        }
+
+        [Fact]
+        public void OnAScreenLargeEnoughTheMinimumIsTheOneTheWindowIsLaidOutWith()
+        {
+            foreach (var screen in new[] { Screen1920, Screen1280, Screen1366, Screen1024 })
+            {
+                var fitted = Fit(new WindowBounds(10, 10, 1000, 650), screen);
+
+                Assert.Equal(MinWidth, fitted.MinWidth);
+                Assert.Equal(MinHeight, fitted.MinHeight);
+            }
+        }
+
+        /// <summary>
+        /// Shrunk on a small screen, then back on a large one: the minimum returns, WPF brings
+        /// the window up to it, and it is at that size that the window is kept on the screen.
+        /// </summary>
+        [Fact]
+        public void AWindowShrunkBelowTheMinimumIsBroughtUpToItWithinTheScreen()
+        {
+            var fitted = Fit(new WindowBounds(1000, 500, 819, 582), Screen1280);
+
+            Assert.Equal(new WindowBounds(320, 384, MinWidth, MinHeight), fitted.Bounds);
+            Assert.False(fitted.Maximize);
+            Assert.Equal(MinWidth, fitted.MinWidth);
         }
 
         /// <summary>
@@ -186,6 +235,8 @@ namespace WinSW.Gui.Tests
         [InlineData(43, -46, 1280, 820, 1366, 728)]
         [InlineData(2500, 100, 1000, 700, 1920, 1040)]
         [InlineData(-500, 900, 800, 700, 1280, 984)]
+        [InlineData(0, 0, 1280, 820, 819.2, 582.4)]
+        [InlineData(50, 50, 1280, 820, 682.666, 485.333)]
         public void FittingAgainChangesNothing(double left, double top, double width, double height, double screenWidth, double screenHeight)
         {
             var screen = new WindowBounds(0, 0, screenWidth, screenHeight);

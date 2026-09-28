@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
@@ -17,9 +19,28 @@ namespace WinSW.Gui.Services
     internal static class UnattendedAlertSetup
     {
         /// <summary>
-        /// Prepares the folders, puts this executable and the webhook copy in the private one,
-        /// writes the manifest and registers the task, replacing an earlier one of its own.
+        /// The waits between attempts to delete a folder that is in use: a minute and a half in
+        /// all. A run of the task holds its copy for as long as it takes to post — at worst three
+        /// attempts of <see cref="AlertWebhook.SendTimeout"/> with
+        /// <see cref="UnattendedAlertRun.RetryDelays"/> between them — and the wait has to be
+        /// longer than that, yet leave the rest of the step inside the console's
+        /// <see cref="UnattendedAlert.ElevatedTimeout"/>.
         /// </summary>
+        internal static readonly TimeSpan[] InUseDelays = Enumerable.Repeat(TimeSpan.FromSeconds(3), 30).ToArray();
+
+        /// <summary>
+        /// Deletes the task, prepares the folders, puts this executable and the webhook copy in
+        /// the private one, writes the manifest and registers the task again.
+        /// </summary>
+        /// <remarks>
+        /// The task goes first. While it is registered its runs work from the private folder,
+        /// which is about to be emptied and filled again: a run started in between would find no
+        /// webhook to post with, and one going on holds the executable, which cannot be deleted
+        /// until it ends. Deleted, the task starts no more runs — the one going on finishes,
+        /// and emptying the folder waits for it — and a console that finds no task posts itself.
+        /// So whatever fails from there on leaves nothing registered that cannot post, and the
+        /// settings page shows the alert off, with the reason.
+        /// </remarks>
         /// <param name="sealedCopy">The webhook, sealed to the machine and in Base64, as the console hands it on.</param>
         public static int SetUp(string? sealedCopy)
         {
@@ -40,22 +61,33 @@ namespace WinSW.Gui.Services
                 return UnattendedAlert.ExitBadCopy;
             }
 
-            if (ReadOwnTask(out _) is { } refused)
+            if (ReadOwnTask(out bool exists) is { } refused)
             {
                 return refused;
             }
 
             string? executable = Environment.ProcessPath;
+            if (executable is null)
+            {
+                ErrorLog.Record("unattended alert, set up", new InvalidOperationException("The path of this executable is not known."));
+                return UnattendedAlert.ExitFiles;
+            }
+
+            // Nothing has been touched yet if this fails: the task goes on as it was.
+            if (exists && SchTasks($"/Delete /TN \"{UnattendedAlert.TaskPath}\" /F") != 0)
+            {
+                return UnattendedAlert.ExitScheduler;
+            }
+
             try
             {
-                if (executable is null)
-                {
-                    throw new InvalidOperationException("The path of this executable is not known.");
-                }
-
                 PrepareMachineFolder();
                 RecreatePrivateFolder();
                 File.Copy(executable, UnattendedAlert.RunnerPath, overwrite: true);
+
+                // A copy keeps the original's attributes, and a read-only one could never be
+                // deleted again: turning the alert off, or on once more, would fail on it.
+                File.SetAttributes(UnattendedAlert.RunnerPath, File.GetAttributes(UnattendedAlert.RunnerPath) & ~FileAttributes.ReadOnly);
                 File.WriteAllBytes(UnattendedAlert.CopyPath, copyBytes);
                 File.WriteAllText(UnattendedAlert.ManifestPath, UnattendedAlert.ManifestToJson(new AlertManifest
                 {
@@ -96,6 +128,7 @@ namespace WinSW.Gui.Services
         /// <summary>
         /// Deletes the task and the private folder with the copies in it, and the manifest.
         /// The state and the log stay: they say what was sent, which is still worth reading.
+        /// A run of the task that is going on is waited for, as in <see cref="SetUp"/>.
         /// </summary>
         public static int Remove()
         {
@@ -167,28 +200,14 @@ namespace WinSW.Gui.Services
             var folder = new DirectoryInfo(UnattendedAlert.MachineFolder);
             if (folder.Exists)
             {
-                if ((folder.Attributes & FileAttributes.ReparsePoint) != 0)
-                {
-                    throw new IOException($"'{folder.FullName}' is a link, not a folder. Remove it, then turn the unattended alert on again.");
-                }
-
-                var owner = folder.GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
-                if (owner is null || !(owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid)))
+                RefuseLink(folder);
+                if (!OwnedByAdministrators(folder))
                 {
                     folder.Delete(recursive: true);
-                    folder.Refresh();
                 }
             }
 
-            var security = FolderSecurity(othersMayRead: true);
-            if (folder.Exists)
-            {
-                folder.SetAccessControl(security);
-            }
-            else
-            {
-                folder.Create(security);
-            }
+            CreateOwnFolder(UnattendedAlert.MachineFolder, FolderSecurity(othersMayRead: true));
         }
 
         /// <summary>
@@ -198,7 +217,45 @@ namespace WinSW.Gui.Services
         private static void RecreatePrivateFolder()
         {
             DeleteFolder(UnattendedAlert.PrivateFolder);
-            new DirectoryInfo(UnattendedAlert.PrivateFolder).Create(FolderSecurity(othersMayRead: false));
+            CreateOwnFolder(UnattendedAlert.PrivateFolder, FolderSecurity(othersMayRead: false));
+        }
+
+        /// <summary>
+        /// Makes a folder with <paramref name="security"/>, then checks it however it came to be
+        /// there. Creating does nothing when the folder exists, and a standard user can make one
+        /// in ProgramData in the moment between deleting or looking and creating: a folder they
+        /// made would stay theirs, and whoever owns the folder the task's executable is in can
+        /// swap that executable for their own. So it is read again, a link or any owner but
+        /// administrators or SYSTEM is refused, and the permissions are set whole, whoever
+        /// created it.
+        /// </summary>
+        private static void CreateOwnFolder(string path, DirectorySecurity security)
+        {
+            new DirectoryInfo(path).Create(security);
+
+            var folder = new DirectoryInfo(path);
+            RefuseLink(folder);
+            if (!OwnedByAdministrators(folder))
+            {
+                throw new IOException($"'{folder.FullName}' was made by another account while it was being prepared. Turn the unattended alert on again.");
+            }
+
+            folder.SetAccessControl(security);
+        }
+
+        private static void RefuseLink(DirectoryInfo folder)
+        {
+            if ((folder.Attributes & FileAttributes.ReparsePoint) != 0)
+            {
+                throw new IOException($"'{folder.FullName}' is a link, not a folder. Remove it, then turn the unattended alert on again.");
+            }
+        }
+
+        /// <summary>Whether administrators or SYSTEM own the folder, by SID: the groups' names are translated.</summary>
+        private static bool OwnedByAdministrators(DirectoryInfo folder)
+        {
+            var owner = folder.GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+            return owner is not null && (owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid));
         }
 
         /// <summary>
@@ -228,24 +285,39 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Deletes a folder and everything in it, if it is there. A run of the task may still be
-        /// using the copy for a few seconds, so a folder that is in use is tried a few times.
+        /// using the copy, so a folder in use is tried again until <see cref="InUseDelays"/>
+        /// run out. Each attempt deletes what it can: what is left is only what is still in use.
         /// </summary>
-        private static void DeleteFolder(string path)
+        internal static void DeleteFolder(string path) => RetryWhileInUse(
+            () =>
+            {
+                if (Directory.Exists(path))
+                {
+                    Directory.Delete(path, recursive: true);
+                }
+            },
+            InUseDelays,
+            Thread.Sleep);
+
+        /// <summary>
+        /// Runs <paramref name="action"/>, and again after each of <paramref name="delays"/> in
+        /// turn while it fails for a file in use; then lets the failure through. A file another
+        /// process has open fails to delete with an <see cref="IOException"/>; a running
+        /// executable, or a library loaded from the folder, with access denied, which .NET
+        /// throws as an <see cref="UnauthorizedAccessException"/> — the case this is for.
+        /// </summary>
+        internal static void RetryWhileInUse(Action action, IReadOnlyList<TimeSpan> delays, Action<TimeSpan> wait)
         {
-            for (int attempt = 1; ; attempt++)
+            for (int attempt = 0; ; attempt++)
             {
                 try
                 {
-                    if (Directory.Exists(path))
-                    {
-                        Directory.Delete(path, recursive: true);
-                    }
-
+                    action();
                     return;
                 }
-                catch (IOException) when (attempt < 5)
+                catch (Exception e) when ((e is IOException or UnauthorizedAccessException) && attempt < delays.Count)
                 {
-                    Thread.Sleep(TimeSpan.FromSeconds(2));
+                    wait(delays[attempt]);
                 }
             }
         }

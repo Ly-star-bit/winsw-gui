@@ -824,6 +824,10 @@ namespace WinSW.Gui.ViewModels
                 UpdateProblem.NoChecksum => Localizer.Format("M.Update.NoChecksum", detail, SelfUpdate.ChecksumsAsset),
                 UpdateProblem.FolderNotWritable => Localizer.Format("M.Update.FolderNotWritable", detail),
                 UpdateProblem.DownloadFailed => Localizer.Format("M.Update.DownloadFailed", detail),
+
+                // In the console's words; the detail is English, for the action log.
+                UpdateProblem.DownloadStalled => Localizer.Format("M.Update.DownloadFailed", Localizer.Format("M.Update.Stalled", (int)UpdateChecker.StallTimeout.TotalSeconds)),
+                UpdateProblem.DownloadTruncated => Localizer.Format("M.Update.DownloadFailed", Localizer.Get("M.Update.Truncated")),
                 UpdateProblem.ChecksumMismatch => Localizer.Format("M.Update.Mismatch", detail, SelfUpdate.ChecksumsAsset),
                 _ => Localizer.Get("M.Update.NotThisBuild"),
             };
@@ -1077,17 +1081,19 @@ namespace WinSW.Gui.ViewModels
         public bool CanChangeUnattendedAlert => !this.unattendedAlertBusy;
 
         /// <summary>
-        /// Under the box: that the change is under way, why it did not go through, or that the
-        /// task's copy of the webhook or of the console is older than this console's; blank
-        /// otherwise.
+        /// Under the box: that the change is under way; otherwise why the last one did not go
+        /// through, and that the task's copy of the webhook or of the console is older than this
+        /// console's, each on a line of its own; blank when there is neither.
         /// </summary>
         public string UnattendedAlertNotice =>
             this.unattendedAlertBusy ? Localizer.Get("M.Alert.UnattendedWorking")
-            : this.unattendedAlertError.Length > 0 ? this.unattendedAlertError
-            : this.UnattendedAlertOutdated();
+            : string.Join("\n", new[] { this.unattendedAlertError, this.UnattendedAlertOutdated() }.Where(text => text.Length > 0));
 
-        /// <summary>The task's copy is out of date, and <see cref="ApplyUnattendedAlertCommand"/> is offered.</summary>
-        public bool UnattendedAlertStale => !this.unattendedAlertBusy && this.unattendedAlertError.Length == 0 && this.UnattendedAlertOutdated().Length > 0;
+        /// <summary>
+        /// The task's copy is out of date, and <see cref="ApplyUnattendedAlertCommand"/> is
+        /// offered — also after an attempt that failed, which is when trying again is wanted.
+        /// </summary>
+        public bool UnattendedAlertStale => !this.unattendedAlertBusy && this.UnattendedAlertOutdated().Length > 0;
 
         /// <summary>Copies this console's webhook and executable to the task again, with one elevation prompt.</summary>
         public AsyncRelayCommand ApplyUnattendedAlertCommand { get; }
@@ -1104,7 +1110,7 @@ namespace WinSW.Gui.ViewModels
                 return string.Empty;
             }
 
-            if (!string.Equals(manifest.Fingerprint, UnattendedAlert.Fingerprint(this.alertUrl, this.alertSecret), StringComparison.Ordinal))
+            if (!UnattendedAlert.SameWebhook(manifest, this.alertUrl, this.alertSecret))
             {
                 return Localizer.Get("M.Alert.UnattendedStale");
             }

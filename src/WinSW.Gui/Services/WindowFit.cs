@@ -17,7 +17,9 @@ namespace WinSW.Gui.Services
     /// <summary>Where a window goes to fit its screen, and whether it is better maximized there.</summary>
     /// <param name="Bounds">The normal bounds: where the window is put, and where it returns from maximized.</param>
     /// <param name="Maximize">The window does not fit, and would not at the size it is laid out for either.</param>
-    internal readonly record struct FittedWindow(WindowBounds Bounds, bool Maximize);
+    /// <param name="MinWidth">The window's minimum width on this screen: the one it is laid out with, or the screen's where that is less.</param>
+    /// <param name="MinHeight">The same, down.</param>
+    internal readonly record struct FittedWindow(WindowBounds Bounds, bool Maximize, double MinWidth, double MinHeight);
 
     /// <summary>
     /// Keeps a window within the work area of the screen it opens on.
@@ -34,14 +36,22 @@ namespace WinSW.Gui.Services
     /// <para>
     /// So when the window gets its handle — placed, whether by the saved placement or by
     /// centring, but not yet on screen — it is sized down to the work area of the monitor under
-    /// its title bar, never below its minimum, and moved inside it. When it did not fit and even
-    /// the size it is laid out for would not, it is maximized as well, which is the most it can
-    /// show. The same happens when the display changes under a running console, which is what
-    /// a remote desktop reconnecting at another resolution looks like. A window that was
+    /// its title bar and moved inside it. When it did not fit and even the size it is laid out
+    /// for would not, it is maximized as well, which is the most it can show. The same happens
+    /// when the display changes under a running console, which is what a remote desktop
+    /// reconnecting at another resolution looks like. A window that was
     /// maximized or in the tray at either moment still has normal bounds set for another
     /// screen, and is fitted when it returns to them: then without the maximizing, which would
     /// leave no way out of it. Any other return to the normal size is left where the user had
     /// it — straddling two monitors, or half off the screen on purpose.
+    /// </para>
+    /// <para>
+    /// A window's minimum size gives way to a screen smaller than it: 1024 by 768 at 125 % is
+    /// a work area of about 819 by 582 device-independent pixels, under the main window's
+    /// minimum of 960 by 600. Windows keeps a window at its minimum even maximized, and a
+    /// window returned to normal bounds that the minimum had kept wider than the screen had its
+    /// right side off it — the very thing this is for. The minimum it is laid out with comes
+    /// back on a screen large enough for it.
     /// </para>
     /// </remarks>
     internal static class WindowFit
@@ -63,6 +73,10 @@ namespace WinSW.Gui.Services
         /// <param name="designHeight">The height the window is laid out for, before any saved one.</param>
         public static void Attach(Window window, double designWidth, double designHeight)
         {
+            // The minimum the window is laid out with, which a small screen lowers for a while.
+            double minWidth = window.MinWidth;
+            double minHeight = window.MinHeight;
+
             // Whether the normal bounds may have been set for another screen: until the window
             // has been fitted once, and again after every display change. Touched on the
             // window's thread only.
@@ -70,7 +84,7 @@ namespace WinSW.Gui.Services
 
             void FitNow(bool mayMaximize)
             {
-                if (Refit(window, designWidth, designHeight, mayMaximize))
+                if (Refit(window, minWidth, minHeight, designWidth, designHeight, mayMaximize))
                 {
                     pending = false;
                 }
@@ -103,7 +117,8 @@ namespace WinSW.Gui.Services
         /// Where <paramref name="window"/> goes to fit <paramref name="workArea"/>: each side no
         /// larger than the work area and no smaller than the minimum, then moved inside it, as
         /// little as it takes. A window that already fits, give or take <see cref="Slack"/>, is
-        /// left exactly as it is.
+        /// left exactly as it is. A minimum larger than the work area is lowered to it, so that
+        /// what is returned always fits.
         /// </summary>
         /// <remarks>
         /// Maximizing is kept for a window that does not fit and could not at the size it is
@@ -118,11 +133,21 @@ namespace WinSW.Gui.Services
             double designWidth,
             double designHeight)
         {
-            bool widthFits = FitsIn(window.Width, workArea.Width);
-            bool heightFits = FitsIn(window.Height, workArea.Height);
+            // Not above the room there is: kept, it would hold the window past the screen's
+            // edge however it was placed. Otherwise the minimum it is laid out with.
+            double fittedMinWidth = Math.Min(minWidth, workArea.Width);
+            double fittedMinHeight = Math.Min(minHeight, workArea.Height);
 
-            double width = widthFits ? window.Width : Math.Max(minWidth, workArea.Width);
-            double height = heightFits ? window.Height : Math.Max(minHeight, workArea.Height);
+            // A window below the minimum is one a smaller screen let shrink, whose minimum is
+            // back now: WPF brings it up to that, and it is at that size that it has to fit.
+            double wantedWidth = Math.Max(window.Width, fittedMinWidth);
+            double wantedHeight = Math.Max(window.Height, fittedMinHeight);
+
+            bool widthFits = FitsIn(wantedWidth, workArea.Width);
+            bool heightFits = FitsIn(wantedHeight, workArea.Height);
+
+            double width = widthFits ? wantedWidth : workArea.Width;
+            double height = heightFits ? wantedHeight : workArea.Height;
 
             var bounds = new WindowBounds(
                 Place(window.Left, width, workArea.Left, workArea.Right),
@@ -131,7 +156,7 @@ namespace WinSW.Gui.Services
                 height);
 
             bool designFits = FitsIn(designWidth, workArea.Width) && FitsIn(designHeight, workArea.Height);
-            return new FittedWindow(bounds, Maximize: !(widthFits && heightFits) && !designFits);
+            return new FittedWindow(bounds, Maximize: !(widthFits && heightFits) && !designFits, fittedMinWidth, fittedMinHeight);
         }
 
         /// <summary>A rectangle in device pixels, in device-independent ones at the given scale.</summary>
@@ -163,13 +188,18 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Fits a window at its normal size to the monitor under the middle of its title bar;
-        /// false when it could not be measured. Nothing is done for a window that has no handle
-        /// yet — a console started in the tray, which is fitted when it is first shown — nor for
-        /// one maximized or minimized, which is fitted when it returns to its normal size.
+        /// false when it could not be measured or was not at its normal size. Nothing is done
+        /// for a window that has no handle yet — a console started in the tray, which is fitted
+        /// when it is first shown — nor for one minimized. One maximized has only its minimum
+        /// set for the screen, so that it is maximized to the screen and no larger; its normal
+        /// bounds are fitted when it returns to them.
         /// </summary>
-        private static bool Refit(Window window, double designWidth, double designHeight, bool mayMaximize)
+        /// <param name="minWidth">The minimum width the window is laid out with.</param>
+        /// <param name="minHeight">The minimum height the window is laid out with.</param>
+        private static bool Refit(Window window, double minWidth, double minHeight, double designWidth, double designHeight, bool mayMaximize)
         {
-            if (window.WindowState != WindowState.Normal
+            // A minimized window's rectangle is its icon's, far off any screen.
+            if (window.WindowState == WindowState.Minimized
                 || PresentationSource.FromVisual(window) is not HwndSource { CompositionTarget: { } target } source
                 || !NativeMethods.GetWindowRect(source.Handle, out var rect))
             {
@@ -177,9 +207,16 @@ namespace WinSW.Gui.Services
             }
 
             // In device pixels, as Windows has the window now: the saved placement, or the
-            // position centring worked out, whichever put it there.
-            var titleBar = new NativeMethods.POINT { X = rect.Left + ((rect.Right - rect.Left) / 2), Y = rect.Top };
-            var monitor = NativeMethods.MonitorFromPoint(titleBar, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            // position centring worked out, whichever put it there; or maximized, on the monitor
+            // it is maximized on. A maximized window's frame reaches past that monitor's edges,
+            // its title bar onto a monitor above, so its middle is what says which one it is on.
+            bool maximized = window.WindowState == WindowState.Maximized;
+            var probe = new NativeMethods.POINT
+            {
+                X = rect.Left + ((rect.Right - rect.Left) / 2),
+                Y = maximized ? rect.Top + ((rect.Bottom - rect.Top) / 2) : rect.Top,
+            };
+            var monitor = NativeMethods.MonitorFromPoint(probe, NativeMethods.MONITOR_DEFAULTTONEAREST);
             var info = new NativeMethods.MONITORINFO { Size = Marshal.SizeOf<NativeMethods.MONITORINFO>() };
             if (monitor == IntPtr.Zero || !NativeMethods.GetMonitorInfoW(monitor, ref info))
             {
@@ -197,9 +234,27 @@ namespace WinSW.Gui.Services
                 return false;
             }
 
+            var fitted = Fit(current, workArea, minWidth, minHeight, designWidth, designHeight);
+
+            // The minimum first, maximized or not, and before a size below the old one is set,
+            // which it would otherwise hold up.
+            if (window.MinWidth != fitted.MinWidth)
+            {
+                window.MinWidth = fitted.MinWidth;
+            }
+
+            if (window.MinHeight != fitted.MinHeight)
+            {
+                window.MinHeight = fitted.MinHeight;
+            }
+
+            if (window.WindowState != WindowState.Normal)
+            {
+                return false;
+            }
+
             // Only what changed: a side read back from pixels is a fraction off the one WPF
             // holds, and setting it would resize the window by a pixel for nothing.
-            var fitted = Fit(current, workArea, window.MinWidth, window.MinHeight, designWidth, designHeight);
             if (fitted.Bounds.Width != current.Width)
             {
                 window.Width = fitted.Bounds.Width;

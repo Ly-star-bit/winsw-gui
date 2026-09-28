@@ -193,6 +193,34 @@ namespace WinSW.Gui.Tests
             Assert.DoesNotContain("0123456789", fingerprint, StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// The console leaves a failure to the task only when the task posts to its own webhook:
+        /// one set up with another robot — since deleted, or another administrator's — would
+        /// otherwise take the console's alerts where nobody reads them.
+        /// </summary>
+        [Fact]
+        public void TheConsoleLeavesAFailureOnlyToATaskThatPostsToItsOwnWebhook()
+        {
+            string robotA = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=aaaa";
+            string robotB = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=bbbb";
+            var setUpWithA = new AlertManifest { Version = "0.14.0", Fingerprint = UnattendedAlert.Fingerprint(robotA, "s") };
+
+            Assert.True(UnattendedAlert.SameWebhook(setUpWithA, robotA, "s"));
+            Assert.True(UnattendedAlert.SameWebhook(setUpWithA, " " + robotA + " ", "s "));
+            Assert.False(UnattendedAlert.SameWebhook(setUpWithA, robotB, "s"));
+            Assert.False(UnattendedAlert.SameWebhook(setUpWithA, robotA, "rotated"));
+        }
+
+        /// <summary>A task whose manifest is missing or unreadable is not known to post anywhere in particular.</summary>
+        [Fact]
+        public void WithoutAManifestTheConsolePostsItself()
+        {
+            string url = "https://open.feishu.cn/open-apis/bot/v2/hook/x";
+
+            Assert.False(UnattendedAlert.SameWebhook(null, url, string.Empty));
+            Assert.False(UnattendedAlert.SameWebhook(new AlertManifest(), url, string.Empty));
+        }
+
         [Fact]
         public void TheWebhookCopyReadsBackAsWritten()
         {

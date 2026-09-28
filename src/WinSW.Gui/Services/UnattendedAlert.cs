@@ -110,8 +110,9 @@ namespace WinSW.Gui.Services
     /// Turning it on or off is one elevation prompt: the console starts itself as
     /// administrator with <c>--alert-setup</c> or <c>--alert-remove</c>, and that run prepares
     /// the folders, copies the executable and the webhook, and registers the task with
-    /// <c>schtasks /XML</c>, as a scheduled restart does. While the task is there the console
-    /// leaves the posting to it; its tray notifications are unchanged.
+    /// <c>schtasks /XML</c>, as a scheduled restart does. While the task is there and posts to
+    /// the console's own webhook, the console leaves the posting to it; its tray notifications
+    /// are unchanged.
     /// </para>
     /// </remarks>
     public static class UnattendedAlert
@@ -149,8 +150,12 @@ namespace WinSW.Gui.Services
         /// <summary>Read by the .NET host: where a self-contained build unpacks its native libraries.</summary>
         internal const string ExtractionVariable = "DOTNET_BUNDLE_EXTRACT_BASE_DIR";
 
-        /// <summary>How long the elevated step may take: it copies the executable, which can be 70 MB.</summary>
-        private static readonly TimeSpan ElevatedTimeout = TimeSpan.FromMinutes(3);
+        /// <summary>
+        /// How long the elevated step may take: it copies the executable, which can be 70 MB,
+        /// and may first wait for a run of the task to let go of the old copy
+        /// (<see cref="UnattendedAlertSetup.InUseDelays"/>).
+        /// </summary>
+        internal static readonly TimeSpan ElevatedTimeout = TimeSpan.FromMinutes(3);
 
         private static readonly XNamespace TaskNs = "http://schemas.microsoft.com/windows/2004/02/mit/task";
 
@@ -286,10 +291,9 @@ namespace WinSW.Gui.Services
         public static Task<CommandResult> TurnOffAsync() => RunElevatedAsync(RemoveSwitch);
 
         /// <summary>
-        /// True while the task is registered, is this console's, and is enabled: the console then
-        /// leaves the posting to it. Asks the task scheduler, so not on the UI thread. Never
-        /// throws; a scheduler that cannot be asked reads as off, so that the console posts
-        /// itself rather than nobody posting.
+        /// True while the task is registered, is this console's, and is enabled. Asks the task
+        /// scheduler, so not on the UI thread. Never throws; a scheduler that cannot be asked
+        /// reads as off, so that the console posts itself rather than nobody posting.
         /// </summary>
         public static bool IsActive()
         {
@@ -302,6 +306,20 @@ namespace WinSW.Gui.Services
                 return false;
             }
         }
+
+        /// <summary>
+        /// True while the task is active and posts to <paramref name="url"/> with
+        /// <paramref name="secret"/>: only then does the console leave a failure to it. A task
+        /// set up with another robot — one since deleted, or another administrator's — would
+        /// otherwise take this console's alerts somewhere nobody reads them. Reads the task
+        /// scheduler and the manifest, so not on the UI thread; never throws.
+        /// </summary>
+        public static bool PostsTo(string url, string secret) =>
+            IsActive() && SameWebhook(ReadJson<AlertManifest>(ManifestPath), url, secret);
+
+        /// <summary>Whether the task was set up with this address and secret, as its manifest says; false without one.</summary>
+        internal static bool SameWebhook(AlertManifest? manifest, string url, string secret) =>
+            manifest is not null && string.Equals(manifest.Fingerprint, Fingerprint(url, secret), StringComparison.Ordinal);
 
         /// <summary>Everything the settings page shows about it. Reads files and the task scheduler; never throws.</summary>
         public static UnattendedAlertStatus ReadStatus() => new(

@@ -68,7 +68,7 @@ namespace WinSW.Gui.Services
         /// up. There is no limit on the whole: the self-contained console is some seventy
         /// megabytes, which a slow line takes minutes over.
         /// </summary>
-        private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(60);
+        internal static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(60);
 
         /// <summary>The limit on a release's checksum list, which is a few lines.</summary>
         private static readonly TimeSpan TextTimeout = TimeSpan.FromSeconds(30);
@@ -162,8 +162,10 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Copies a release file into <paramref name="output"/>, telling <paramref name="progress"/>
-        /// the percentage done each time it grows by one. Throws what the network throws, and a
-        /// <see cref="TimeoutException"/> when nothing has arrived for <see cref="StallTimeout"/>.
+        /// the percentage done each time it grows by one. Throws what the network throws, a
+        /// <see cref="DownloadStalledException"/> when nothing has arrived for
+        /// <see cref="StallTimeout"/>, and a <see cref="DownloadTruncatedException"/> when the
+        /// connection closed before the whole file had arrived.
         /// </summary>
         internal static async Task DownloadToAsync(string url, Stream output, IProgress<int>? progress, CancellationToken cancellationToken)
         {
@@ -210,13 +212,13 @@ namespace WinSW.Gui.Services
                     // would catch it too, but as a mismatch, which says the wrong thing.
                     if (length is long expected && received != expected)
                     {
-                        throw new IOException($"The download ended after {received} of {expected} bytes.");
+                        throw new DownloadTruncatedException(received, expected);
                     }
                 }
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                throw new TimeoutException($"Nothing arrived for {StallTimeout.TotalSeconds} seconds.");
+                throw new DownloadStalledException(StallTimeout);
             }
         }
 
@@ -284,6 +286,30 @@ namespace WinSW.Gui.Services
             client.DefaultRequestHeaders.UserAgent.ParseAdd("WinSW-GUI/" + CurrentGuiVersion);
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             return client;
+        }
+    }
+
+    /// <summary>
+    /// A release file that stopped arriving. The message is English, for the action log; what
+    /// the console shows is worded from the dictionaries, on the UI thread, from the type alone.
+    /// </summary>
+    internal sealed class DownloadStalledException : TimeoutException
+    {
+        public DownloadStalledException(TimeSpan silence)
+            : base($"Nothing arrived for {silence.TotalSeconds} seconds.")
+        {
+        }
+    }
+
+    /// <summary>
+    /// A release file whose connection closed before the length it was announced with had
+    /// arrived. The message, with the counts, is English, for the action log, as above.
+    /// </summary>
+    internal sealed class DownloadTruncatedException : IOException
+    {
+        public DownloadTruncatedException(long received, long expected)
+            : base($"The download ended after {received} of {expected} bytes.")
+        {
         }
     }
 }

@@ -43,7 +43,9 @@ Across the pages:
 - **Light, dark or system theme**, remembered window placement, F5 / Ctrl+S / Esc. The
   window is kept within the screen it opens on: a size saved in a wider remote desktop
   session is brought down to this one's, a screen too small for the window's usual size gets
-  it maximized, and a reconnect at another resolution fits it again.
+  it maximized, and a reconnect at another resolution fits it again. On a screen smaller than
+  the window's minimum — 1024×768 at 125 % or 150 % — the minimum gives way to the screen, so
+  that restoring down from maximized also stays on it.
 - **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
   file is staged and copied into place with one elevation prompt. There is also a
   "Restart as administrator" button in the rail for prompt-free sessions. Over unsaved
@@ -96,10 +98,15 @@ Across the pages:
   administrators and SYSTEM can open: the webhook, sealed to the machine rather than to a user,
   and the console's executable, so that nothing a standard user can replace ever runs as
   SYSTEM. When the address, the secret or the console's version changes, Settings says the
-  copy is out of date and offers *Apply again*. While the task is on, the console leaves the
-  failures it covers to it (a program that ended with exit code 0 is not a failure to Windows,
-  and still posted by the console); tray notifications are unchanged. SYSTEM has no per-user
-  proxy, so it has to reach the robot's host directly.
+  copy is out of date and offers *Apply again*. While the task is on and posts to the console's
+  own webhook, the console leaves the failures it covers to it (a program that ended with exit
+  code 0 is not a failure to Windows, and still posted by the console); a task still posting to
+  an address or secret changed since, or another administrator's, does not silence the
+  console. Tray notifications are unchanged. Applying again takes the task down first, waits up
+  to a minute and a half for a run still posting with the old copy, and registers the task
+  again only over a complete new one; if anything fails on the way the task is left off, so
+  the console posts, and Settings says why. SYSTEM has no per-user proxy, so it has to reach
+  the robot's host directly.
 - **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside

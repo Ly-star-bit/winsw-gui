@@ -320,7 +320,7 @@
     <sys:String x:Key="M.Alert.LastNotSent">未发送：{0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">（由无人登录告警推送）</sys:String>
     <sys:String x:Key="M.Alert.Unattended">无人登录时也告警</sys:String>
-    <sys:String x:Key="M.Alert.UnattendedHint">Windows 记录到 WinSW 服务意外停止、启动失败或启动超时时，由以 SYSTEM 身份运行的计划任务（\WinSW\Alert）推送到这个 webhook——夜里重启后没人登录也照样推送。打开或关闭各需一次提权。地址、密钥和本控制台程序会另存一份到 %ProgramData%\WinSW.Gui，只有管理员和 SYSTEM 能打开。打开期间，这类故障由它推送，本控制台不再重复推送，托盘通知照旧。SYSTEM 需要能直接访问机器人地址：给当前 Windows 用户设置的代理对它无效。</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedHint">Windows 记录到 WinSW 服务意外停止、启动失败或启动超时时，由以 SYSTEM 身份运行的计划任务（\WinSW\Alert）推送到这个 webhook——夜里重启后没人登录也照样推送。打开或关闭各需一次提权。地址、密钥和本控制台程序会另存一份到 %ProgramData%\WinSW.Gui，只有管理员和 SYSTEM 能打开。打开期间，只要它推送的是上面这个地址，这类故障就由它推送，本控制台不再重复推送，托盘通知照旧。SYSTEM 需要能直接访问机器人地址：给当前 Windows 用户设置的代理对它无效。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedWorking">正在等待提权步骤完成…</sys:String>
     <sys:String x:Key="M.Alert.UnattendedNoUrl">请先填写 webhook 地址。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedStale">无人登录告警仍在用打开时的地址和密钥推送；上面的地址或密钥已经改过。</sys:String>
@@ -513,6 +513,8 @@
     <sys:String x:Key="M.Update.NoChecksum">该发布的 {1} 里没有 {0} 的校验值，不从这里安装。请用发布页。</sys:String>
     <sys:String x:Key="M.Update.FolderNotWritable">控制台所在的文件夹没有写入权限（{0}）。请以管理员身份重启，或用发布页。</sys:String>
     <sys:String x:Key="M.Update.DownloadFailed">下载失败：{0}</sys:String>
+    <sys:String x:Key="M.Update.Stalled">{0} 秒内没有收到任何数据。</sys:String>
+    <sys:String x:Key="M.Update.Truncated">文件还没下载完，连接就断开了。</sys:String>
     <sys:String x:Key="M.Update.Mismatch">下载的 {0} 与 {1} 不符，已删除，没有做任何改动。</sys:String>
 
     <sys:String x:Key="M.Shell.ContextMenu">在 .xml 右键菜单添加“用 WinSW 打开”</sys:String>
