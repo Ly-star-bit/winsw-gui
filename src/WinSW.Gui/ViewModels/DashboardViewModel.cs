@@ -76,10 +76,18 @@ namespace WinSW.Gui.ViewModels
 
         private readonly DispatcherTimer statusTimer;
         private readonly DispatcherTimer rescanTimer;
-        private readonly Dictionary<string, ServiceHealth> lastHealth = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Which stops are told, and how; fed every reading, raised through <see cref="UnexpectedStop"/> and <see cref="StopNoticed"/>.</summary>
+        private readonly CrashAnnouncer announcer = new();
 
         /// <summary>The services a command from this panel is working on; see <see cref="IsOperationInFlight"/>.</summary>
         private readonly OperationsInFlight inFlight = new();
+
+        /// <summary>
+        /// This is the page in front, between <see cref="Activate"/> and <see cref="Deactivate"/>.
+        /// Behind another page the poll reads states alone; see <see cref="Deactivate"/>.
+        /// </summary>
+        private bool pageShown;
 
         private ServiceEntry? selectedService;
         private string searchText = string.Empty;
@@ -112,7 +120,6 @@ namespace WinSW.Gui.ViewModels
         private string healthFilter = "all";
         private bool sortByStatus = AppSettings.Current.SortServicesByStatus;
         private bool groupServices = AppSettings.Current.GroupServices;
-        private readonly Dictionary<string, (DateTime At, int Count)> notified = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// How long the selection has to rest before its restart schedule is read. The read is a
@@ -208,13 +215,19 @@ namespace WinSW.Gui.ViewModels
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
             this.statusTimer.Tick += async (_, _) =>
             {
+                // Behind another page, a reading is taken only while there is someone to tell
+                // about a stop, and it is of states alone; see Deactivate. Decided here, tick by
+                // tick, rather than when the page was left: notifications or a webhook turned on
+                // on the settings page take effect from the next tick.
+                bool shown = this.pageShown;
+
                 // A reading that outlasts the interval must not have another started on top of
                 // it. The explicit refreshes elsewhere are deliberately not gated: they are
                 // what makes the panel answer at once after an operation, and overlapping is
                 // harmless because every write happens on this thread.
-                if (!this.polling)
+                if (!this.polling && (shown || WatchesForStops))
                 {
-                    await this.RefreshStatusesAsync().ConfigureAwait(true);
+                    await this.RefreshStatusesAsync(statesOnly: !shown).ConfigureAwait(true);
                 }
 
                 if (this.burstUntil != default && DateTime.UtcNow > this.burstUntil)
@@ -269,8 +282,23 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Raised when the user asks to tail the selected service's logs.</summary>
         public event Action<ServiceEntry>? OpenLogsRequested;
 
-        /// <summary>Raised when a service goes from running to stopped without this GUI asking it to.</summary>
+        /// <summary>
+        /// Raised when a service crashes — goes from running to stopped, with a failure exit code,
+        /// without this GUI asking it to — and it is the first crash in a while: the rest of a
+        /// restart loop is counted and comes through <see cref="StopNoticed"/>. The entry's
+        /// <see cref="ServiceEntry.CrashCount"/> is 1 when this is raised. Only while
+        /// notifications are on; see <see cref="CrashAnnouncer"/> for the rule.
+        /// </summary>
         public event Action<ServiceEntry>? UnexpectedStop;
+
+        /// <summary>
+        /// Raised for every other notice about a service's stops: the count of a restart loop
+        /// when its window ends (<see cref="StopNoticeKind.RepeatedStops"/>), a stop with exit
+        /// code 0 (<see cref="StopNoticeKind.CleanStop"/>), and a crashed service running again
+        /// (<see cref="StopNoticeKind.Recovered"/>). On the UI thread, only while notifications
+        /// are on, in the order the notices are to be told.
+        /// </summary>
+        public event Action<StopNotice>? StopNoticed;
 
         /// <summary>Raised with the outcome of an operation, for a transient on-screen notice.</summary>
         public event Action<string, bool>? Toast;
@@ -813,25 +841,45 @@ namespace WinSW.Gui.ViewModels
 
         public void Activate()
         {
+            this.pageShown = true;
             this.statusTimer.Start();
             this.rescanTimer.Start();
             if (this.Services.Count == 0)
             {
                 this.ReloadCommand.Execute(null);
             }
+            else if (!this.polling)
+            {
+                // Behind another page nothing but states was read, if anything was. The counters,
+                // the process tree and the stray check are brought up to date now, rather than
+                // showing what they were when the page was left for another tick.
+                _ = this.RefreshStatusesAsync();
+            }
         }
 
         /// <summary>
-        /// Only the status poll pauses when the page is hidden; the slow rescan and the
-        /// crash detection it feeds keep running so notifications still arrive.
+        /// The page is no longer in front. The status poll goes on every two seconds while a
+        /// stop would be told — notifications or a webhook are on — so that a crash the default
+        /// ten-second recovery repairs is still seen; with neither on, it reads nothing until the
+        /// page comes back. What it reads meanwhile is states alone: one query per service to
+        /// the service control manager, and no process snapshot, counters, process tree or
+        /// stray check. The rescan runs on its own timer as before, whatever the page, and
+        /// takes a full reading when it does.
         /// </summary>
         public void Deactivate()
         {
-            this.statusTimer.Stop();
+            this.pageShown = false;
 
             // A page that comes back later should not come back polling at the burst rate.
             this.EndBurst();
         }
+
+        /// <summary>
+        /// A stop would be told: the tray notification is on, or a webhook is set. Checked once
+        /// per tick, the notification setting first: the webhook's address is kept encrypted, and
+        /// asking whether there is one decrypts it.
+        /// </summary>
+        private static bool WatchesForStops => AppSettings.Current.NotifyOnUnexpectedStop || AlertWebhook.IsConfigured;
 
         /// <summary>
         /// Polls quickly for a few seconds, so the row follows the service through its
@@ -839,6 +887,12 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private void BurstPolling()
         {
+            // Behind another page there is no row to follow.
+            if (!this.pageShown)
+            {
+                return;
+            }
+
             this.burstUntil = DateTime.UtcNow + BurstLength;
             this.statusTimer.Interval = BurstInterval;
         }
@@ -849,7 +903,12 @@ namespace WinSW.Gui.ViewModels
             this.statusTimer.Interval = PollInterval;
         }
 
-        /// <summary>Called by the shell when the window is in the tray, so watching continues.</summary>
+        /// <summary>
+        /// Called by the shell when the window goes to the tray, so watching continues. The poll
+        /// runs from the first <see cref="Activate"/> on, so this only makes sure of it; what it
+        /// reads is the page's business: everything while this page is the one in front, states
+        /// alone behind another while a stop would be told. See <see cref="Deactivate"/>.
+        /// </summary>
         public void KeepWatching() => this.statusTimer.Start();
 
         /// <summary>
@@ -910,7 +969,7 @@ namespace WinSW.Gui.ViewModels
                         continue;
                     }
 
-                    this.lastHealth.Remove(row.ServiceName);
+                    this.announcer.Forget(row.ServiceName);
                     this.Services.RemoveAt(i);
                     removed++;
                 }
@@ -1154,8 +1213,14 @@ namespace WinSW.Gui.ViewModels
         /// tree all stay here, which is what keeps ServiceEntry's bindings and the tray
         /// notification on the thread they require.
         /// </para>
+        /// <para>
+        /// With <paramref name="statesOnly"/>, the reading the poll takes behind another page: no
+        /// snapshot, so no counters, no tree and no stray check, and what is left is one query per
+        /// service to the service control manager. That is all a stop needs to be seen and told,
+        /// and what is on the page catches up when it is shown again.
+        /// </para>
         /// </remarks>
-        private async Task RefreshStatusesAsync()
+        private async Task RefreshStatusesAsync(bool statesOnly = false)
         {
             // Read on the UI thread: Services can be rebuilt by a rescan while this awaits,
             // and the tree is wanted for whatever was selected when the reading started.
@@ -1178,12 +1243,16 @@ namespace WinSW.Gui.ViewModels
             {
                 var (samples, tree) = await Task.Run(() =>
                 {
-                    using var reading = new StatusReading();
+                    using var reading = new StatusReading(withProcesses: !statesOnly);
 
                     var read = new ServiceSample[entries.Length];
                     for (int i = 0; i < read.Length; i++)
                     {
                         read[i] = reading.Sample(entries[i].ServiceName);
+                        if (statesOnly)
+                        {
+                            continue;
+                        }
 
                         // Running: note what is under the wrapper. Stopped: see whether any of
                         // it, or the program itself, is still up. Starting and stopping are
@@ -1200,7 +1269,7 @@ namespace WinSW.Gui.ViewModels
 
                     // Built from the reading just taken rather than from the entry, so a
                     // service that started this tick shows its tree this tick.
-                    var node = selectedIndex >= 0 && read[selectedIndex].ProcessId > 0
+                    var node = !statesOnly && selectedIndex >= 0 && read[selectedIndex].ProcessId > 0
                         ? reading.Tree(read[selectedIndex].ProcessId)
                         : null;
 
@@ -1209,7 +1278,14 @@ namespace WinSW.Gui.ViewModels
 
                 for (int i = 0; i < entries.Length; i++)
                 {
-                    ServiceDiscovery.Apply(entries[i], samples[i]);
+                    if (statesOnly)
+                    {
+                        ServiceDiscovery.ApplyStatus(entries[i], samples[i]);
+                    }
+                    else
+                    {
+                        ServiceDiscovery.Apply(entries[i], samples[i]);
+                    }
                 }
 
                 this.AnnounceUnexpectedStops(entries);
@@ -1218,8 +1294,9 @@ namespace WinSW.Gui.ViewModels
                 this.RefreshCommandStates();
 
                 // The selection may have moved while the reading was in flight, in which case
-                // this tree belongs to a service the panel is no longer showing.
-                if (!ReferenceEquals(this.selectedService, selectedAtStart))
+                // this tree belongs to a service the panel is no longer showing. A reading of
+                // states alone has no tree, and leaves the one on the page as it is.
+                if (statesOnly || !ReferenceEquals(this.selectedService, selectedAtStart))
                 {
                     return;
                 }
@@ -1275,36 +1352,59 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
-        /// Raises <see cref="UnexpectedStop"/> for anything that stopped without being asked.
-        /// Runs on the UI thread, which the tray icon that listens to it requires.
+        /// Hands every service's state to the <see cref="CrashAnnouncer"/> and raises what it
+        /// decides to tell: <see cref="UnexpectedStop"/> for the first crash in a while,
+        /// <see cref="StopNoticed"/> for the rest. Runs on the UI thread, which the tray icon
+        /// that listens to both requires.
         /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A stop is held back only for a service an operation from this panel is working on,
+        /// where it is that operation's doing. It used to be held back for every service while
+        /// anything at all was running, so a crash during a three-minute stop of another service,
+        /// a diagnostics bundle or the ending of a stray process was noted and never told.
+        /// </para>
+        /// <para>
+        /// Every reading is handed over whether notifications are on or off, so that the last
+        /// state and the count are right the moment they are turned on; only the raising
+        /// depends on the setting. The state is read from the status rather than from
+        /// <see cref="ServiceEntry.Health"/>, which says Broken for a service whose configuration
+        /// cannot be read however it is running, and would hide its crashes.
+        /// </para>
+        /// </remarks>
         private void AnnounceUnexpectedStops(IReadOnlyList<ServiceEntry> entries)
         {
+            bool notify = AppSettings.Current.NotifyOnUnexpectedStop;
+            var now = DateTime.UtcNow;
+
             foreach (var entry in entries)
             {
-                var health = entry.Health;
-                if (this.lastHealth.TryGetValue(entry.ServiceName, out var previous)
-                    && previous == ServiceHealth.Running
-                    && health == ServiceHealth.Stopped
-                    && !this.IsBusy
-                    && AppSettings.Current.NotifyOnUnexpectedStop)
-                {
-                    // A crash-looping service would otherwise raise a balloon every poll.
-                    // One notice per five minutes, carrying how many times it has happened.
-                    var now = DateTime.UtcNow;
-                    this.notified.TryGetValue(entry.ServiceName, out var record);
-                    int count = now - record.At < TimeSpan.FromMinutes(5) ? record.Count + 1 : 1;
-                    bool announce = count == 1 || now - record.At >= TimeSpan.FromMinutes(5);
-                    this.notified[entry.ServiceName] = (announce ? now : record.At, count);
-                    entry.CrashCount = count;
+                var notices = this.announcer.Observe(
+                    entry.ServiceName,
+                    entry.Status,
+                    entry.LastExitCode ?? 0,
+                    held: this.inFlight.Contains(entry.ServiceName),
+                    now);
+                entry.CrashCount = this.announcer.CountFor(entry.ServiceName);
 
-                    if (announce)
+                if (!notify)
+                {
+                    continue;
+                }
+
+                foreach (var notice in notices)
+                {
+                    // The first crash keeps its own event, which the tray and the webhook already
+                    // word: the count is 1, and they say "stopped unexpectedly".
+                    if (notice.Kind == StopNoticeKind.UnexpectedStop)
                     {
                         this.UnexpectedStop?.Invoke(entry);
                     }
+                    else
+                    {
+                        this.StopNoticed?.Invoke(notice);
+                    }
                 }
-
-                this.lastHealth[entry.ServiceName] = health;
             }
         }
 

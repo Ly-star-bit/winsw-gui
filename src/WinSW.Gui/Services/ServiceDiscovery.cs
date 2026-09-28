@@ -187,6 +187,57 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Writes the state half of a reading taken without the process snapshot, as the dashboard
+        /// takes while its page is hidden: the status, the process ID and the exit code. Like
+        /// <see cref="Apply"/>, on the UI thread.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Such a reading says nothing about the process, which is not the same as saying it has
+        /// none: given to <see cref="Apply"/>, a running service would lose its counters, its CPU
+        /// trace and its hour of memory trace on every hidden tick. They are left as the last full
+        /// reading left them while the process is the one they describe. A process that has gone
+        /// or been replaced takes them with it, as it would under <see cref="Apply"/>, so the next
+        /// full reading starts from nothing rather than from another process's figures.
+        /// </para>
+        /// <para>
+        /// What the stopped service has left running is not looked for, so a finding stays as the
+        /// last full reading left it until the next one. A service that is not stopped has none,
+        /// as under <see cref="Apply"/>, where one is only ever looked for while it is stopped.
+        /// </para>
+        /// </remarks>
+        public static void ApplyStatus(ServiceEntry entry, in ServiceSample sample)
+        {
+            if (!sample.Queried)
+            {
+                Apply(entry, sample);
+                return;
+            }
+
+            bool sameProcess = sample.ProcessId != 0 && sample.ProcessId == entry.ProcessId;
+
+            // A new wrapper is a new tree, as in Apply.
+            if (sample.ProcessId != 0 && !sameProcess)
+            {
+                entry.Descendants = Array.Empty<ProcessMark>();
+            }
+
+            entry.Status = sample.Status;
+            entry.ProcessId = sample.ProcessId;
+            entry.LastExitCode = sample.LastExitCode;
+
+            if (sample.Status != ServiceControllerStatus.Stopped)
+            {
+                entry.NoteStray(null, DateTime.UtcNow);
+            }
+
+            if (!sameProcess)
+            {
+                entry.ClearSample();
+            }
+        }
+
+        /// <summary>
         /// Re-reads the wrapper's file version. Nothing else does: the periodic poll refreshes
         /// status and metrics, and re-reading a version resource for every service on every
         /// tick would be work for a value that changes only when the file is replaced.

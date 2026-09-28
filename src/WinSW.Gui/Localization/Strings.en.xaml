@@ -311,6 +311,16 @@
     <sys:String x:Key="M.Dash.TimeoutAction">Terminate</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopTitle">Service stopped unexpectedly</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopBody">'{0}' is no longer running.</sys:String>
+    <!-- Stop notices after the first crash: a restart loop's count when its window ends, a stop with exit code 0, a crashed service running again. Tray title and body ({0} service, {1} count), then the webhook text ({0} machine, {1} service, {2} exit code, {3} count). -->
+    <sys:String x:Key="M.Dash.StopLoopTitle">Service keeps stopping</sys:String>
+    <sys:String x:Key="M.Dash.StopLoopBody">'{0}' stopped unexpectedly {1} time(s) in the last few minutes; Windows service recovery keeps restarting it.</sys:String>
+    <sys:String x:Key="M.Dash.CleanStopTitle">Service stopped</sys:String>
+    <sys:String x:Key="M.Dash.CleanStopBody">'{0}' has stopped (exit code 0).</sys:String>
+    <sys:String x:Key="M.Dash.RecoveredTitle">Service running again</sys:String>
+    <sys:String x:Key="M.Dash.RecoveredBody">'{0}' is running again and has not stopped since.</sys:String>
+    <sys:String x:Key="M.Alert.StopLoop">[WinSW] {0}: service '{1}' stopped unexpectedly {3} time(s) in the last few minutes; Windows service recovery keeps restarting it (last exit code {2}).</sys:String>
+    <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}: service '{1}' has stopped (exit code 0).</sys:String>
+    <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}: service '{1}' is running again and has not stopped since.</sys:String>
     <sys:String x:Key="M.Dash.Rescanned">Service list updated: {0} added, {1} removed.</sys:String>
     <sys:String x:Key="M.Shell.RestartElevated">Restart as administrator</sys:String>
     <sys:String x:Key="M.Shell.Theme">Theme</sys:String>

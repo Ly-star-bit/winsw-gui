@@ -300,6 +300,16 @@
     <sys:String x:Key="M.Dash.TimeoutAction">強制結束</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopTitle">服務意外停止</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopBody">「{0}」已停止執行。</sys:String>
+    <!-- Stop notices after the first crash: a restart loop's count when its window ends, a stop with exit code 0, a crashed service running again. Tray title and body ({0} service, {1} count), then the webhook text ({0} machine, {1} service, {2} exit code, {3} count). -->
+    <sys:String x:Key="M.Dash.StopLoopTitle">服務反覆意外停止</sys:String>
+    <sys:String x:Key="M.Dash.StopLoopBody">「{0}」最近幾分鐘內意外停止了 {1} 次，Windows 服務復原一直在重新啟動它。</sys:String>
+    <sys:String x:Key="M.Dash.CleanStopTitle">服務已停止</sys:String>
+    <sys:String x:Key="M.Dash.CleanStopBody">「{0}」已停止（結束代碼 0）。</sys:String>
+    <sys:String x:Key="M.Dash.RecoveredTitle">服務已恢復執行</sys:String>
+    <sys:String x:Key="M.Dash.RecoveredBody">「{0}」已恢復執行，之後沒有再停止。</sys:String>
+    <sys:String x:Key="M.Alert.StopLoop">[WinSW] {0}：服務「{1}」最近幾分鐘內意外停止了 {3} 次，Windows 服務復原一直在重新啟動它（最後一次結束代碼 {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}：服務「{1}」已停止（結束代碼 0）。</sys:String>
+    <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}：服務「{1}」已恢復執行，之後沒有再停止。</sys:String>
     <sys:String x:Key="M.Dash.Rescanned">服務清單已更新：新增 {0}，移除 {1}。</sys:String>
     <sys:String x:Key="M.Shell.RestartElevated">以系統管理員身分重新啟動</sys:String>
     <sys:String x:Key="M.Shell.Theme">佈景主題</sys:String>

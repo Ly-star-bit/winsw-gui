@@ -300,6 +300,16 @@
     <sys:String x:Key="M.Dash.TimeoutAction">強制終了</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopTitle">サービスが予期せず停止しました</sys:String>
     <sys:String x:Key="M.Dash.UnexpectedStopBody">'{0}' は実行されていません。</sys:String>
+    <!-- Stop notices after the first crash: a restart loop's count when its window ends, a stop with exit code 0, a crashed service running again. Tray title and body ({0} service, {1} count), then the webhook text ({0} machine, {1} service, {2} exit code, {3} count). -->
+    <sys:String x:Key="M.Dash.StopLoopTitle">サービスが停止を繰り返しています</sys:String>
+    <sys:String x:Key="M.Dash.StopLoopBody">'{0}' はこの数分間に {1} 回予期せず停止しました。Windows のサービスの回復が再起動を繰り返しています。</sys:String>
+    <sys:String x:Key="M.Dash.CleanStopTitle">サービスが停止しました</sys:String>
+    <sys:String x:Key="M.Dash.CleanStopBody">'{0}' が停止しました（終了コード 0）。</sys:String>
+    <sys:String x:Key="M.Dash.RecoveredTitle">サービスが再び実行中です</sys:String>
+    <sys:String x:Key="M.Dash.RecoveredBody">'{0}' は再び実行中で、その後は停止していません。</sys:String>
+    <sys:String x:Key="M.Alert.StopLoop">[WinSW] {0}: サービス '{1}' がこの数分間に {3} 回予期せず停止しました。Windows のサービスの回復が再起動を繰り返しています（最後の終了コード {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}: サービス '{1}' が停止しました（終了コード 0）。</sys:String>
+    <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}: サービス '{1}' は再び実行中で、その後は停止していません。</sys:String>
     <sys:String x:Key="M.Dash.Rescanned">サービス一覧を更新しました: 追加 {0}、削除 {1}。</sys:String>
     <sys:String x:Key="M.Shell.RestartElevated">管理者として再起動</sys:String>
     <sys:String x:Key="M.Shell.Theme">テーマ</sys:String>

@@ -594,7 +594,10 @@ namespace WinSW.Gui.Model
             _ => string.Empty,
         };
 
-        /// <summary>Unexpected stops seen in the current five-minute window; shown in the notification.</summary>
+        /// <summary>
+        /// Stops in the counting window now open, the one told at once included; 0 when none is
+        /// open. 1 when the first crash is announced. See <see cref="Services.CrashAnnouncer"/>.
+        /// </summary>
         public int CrashCount
         {
             get => this.crashCount;

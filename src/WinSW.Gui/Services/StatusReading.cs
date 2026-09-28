@@ -34,15 +34,26 @@ namespace WinSW.Gui.Services
         private IntPtr manager;
 
         public StatusReading()
+            : this(withProcesses: true)
+        {
+        }
+
+        /// <summary>Opens a reading, with or without the snapshot of the machine's processes.</summary>
+        /// <param name="withProcesses">
+        /// False for a reading of states alone, as the dashboard takes while its page is hidden:
+        /// no snapshot is taken, so what is left per service is its one query to the service
+        /// control manager, and every sample comes back with no process.
+        /// </param>
+        public StatusReading(bool withProcesses)
         {
             // The processes first. A service that starts between the two readings shows its
             // state with no counters this tick, and its counters the next; the other order
             // could show counters for a process that had been read and then exited.
-            this.Processes = ProcessSnapshot.Take();
+            this.Processes = withProcesses ? ProcessSnapshot.Take() : null;
             this.manager = NativeMethods.OpenServiceManager();
         }
 
-        /// <summary>Null when the snapshot could not be taken; every sample then has no process.</summary>
+        /// <summary>Null when the snapshot could not be taken, or was not asked for; every sample then has no process.</summary>
         public ProcessSnapshot? Processes { get; }
 
         /// <summary>
