@@ -335,6 +335,16 @@
     <sys:String x:Key="M.Alert.StopLoop">[WinSW] {0}: service '{1}' stopped unexpectedly {3} time(s) in the last few minutes; Windows service recovery keeps restarting it (last exit code {2}).</sys:String>
     <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}: service '{1}' has stopped (exit code 0).</sys:String>
     <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}: service '{1}' is running again and has not stopped since.</sys:String>
+    <!-- A desktop task's stop notices, as a service's above: tray title and body ({0} task, {1} exit code or count), then the webhook text ({0} machine, {1} task, {2} exit code, {3} count); the task's own alerts checkbox. M.Alert.Cause is the line under a crash's chat alert ({0} the err.log file, {1} its last line). M.Dash.UpgradeFrameworkTooOld replaces the upgrade question's .NET Framework note on a machine known to be too old ({0} the installed version, {1} the offline installer). M.LastStop.Environment heads what the environment check found after a failed start. -->
+    <sys:String x:Key="M.Task.StopTitle">Desktop task stopped unexpectedly</sys:String>
+    <sys:String x:Key="M.Task.StopBody">'{0}' is no longer running (exit code {1}).</sys:String>
+    <sys:String x:Key="M.Task.StopLoopTitle">Desktop task keeps stopping</sys:String>
+    <sys:String x:Key="M.Task.StopLoopBody">'{0}' stopped unexpectedly {1} time(s) in the last few minutes; its keep-alive trigger keeps starting it again.</sys:String>
+    <sys:String x:Key="M.Task.RecoveredTitle">Desktop task running again</sys:String>
+    <sys:String x:Key="M.Task.RecoveredBody">'{0}' is running again and has not stopped since.</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopped">[WinSW] {0}: desktop task '{1}' stopped unexpectedly (exit code {2}).</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopLoop">[WinSW] {0}: desktop task '{1}' stopped unexpectedly {3} time(s) in the last few minutes; its keep-alive trigger keeps starting it again (last exit code {2}).</sys:String>
+    <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}: desktop task '{1}' is running again and has not stopped since.</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">Restarting (recovery)</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">On failure</sys:String>
@@ -684,7 +694,6 @@
     <sys:String x:Key="M.Group.Hint">Type a new group or pick one. Kept for this Windows user, not in the service's configuration; the search box matches it too.</sys:String>
     <sys:String x:Key="M.Dash.DoubleClickTip">Double-click a service to open its logs</sys:String>
     <sys:String x:Key="M.Dash.More">More</sys:String>
-    <sys:String x:Key="M.Dash.UnexpectedStopRepeated">'{0}' stopped unexpectedly {1} times in the last few minutes.</sys:String>
     <sys:String x:Key="M.Empty.Title">No services yet</sys:String>
     <sys:String x:Key="M.Empty.Body">Nothing on this machine is wrapped by WinSW. Create a service from any program, or open an existing configuration file.</sys:String>
     <sys:String x:Key="M.Empty.Create">Create your first service</sys:String>

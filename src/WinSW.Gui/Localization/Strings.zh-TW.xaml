@@ -324,6 +324,16 @@
     <sys:String x:Key="M.Alert.StopLoop">[WinSW] {0}：服務「{1}」最近幾分鐘內意外停止了 {3} 次，Windows 服務復原一直在重新啟動它（最後一次結束代碼 {2}）。</sys:String>
     <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}：服務「{1}」已停止（結束代碼 0）。</sys:String>
     <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}：服務「{1}」已恢復執行，之後沒有再停止。</sys:String>
+    <!-- A desktop task's stop notices, as a service's above: tray title and body ({0} task, {1} exit code or count), then the webhook text ({0} machine, {1} task, {2} exit code, {3} count); the task's own alerts checkbox. M.Alert.Cause is the line under a crash's chat alert ({0} the err.log file, {1} its last line). M.Dash.UpgradeFrameworkTooOld replaces the upgrade question's .NET Framework note on a machine known to be too old ({0} the installed version, {1} the offline installer). M.LastStop.Environment heads what the environment check found after a failed start. -->
+    <sys:String x:Key="M.Task.StopTitle">桌面工作意外停止</sys:String>
+    <sys:String x:Key="M.Task.StopBody">「{0}」已停止執行（結束代碼 {1}）。</sys:String>
+    <sys:String x:Key="M.Task.StopLoopTitle">桌面工作反覆意外停止</sys:String>
+    <sys:String x:Key="M.Task.StopLoopBody">「{0}」最近幾分鐘內意外停止了 {1} 次，工作排程器一直在重新拉起它。</sys:String>
+    <sys:String x:Key="M.Task.RecoveredTitle">桌面工作已恢復執行</sys:String>
+    <sys:String x:Key="M.Task.RecoveredBody">「{0}」已恢復執行，之後沒有再停止。</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopped">[WinSW] {0}：桌面工作「{1}」意外停止（結束代碼 {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopLoop">[WinSW] {0}：桌面工作「{1}」最近幾分鐘內意外停止了 {3} 次，工作排程器一直在重新拉起它（最後一次結束代碼 {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}：桌面工作「{1}」已恢復執行，之後沒有再停止。</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">等待自動重新啟動</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">失敗後</sys:String>
@@ -673,7 +683,6 @@
     <sys:String x:Key="M.Group.Hint">輸入新分組或從清單中選擇。依 Windows 使用者儲存，不寫入服務設定；搜尋方塊也會比對分組名稱。</sys:String>
     <sys:String x:Key="M.Dash.DoubleClickTip">按兩下服務即可開啟記錄</sys:String>
     <sys:String x:Key="M.Dash.More">更多</sys:String>
-    <sys:String x:Key="M.Dash.UnexpectedStopRepeated">「{0}」幾分鐘內已意外停止 {1} 次。</sys:String>
     <sys:String x:Key="M.Empty.Title">還沒有服務</sys:String>
     <sys:String x:Key="M.Empty.Body">本機還沒有由 WinSW 託管的服務。從任何程式建立一個服務，或開啟現有的設定檔。</sys:String>
     <sys:String x:Key="M.Empty.Create">建立第一個服務</sys:String>

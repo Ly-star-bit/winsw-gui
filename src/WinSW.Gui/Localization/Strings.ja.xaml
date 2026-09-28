@@ -324,6 +324,16 @@
     <sys:String x:Key="M.Alert.StopLoop">[WinSW] {0}: サービス '{1}' がこの数分間に {3} 回予期せず停止しました。Windows のサービスの回復が再起動を繰り返しています（最後の終了コード {2}）。</sys:String>
     <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}: サービス '{1}' が停止しました（終了コード 0）。</sys:String>
     <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}: サービス '{1}' は再び実行中で、その後は停止していません。</sys:String>
+    <!-- A desktop task's stop notices, as a service's above: tray title and body ({0} task, {1} exit code or count), then the webhook text ({0} machine, {1} task, {2} exit code, {3} count); the task's own alerts checkbox. M.Alert.Cause is the line under a crash's chat alert ({0} the err.log file, {1} its last line). M.Dash.UpgradeFrameworkTooOld replaces the upgrade question's .NET Framework note on a machine known to be too old ({0} the installed version, {1} the offline installer). M.LastStop.Environment heads what the environment check found after a failed start. -->
+    <sys:String x:Key="M.Task.StopTitle">デスクトップタスクが予期せず停止しました</sys:String>
+    <sys:String x:Key="M.Task.StopBody">'{0}' は実行されていません（終了コード {1}）。</sys:String>
+    <sys:String x:Key="M.Task.StopLoopTitle">デスクトップタスクが停止を繰り返しています</sys:String>
+    <sys:String x:Key="M.Task.StopLoopBody">'{0}' はこの数分間に {1} 回予期せず停止しました。タスク スケジューラが起動し直しを繰り返しています。</sys:String>
+    <sys:String x:Key="M.Task.RecoveredTitle">デスクトップタスクが再び実行中です</sys:String>
+    <sys:String x:Key="M.Task.RecoveredBody">'{0}' は再び実行中で、その後は停止していません。</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopped">[WinSW] {0}: デスクトップタスク '{1}' が予期せず停止しました（終了コード {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopLoop">[WinSW] {0}: デスクトップタスク '{1}' がこの数分間に {3} 回予期せず停止しました。タスク スケジューラが起動し直しを繰り返しています（最後の終了コード {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}: デスクトップタスク '{1}' は再び実行中で、その後は停止していません。</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">自動再起動待ち</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">失敗時の動作</sys:String>
@@ -673,7 +683,6 @@
     <sys:String x:Key="M.Group.Hint">新しいグループを入力するか一覧から選びます。サービスの構成ではなく Windows ユーザーごとに保存され、検索ボックスでもグループ名に一致します。</sys:String>
     <sys:String x:Key="M.Dash.DoubleClickTip">サービスをダブルクリックしてログを開く</sys:String>
     <sys:String x:Key="M.Dash.More">その他</sys:String>
-    <sys:String x:Key="M.Dash.UnexpectedStopRepeated">'{0}' はここ数分で {1} 回予期せず停止しました。</sys:String>
     <sys:String x:Key="M.Empty.Title">サービスはまだありません</sys:String>
     <sys:String x:Key="M.Empty.Body">このマシンに WinSW でラップされたサービスはありません。任意のプログラムからサービスを作成するか、既存の構成ファイルを開いてください。</sys:String>
     <sys:String x:Key="M.Empty.Create">最初のサービスを作成</sys:String>

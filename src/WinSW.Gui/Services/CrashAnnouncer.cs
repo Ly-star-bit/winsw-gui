@@ -46,7 +46,92 @@ namespace WinSW.Gui.Services
     /// <see cref="StopNoticeKind.Recovered"/>.
     /// </param>
     /// <param name="ExitCode">The exit code of the last stop the notice covers.</param>
-    public sealed record StopNotice(string ServiceName, StopNoticeKind Kind, int Count, int ExitCode);
+    public sealed record StopNotice(string ServiceName, StopNoticeKind Kind, int Count, int ExitCode)
+    {
+        /// <summary>
+        /// The notice is about a desktop task, a program the task scheduler runs in the signed-in
+        /// session (see <see cref="DesktopTasks"/>), rather than a service. <see cref="ServiceName"/>
+        /// is then the task's name, which is its configuration's service ID.
+        /// </summary>
+        public bool DesktopTask { get; init; }
+    }
+
+    /// <summary>
+    /// A <see cref="StopNotice"/> in words: the tray balloon, and the first line of the group
+    /// chat's message. The format function is <c>Localizer.Format</c> outside the tests, which
+    /// have no dictionaries to read.
+    /// </summary>
+    /// <remarks>
+    /// A desktop task's exit with 0 is never told (see <see cref="DesktopTaskWatch"/>): a robot
+    /// that finishes its work, or is closed by the person at the desktop, ends that way. Its
+    /// notices are the crash, the count and the recovery, worded for a task, which the task
+    /// scheduler's keep-alive trigger starts again rather than Windows' service recovery.
+    /// </remarks>
+    public static class StopNoticeText
+    {
+        /// <summary>
+        /// What a tray balloon about a desktop task is tagged with in front of its name: the
+        /// task's folder in the task scheduler. A service name cannot hold a backslash, so the
+        /// tag says which of the two the balloon is about.
+        /// </summary>
+        private const string TaskTagPrefix = "\\" + DesktopTasks.FolderName + "\\";
+
+        /// <summary>The tray balloon: title, text, and whether it is shown as an error.</summary>
+        public static (string Title, string Body, bool IsError) Balloon(StopNotice notice, Func<string, object?[], string> format)
+        {
+            string name = notice.ServiceName;
+            var (title, body, args, isError) = (notice.DesktopTask, notice.Kind) switch
+            {
+                (false, StopNoticeKind.UnexpectedStop) => ("M.Dash.UnexpectedStopTitle", "M.Dash.UnexpectedStopBody", new object?[] { name }, true),
+                (false, StopNoticeKind.RepeatedStops) => ("M.Dash.StopLoopTitle", "M.Dash.StopLoopBody", new object?[] { name, notice.Count }, true),
+                (false, StopNoticeKind.CleanStop) => ("M.Dash.CleanStopTitle", "M.Dash.CleanStopBody", new object?[] { name }, false),
+                (false, _) => ("M.Dash.RecoveredTitle", "M.Dash.RecoveredBody", new object?[] { name }, false),
+                (true, StopNoticeKind.RepeatedStops) => ("M.Task.StopLoopTitle", "M.Task.StopLoopBody", new object?[] { name, notice.Count }, true),
+                (true, StopNoticeKind.Recovered) => ("M.Task.RecoveredTitle", "M.Task.RecoveredBody", new object?[] { name }, false),
+                (true, _) => ("M.Task.StopTitle", "M.Task.StopBody", new object?[] { name, ExitCodeOf(notice) }, true),
+            };
+
+            return (format(title, Array.Empty<object?>()), format(body, args), isError);
+        }
+
+        /// <summary>
+        /// The group chat's message, before any line saying why: machine, name, and what happened,
+        /// with the exit code and the count where there are any.
+        /// </summary>
+        public static string Message(StopNotice notice, string machine, Func<string, object?[], string> format)
+        {
+            string name = notice.ServiceName;
+            return (notice.DesktopTask, notice.Kind) switch
+            {
+                (false, StopNoticeKind.UnexpectedStop) => format("M.Alert.Stopped", new object?[] { machine, name, ExitCodeOf(notice) }),
+                (false, StopNoticeKind.RepeatedStops) => format("M.Alert.StopLoop", new object?[] { machine, name, ExitCodeOf(notice), notice.Count }),
+                (false, StopNoticeKind.CleanStop) => format("M.Alert.CleanStop", new object?[] { machine, name }),
+                (false, _) => format("M.Alert.Recovered", new object?[] { machine, name }),
+                (true, StopNoticeKind.RepeatedStops) => format("M.Alert.TaskStopLoop", new object?[] { machine, name, ExitCodeOf(notice), notice.Count }),
+                (true, StopNoticeKind.Recovered) => format("M.Alert.TaskRecovered", new object?[] { machine, name }),
+                (true, _) => format("M.Alert.TaskStopped", new object?[] { machine, name, ExitCodeOf(notice) }),
+            };
+        }
+
+        /// <summary>What the tray balloon for <paramref name="notice"/> is tagged with, which a click on it hands back.</summary>
+        public static string TagFor(StopNotice notice) =>
+            notice.DesktopTask ? TaskTagPrefix + notice.ServiceName : notice.ServiceName;
+
+        /// <summary>Whether a balloon's tag names a desktop task rather than a service, and which.</summary>
+        public static bool IsTaskTag(string tag, out string taskName)
+        {
+            bool task = tag.StartsWith(TaskTagPrefix, StringComparison.Ordinal) && tag.Length > TaskTagPrefix.Length;
+            taskName = task ? tag.Substring(TaskTagPrefix.Length) : string.Empty;
+            return task;
+        }
+
+        /// <summary>
+        /// The exit code as the Last stop card shows a program's: a task's result is often an
+        /// NTSTATUS such as 0xC000013A, which is looked up in hex. A service's Win32 code reads the
+        /// same as before.
+        /// </summary>
+        private static string ExitCodeOf(StopNotice notice) => LastStopReader.ExitCodeText(notice.ExitCode);
+    }
 
     /// <summary>
     /// Decides which of a service's stops are told, and how, from the states the dashboard's poll

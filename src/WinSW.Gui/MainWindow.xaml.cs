@@ -50,15 +50,13 @@ namespace WinSW.Gui
                 this.Close();
             };
 
+            // The first crash, then the loop's count at the end of its window, a clean stop, and
+            // a crashed service running again; the same for a desktop task. A click on a balloon
+            // brings up what it is about.
             this.shell.Dashboard.UnexpectedStop += entry =>
-                this.tray.Notify(
-                    Localizer.Get("M.Dash.UnexpectedStopTitle"),
-                    entry.CrashCount > 1
-                        ? Localizer.Format("M.Dash.UnexpectedStopRepeated", entry.ServiceName, entry.CrashCount)
-                        : Localizer.Format("M.Dash.UnexpectedStopBody", entry.ServiceName),
-                    isError: true,
-                    tag: entry.ServiceName);
-            this.tray.NotificationClicked += serviceName => this.shell.ShowService(serviceName);
+                this.NotifyStop(new StopNotice(entry.ServiceName, StopNoticeKind.UnexpectedStop, entry.CrashCount, entry.LastExitCode ?? 0));
+            this.shell.Dashboard.StopNoticed += this.NotifyStop;
+            this.tray.NotificationClicked += this.shell.ShowNotified;
 
             this.shell.ExitDecided += this.OnExitDecided;
             this.shell.RestartElevatedDecided += this.OnRestartElevatedDecided;
@@ -242,6 +240,13 @@ namespace WinSW.Gui
         }
 
         // Tray ----------------------------------------------------------------------
+
+        /// <summary>A stop notice as a balloon, tagged with what a click on it is to bring up.</summary>
+        private void NotifyStop(StopNotice notice)
+        {
+            var (title, body, isError) = StopNoticeText.Balloon(notice, Localizer.Format);
+            this.tray.Notify(title, body, isError, tag: StopNoticeText.TagFor(notice));
+        }
 
         private void OnStateChanged(object? sender, EventArgs e)
         {

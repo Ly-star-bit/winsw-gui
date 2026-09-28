@@ -218,6 +218,19 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Brings a task into view once the next scan has found it.</summary>
         public void SelectWhenReady(string name) => this.pendingSelection = name;
 
+        /// <summary>Selects a task by name now, or once the next scan has found it: from a tray notification.</summary>
+        public void SelectByName(string name)
+        {
+            if (this.Tasks.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase)) is { } match)
+            {
+                this.SelectedTask = match;
+            }
+            else
+            {
+                this.pendingSelection = name;
+            }
+        }
+
         public void Activate()
         {
             if (!this.IsAvailable)

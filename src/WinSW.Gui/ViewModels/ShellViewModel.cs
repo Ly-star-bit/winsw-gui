@@ -709,6 +709,29 @@ namespace WinSW.Gui.ViewModels
             this.Dashboard.SelectByName(serviceName);
         }
 
+        /// <summary>Brings a desktop task into view, from its tray notification.</summary>
+        public void ShowTask(string taskName)
+        {
+            this.Navigate(this.Tasks);
+            this.Tasks.SelectByName(taskName);
+        }
+
+        /// <summary>
+        /// Brings up what a clicked tray notification was about: the service, or the desktop task,
+        /// its tag names; see <see cref="StopNoticeText.TagFor"/>.
+        /// </summary>
+        public void ShowNotified(string tag)
+        {
+            if (StopNoticeText.IsTaskTag(tag, out string taskName))
+            {
+                this.ShowTask(taskName);
+            }
+            else
+            {
+                this.ShowService(tag);
+            }
+        }
+
         public string GuiVersion => "v" + UpdateChecker.CurrentGuiVersion;
 
         /// <summary>A newer GUI release, when one exists and the network allowed asking.</summary>
