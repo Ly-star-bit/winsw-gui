@@ -43,7 +43,8 @@ Works like the append mode, but in addition, if the log file gets bigger than a 
 </log>
 ```
 
-If the files cannot be rolled, for example because another program holds one of them open, WinSW writes the reason to the Windows event log and starts *myapp.out.log* over, and what it held is lost.
+If one of the rolled files cannot be moved or deleted, for example because another program holds it open, WinSW writes the reason to the Windows event log and rolls the others; the file that would have moved onto its name is deleted instead.
+If *myapp.out.log* itself cannot be rolled, WinSW writes the reason to the Windows event log and keeps appending to it, and tries again once another `<sizeThreshold>` of output has been written.
 
 ## Roll by time mode
 

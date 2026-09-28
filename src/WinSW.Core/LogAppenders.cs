@@ -135,6 +135,26 @@ namespace WinSW
 
         protected abstract Task LogError(StreamReader errorReader);
 
+        /// <summary>
+        /// Opens the log file again after a roll closed it. When it cannot be opened, for example
+        /// because another program opened it in the meantime without sharing write access, the
+        /// failure is reported and the output is thrown away until the next roll opens it again. An
+        /// exception would end the copy instead, and with nothing reading the program's output any
+        /// more, the program would hang once the pipe filled up.
+        /// </summary>
+        protected Stream OpenAfterRoll(string path, FileMode mode)
+        {
+            try
+            {
+                return new FileStream(path, mode);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                this.EventLogger.WriteEntry("Failed to open the log file after rolling it, and its output is thrown away until the next roll: " + e.Message);
+                return Stream.Null;
+            }
+        }
+
         private async void SafeLogOutput(StreamReader outputReader)
         {
             try
@@ -252,7 +272,7 @@ namespace WinSW
             var periodicRollingCalendar = new PeriodicRollingCalendar(this.Pattern, this.Period);
             periodicRollingCalendar.Init();
 
-            var writer = new FileStream(this.BaseLogFileName + "_" + periodicRollingCalendar.Format + ext, FileMode.Append);
+            Stream writer = new FileStream(this.BaseLogFileName + "_" + periodicRollingCalendar.Format + ext, FileMode.Append);
             var copy = new StreamCopyOperation(reader.BaseStream, writer);
             while (await copy.CopyLineAsync() != 0)
             {
@@ -260,7 +280,7 @@ namespace WinSW
                 {
                     writer.Dispose();
                     this.PurgeOldFiles(ext);
-                    copy.Writer = writer = new FileStream(this.BaseLogFileName + "_" + periodicRollingCalendar.Format + ext, FileMode.Create);
+                    copy.Writer = writer = this.OpenAfterRoll(this.BaseLogFileName + "_" + periodicRollingCalendar.Format + ext, FileMode.Create);
                 }
             }
 
@@ -336,7 +356,7 @@ namespace WinSW
         /// </summary>
         private async Task CopyStreamWithRotationAsync(StreamReader reader, string ext)
         {
-            var writer = new FileStream(this.BaseLogFileName + ext, FileMode.Append);
+            Stream writer = new FileStream(this.BaseLogFileName + ext, FileMode.Append);
             var copy = new StreamCopyOperation(reader.BaseStream, writer);
             long fileLength = new FileInfo(this.BaseLogFileName + ext).Length;
 
@@ -348,12 +368,18 @@ namespace WinSW
                 {
                     writer.Dispose();
 
-                    try
+                    // Each rolled file is moved on its own, so that one that cannot be moved does not
+                    // hold up the rest. A log viewer that follows the file down the rolled names ends
+                    // up holding the last one. On older versions of Windows, Windows Server 2016 among
+                    // them, deleting it then only marks it for deletion, and the next delete, or a move
+                    // onto its name, is denied rather than in use. The file that should have taken its
+                    // name is then deleted by the next step instead, as the oldest would have been.
+                    for (int j = this.FilesToKeep; j >= 2; j--)
                     {
-                        for (int j = this.FilesToKeep; j >= 2; j--)
+                        string dst = this.BaseLogFileName + "." + (j - 1) + ext;
+                        string src = this.BaseLogFileName + "." + (j - 2) + ext;
+                        try
                         {
-                            string dst = this.BaseLogFileName + "." + (j - 1) + ext;
-                            string src = this.BaseLogFileName + "." + (j - 2) + ext;
                             if (File.Exists(dst))
                             {
                                 File.Delete(dst);
@@ -364,23 +390,31 @@ namespace WinSW
                                 File.Move(src, dst);
                             }
                         }
+                        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                        {
+                            this.EventLogger.WriteEntry("Failed to roll log: " + e.Message);
+                        }
+                    }
 
+                    bool rolled;
+                    try
+                    {
                         File.Move(this.BaseLogFileName + ext, this.BaseLogFileName + ".0" + ext);
+                        rolled = true;
                     }
                     catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                     {
-                        // A log viewer that follows the file down the rolled names ends up holding the
-                        // last one. On older versions of Windows, Windows Server 2016 among them, deleting
-                        // it then only marks it for deletion, and the next delete, or a move onto its name,
-                        // is denied rather than in use. Were that to end the copy, nothing would read the
-                        // program's output any more, and the program would hang once the pipe filled up.
+                        // A reader that does not share delete access, as many log viewers open files,
+                        // keeps the file from being renamed.
                         this.EventLogger.WriteEntry("Failed to roll log: " + e.Message);
+                        rolled = false;
                     }
 
-                    // even if the log rotation fails, create a new one, or else
-                    // we'll infinitely try to roll.
-                    copy.Writer = writer = new FileStream(this.BaseLogFileName + ext, FileMode.Create);
-                    fileLength = new FileInfo(this.BaseLogFileName + ext).Length;
+                    // A file that could not be rolled is appended to, so that what it holds is kept.
+                    // Counting from zero either way, the next try comes after another threshold's
+                    // worth of output, not on every line from now on.
+                    copy.Writer = writer = this.OpenAfterRoll(this.BaseLogFileName + ext, rolled ? FileMode.Create : FileMode.Append);
+                    fileLength = 0;
                 }
             }
 
@@ -469,23 +503,27 @@ namespace WinSW
 
         private async Task CopyStreamWithRotationAsync(StreamReader reader, string extension)
         {
-            // lock required as the timer thread and the thread that will write to the stream could try and access the file stream at the same time
-            object? fileLock = new();
+            // The roll at a set time of day runs on a timer thread, while the copy goes on in its own.
+            // The lock keeps the two apart: the copy writes under it (see StreamCopyOperation), and a
+            // roll, and the end of the copy, close the writer under it.
+            object fileLock = new();
 
             string? baseDirectory = Path.GetDirectoryName(this.BaseLogFileName)!;
             string? baseFileName = Path.GetFileName(this.BaseLogFileName);
             string? logFile = this.BaseLogFileName + extension;
 
-            var writer = new FileStream(logFile, FileMode.Append);
-            var copy = new StreamCopyOperation(reader.BaseStream, writer);
+            Stream writer = new FileStream(logFile, FileMode.Append);
+            var copy = new StreamCopyOperation(reader.BaseStream, writer, fileLock);
             long fileLength = new FileInfo(logFile).Length;
+            bool ended = false;
 
             // We auto roll at time is configured then we need to create a timer and wait until time is elasped and roll the file over
+            System.Timers.Timer? rollTimer = null;
             if (this.AutoRollAtTime is TimeSpan autoRollAtTime)
             {
                 // Run at start
                 double tickTime = this.SetupRollTimer(autoRollAtTime);
-                var timer = new System.Timers.Timer(tickTime);
+                var timer = rollTimer = new System.Timers.Timer(tickTime);
                 timer.Elapsed += (_, _) =>
                 {
                     try
@@ -493,6 +531,13 @@ namespace WinSW
                         timer.Stop();
                         lock (fileLock)
                         {
+                            // The timer can still go off once the copy has ended and closed the file,
+                            // which is then not opened again.
+                            if (ended)
+                            {
+                                return;
+                            }
+
                             // A file that could not be rolled keeps its length, so that it still rolls
                             // on size when it should.
                             if (Roll(DateTime.Now.AddDays(-1), "Failed to to trigger auto roll at time event due to: "))
@@ -510,40 +555,60 @@ namespace WinSW
                     }
                     finally
                     {
-                        // Recalculate the next interval
-                        timer.Interval = this.SetupRollTimer(autoRollAtTime);
-                        timer.Start();
+                        // Recalculate the next interval, unless the copy has ended and disposed of the
+                        // timer. Under the lock, so that it cannot end in between.
+                        lock (fileLock)
+                        {
+                            if (!ended)
+                            {
+                                timer.Interval = this.SetupRollTimer(autoRollAtTime);
+                                timer.Start();
+                            }
+                        }
                     }
                 };
                 timer.Start();
             }
 
-            int written;
-            while ((written = await copy.CopyLineAsync()) != 0)
+            try
             {
+                int written;
+                while ((written = await copy.CopyLineAsync()) != 0)
+                {
+                    lock (fileLock)
+                    {
+                        fileLength += written;
+                        if (fileLength > this.SizeThreshold)
+                        {
+                            _ = Roll(DateTime.Now, "Failed to roll size time log: ");
+
+                            // Count from zero even when the roll failed and the file is the old one,
+                            // or every line after this one would try again and write another event.
+                            // The next try comes after another threshold's worth of output.
+                            fileLength = 0;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                // Otherwise the timer would go on rolling the file every day after the program has
+                // ended, and leave the last file it opened open.
                 lock (fileLock)
                 {
-                    fileLength += written;
-                    if (fileLength > this.SizeThreshold)
-                    {
-                        _ = Roll(DateTime.Now, "Failed to roll size time log: ");
-
-                        // Count from zero even when the roll failed and the file is the old one, or
-                        // every line after this one would try again and write another event. The next
-                        // try comes after another threshold's worth of output.
-                        fileLength = 0;
-                    }
+                    ended = true;
+                    rollTimer?.Dispose();
+                    writer.Dispose();
                 }
             }
 
             reader.Dispose();
-            writer.Dispose();
 
             // Renames the log file to the next number for the date and starts a new one. The writer is
             // closed first, because Windows does not rename a file that is open without sharing delete
             // access. When the rename fails, the failure is reported and the same file is opened again
             // and appended to, so that the copy goes on and no output is lost. Returns whether the file
-            // was renamed.
+            // was renamed. Both callers hold the lock, as the copy may be about to write.
             bool Roll(DateTime date, string failureMessage)
             {
                 writer.Dispose();
@@ -564,7 +629,7 @@ namespace WinSW
                     rolled = false;
                 }
 
-                copy.Writer = writer = new FileStream(logFile, rolled ? FileMode.Create : FileMode.Append);
+                copy.Writer = writer = this.OpenAfterRoll(logFile, rolled ? FileMode.Create : FileMode.Append);
                 return rolled;
             }
         }
@@ -696,15 +761,20 @@ namespace WinSW
         private readonly byte[] buffer;
         private readonly Stream reader;
 
+        // Held over each write. Code on another thread that replaces the writer, such as a roll at a
+        // set time of day, closes it and puts in the next one under the same lock.
+        private readonly object writerLock;
+
         private int startIndex;
         private int endIndex;
 
         internal Stream Writer;
 
-        internal StreamCopyOperation(Stream reader, Stream writer)
+        internal StreamCopyOperation(Stream reader, Stream writer, object? writerLock = null)
         {
             this.buffer = new byte[BufferSize];
             this.reader = reader;
+            this.writerLock = writerLock ?? new object();
             this.startIndex = 0;
             this.endIndex = 0;
             this.Writer = writer;
@@ -716,7 +786,6 @@ namespace WinSW
             var source = this.reader;
             int startIndex = this.startIndex;
             int endIndex = this.endIndex;
-            var destination = this.Writer;
 
             int total = 0;
             while (true)
@@ -736,15 +805,13 @@ namespace WinSW
                 {
                     int count = newLineIndex - startIndex + 1;
                     total += count;
-                    destination.Write(buffer, startIndex, count);
-                    destination.Flush();
+                    this.Write(buffer, startIndex, count);
                     startIndex = (newLineIndex + 1) % BufferSize;
                     break;
                 }
 
                 total += buffered;
-                destination.Write(buffer, startIndex, buffered);
-                destination.Flush();
+                this.Write(buffer, startIndex, buffered);
                 startIndex = 0;
             }
 
@@ -752,6 +819,19 @@ namespace WinSW
             this.endIndex = endIndex;
 
             return total;
+        }
+
+        // The writer is looked up at each write, not once for the line: the copy spends most of its
+        // time waiting for the program's output, and a roll on another thread in the meantime closes
+        // the writer and puts another in its place. Holding the lock keeps the roll from doing that
+        // in the middle of a write.
+        private void Write(byte[] buffer, int offset, int count)
+        {
+            lock (this.writerLock)
+            {
+                this.Writer.Write(buffer, offset, count);
+                this.Writer.Flush();
+            }
         }
     }
 }
