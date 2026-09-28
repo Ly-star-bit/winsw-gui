@@ -112,10 +112,12 @@ namespace WinSW.Gui.ViewModels
                     this.Model.Executable = this.Relativize(path);
 
                     // The wrapper's default working directory is its own folder, which is
-                    // rarely what a program expects; the program's folder is the usual intent.
+                    // rarely what a program expects; the program's folder is the usual intent,
+                    // except for a launcher in a virtual environment's Scripts folder, where the
+                    // application's code is not. See PythonProject.WorkingDirectoryFor.
                     if (string.IsNullOrWhiteSpace(this.Model.WorkingDirectory))
                     {
-                        this.Model.WorkingDirectory = this.Relativize(Path.GetDirectoryName(path) ?? string.Empty);
+                        this.Model.WorkingDirectory = this.Relativize(PythonProject.WorkingDirectoryFor(path) ?? string.Empty);
                     }
                 }
             });

@@ -201,6 +201,25 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
+        /// The editor's Browse, which has only the program to go on: a launcher or the
+        /// interpreter in a virtual environment works in the project, never in <c>.venv\Scripts</c>;
+        /// anything else, a script included, in its own folder.
+        /// </summary>
+        [Fact]
+        public void APickedProgramWorksInItsProjectOrInItsOwnFolder()
+        {
+            Assert.Equal(this.project, PythonProject.WorkingDirectoryFor(Path.Combine(this.environment, "Scripts", "uvicorn.exe")));
+            Assert.Equal(this.project, PythonProject.WorkingDirectoryFor(this.VenvPython));
+
+            // No project to go on: the folder the program is in, as before.
+            Assert.Equal(Path.Combine(this.directory, "Python311"), PythonProject.WorkingDirectoryFor(Path.Combine(this.directory, "Python311", "python.exe")));
+            Assert.Equal(Path.Combine(this.directory, "tools", "Scripts"), PythonProject.WorkingDirectoryFor(Path.Combine(this.directory, "tools", "Scripts", "cleanup.bat")));
+
+            // A script below the project works where it is, although the environment that runs it is further up.
+            Assert.Equal(Path.Combine(this.project, "app"), PythonProject.WorkingDirectoryFor(Path.Combine(this.project, "app", "server.py")));
+        }
+
+        /// <summary>
         /// Picking uvicorn.exe in the project's environment: the project is the working
         /// directory and names the service, and the two Python variables are filled in.
         /// </summary>

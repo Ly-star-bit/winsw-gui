@@ -196,6 +196,28 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// The folder a program picked by its path should work in, when nothing else is known
+        /// about it: for a launcher or the interpreter in a virtual environment's <c>Scripts</c>
+        /// folder, the project the environment was made in; for anything else, a script
+        /// included, the program's own folder. Null for a path with no folder.
+        /// </summary>
+        /// <remarks>
+        /// For the editor's Browse, which has only the program to go on. Its folder was taken as
+        /// it was, and <c>.venv\Scripts</c> is the one place the application's code is not (see
+        /// the class remarks). The wizard reads the arguments as well, and prefers the folder of
+        /// a script they name.
+        /// </remarks>
+        public static string? WorkingDirectoryFor(string program)
+        {
+            string trimmed = program.Trim();
+            string? folder = Path.GetDirectoryName(trimmed);
+
+            // A script works in its own folder, as in the wizard. Its ProjectRoot is where the
+            // environment that runs it was found, which may be some levels further up.
+            return IsScript(trimmed) ? folder : Inspect(trimmed).ProjectRoot ?? folder;
+        }
+
+        /// <summary>
         /// The virtual environment nearest <paramref name="directory"/>: one of the usual
         /// names in the folder itself or in one of the few above it, with an interpreter in it.
         /// </summary>
