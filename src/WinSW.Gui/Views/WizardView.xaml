@@ -322,6 +322,23 @@
                                 <TextBox Text="{Binding KeepFiles, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
                         </Grid>
+                        <!-- roll-by-time: one file a day, so the only question is how many days to keep. Laid out like the size fields above. -->
+                        <Grid Margin="0,0,0,16" Visibility="{Binding UsesTimeRolling, Converter={StaticResource BoolToVisibility}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.KeepDays}" />
+                                <TextBox Text="{Binding KeepDays, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.KeepDaysHint}" />
+                        </Grid>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.LogDirectoryOptional}" />
                             <DockPanel>
@@ -334,6 +351,8 @@
                             <StackPanel Style="{StaticResource Field}" IsEnabled="{Binding RestartOnFailure}">
                                 <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.RestartDelay}" />
                                 <controls:DurationEditor Value="{Binding RestartDelay, UpdateSourceTrigger=PropertyChanged}" />
+                                <!-- The whole ladder the delay starts, and that its last wait repeats. -->
+                                <TextBlock MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{Binding RecoveryHint}" />
                             </StackPanel>
                         </StackPanel>
 

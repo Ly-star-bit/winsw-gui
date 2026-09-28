@@ -771,6 +771,9 @@
     <sys:String x:Key="M.Wiz.KeepAlive">停止したら起動し直す</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveHint">トリガーが一定間隔で再実行されます。すでに動いていれば何もせず、落ちていれば起動し直します。タスクからは見えないサービス制御マネージャーの回復動作の代わりです。意図的に終了したプログラムも起動し直す点に注意してください。</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveInterval">確認する間隔</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDays">保持する日数</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDaysHint">1 日ごとに日付入りの新しいファイル（例: _20260923.out.log）に切り替わります。この数を超えると古いものから削除されます。</sys:String>
+    <sys:String x:Key="M.Wiz.RecoveryHint">再起動までの待ち時間: {0}。失敗が続く間は最後の間隔で再起動を繰り返し、1 時間失敗がなければ最初から数え直します。</sys:String>
     <sys:String x:Key="M.Wiz.StartAfterRegister">登録後にタスクを開始する</sys:String>
     <sys:String x:Key="M.Wiz.Register">登録</sys:String>
     <sys:String x:Key="M.Wiz.Registering">「{0}」のタスクを登録しています…</sys:String>

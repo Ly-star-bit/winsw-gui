@@ -19,6 +19,18 @@ namespace WinSW.Gui.ViewModels
     {
         public const int LastStep = 4;
 
+        /// <summary>The roll-by-time pattern the wizard writes: one file a day, named by its date.</summary>
+        internal const string DailyRollPattern = "yyyyMMdd";
+
+        /// <summary>
+        /// How long a new service has to run without failing before the service control
+        /// manager starts its restarts over from the first; the recovery hint says so.
+        /// </summary>
+        internal const string FailureResetPeriod = "1 hour";
+
+        /// <summary>The waits the restarts grow to when the program keeps failing; see <see cref="RestartDelays"/>.</summary>
+        private static readonly string[] LaterRestartDelays = { "1 min", "5 min" };
+
         private int step = 1;
         private string wrapperPath = string.Empty;
 
@@ -41,6 +53,7 @@ namespace WinSW.Gui.ViewModels
         private string logPath = string.Empty;
         private string sizeThresholdKb = "10240";
         private string keepFiles = "8";
+        private string keepDays = "30";
         private bool restartOnFailure = true;
         private string restartDelay = "10 sec";
         private bool startAfterInstall = true;
@@ -129,6 +142,7 @@ namespace WinSW.Gui.ViewModels
                 this.Raise(nameof(this.StepTitle));
                 this.Raise(nameof(this.InstallLabel));
                 this.Raise(nameof(this.PythonHint));
+                this.Raise(nameof(this.RecoveryHint));
                 if (this.step == LastStep)
                 {
                     this.RefreshPreview();
@@ -577,11 +591,15 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.logMode, value))
                 {
                     this.Raise(nameof(this.UsesSizeRolling));
+                    this.Raise(nameof(this.UsesTimeRolling));
                 }
             }
         }
 
         public bool UsesSizeRolling => this.logMode == "roll-by-size";
+
+        /// <summary>One file a day; only how many days to keep is asked. See <see cref="BuildModel"/>.</summary>
+        public bool UsesTimeRolling => this.logMode == "roll-by-time";
 
         public string LogPath
         {
@@ -601,6 +619,17 @@ namespace WinSW.Gui.ViewModels
             set => this.Set(ref this.keepFiles, value);
         }
 
+        /// <summary>
+        /// How many daily files roll-by-time keeps. A field of its own rather than
+        /// <see cref="KeepFiles"/>: a month of days and eight files of 10 MB are different
+        /// defaults, and switching the mode back and forth must not trade one for the other.
+        /// </summary>
+        public string KeepDays
+        {
+            get => this.keepDays;
+            set => this.Set(ref this.keepDays, value);
+        }
+
         public bool RestartOnFailure
         {
             get => this.restartOnFailure;
@@ -610,8 +639,18 @@ namespace WinSW.Gui.ViewModels
         public string RestartDelay
         {
             get => this.restartDelay;
-            set => this.Set(ref this.restartDelay, value);
+            set
+            {
+                if (this.Set(ref this.restartDelay, value))
+                {
+                    this.Raise(nameof(this.RecoveryHint));
+                }
+            }
         }
+
+        /// <summary>The waits before each restart, and that the last one repeats; see <see cref="RestartDelays"/>.</summary>
+        public string RecoveryHint =>
+            Localizer.Format("M.Wiz.RecoveryHint", string.Join(" → ", RestartDelays(this.restartDelay)));
 
         // Step 4 ---------------------------------------------------------------
 
@@ -818,6 +857,31 @@ namespace WinSW.Gui.ViewModels
             return rest.Length == 0 ? jar : jar + " " + rest;
         }
 
+        /// <summary>
+        /// The waits before each restart of a new service: the one chosen, then a minute, then
+        /// five minutes. The service control manager repeats the last action for every failure
+        /// after that, so a lone ten-second restart would start a program that can never run
+        /// some 360 times an hour; this comes to about twelve. A later wait no longer than the
+        /// chosen one is left out, so the waits only ever grow.
+        /// </summary>
+        /// <remarks>
+        /// A blank delay is the ten seconds the wizard starts with. One that does not parse is
+        /// kept as it is, for validation to point at, with the full ladder after it.
+        /// </remarks>
+        internal static string[] RestartDelays(string? chosen)
+        {
+            string first = string.IsNullOrWhiteSpace(chosen) ? "10 sec" : chosen.Trim();
+            if (!ServiceConfigModel.TryParseTime(first, out var firstWait))
+            {
+                return LaterRestartDelays.Prepend(first).ToArray();
+            }
+
+            return LaterRestartDelays
+                .Where(later => ServiceConfigModel.TryParseTime(later, out var wait) && wait > firstWait)
+                .Prepend(first)
+                .ToArray();
+        }
+
         private bool CanLeaveCurrentStep() => this.step switch
         {
             1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || this.wrapperExists),
@@ -947,6 +1011,14 @@ namespace WinSW.Gui.ViewModels
                 model.SizeThreshold = NullIfBlank(this.sizeThresholdKb);
                 model.KeepFiles = NullIfBlank(this.keepFiles);
             }
+            else if (this.UsesTimeRolling)
+            {
+                // The wrapper refuses roll-by-time without a pattern, and without keepFiles it
+                // keeps every file it ever wrote. A daily pattern makes the count a count of
+                // days; the period is left at the wrapper's default of one.
+                model.RollPattern = DailyRollPattern;
+                model.KeepFiles = NullIfBlank(this.keepDays);
+            }
 
             if (this.desktopTask)
             {
@@ -959,8 +1031,12 @@ namespace WinSW.Gui.ViewModels
             {
                 // Recovery actions belong to the service control manager, which never sees a
                 // desktop task. Bringing one of those back up is the trigger's job instead.
-                model.FailureActions.Add(new FailureAction { Action = "restart", Delay = NullIfBlank(this.restartDelay) ?? "10 sec" });
-                model.ResetFailureAfter = "1 hour";
+                foreach (string delay in RestartDelays(this.restartDelay))
+                {
+                    model.FailureActions.Add(new FailureAction { Action = "restart", Delay = delay });
+                }
+
+                model.ResetFailureAfter = FailureResetPeriod;
             }
 
             return model;
@@ -1303,7 +1379,12 @@ namespace WinSW.Gui.ViewModels
             this.LogMode = Array.IndexOf(this.LogModes, model.LogMode) >= 0 ? model.LogMode : "roll-by-size";
             this.LogPath = model.LogPath ?? string.Empty;
             this.SizeThresholdKb = model.SizeThreshold ?? "10240";
-            this.KeepFiles = model.KeepFiles ?? "8";
+
+            // A time-rolled source's count is a count of its files, which is a count of days
+            // once the wizard writes its daily pattern in place of whatever the source had.
+            bool byTime = model.LogMode == "roll-by-time";
+            this.KeepFiles = (byTime ? null : model.KeepFiles) ?? "8";
+            this.KeepDays = (byTime ? model.KeepFiles : null) ?? "30";
             this.RestartOnFailure = model.FailureActions.Count > 0;
             this.RestartDelay = model.FailureActions.FirstOrDefault()?.Delay ?? "10 sec";
             this.StatusMessage = Localizer.Format("M.Wiz.Cloned", entry.ServiceName);
@@ -1333,6 +1414,7 @@ namespace WinSW.Gui.ViewModels
             this.LogPath = string.Empty;
             this.SizeThresholdKb = "10240";
             this.KeepFiles = "8";
+            this.KeepDays = "30";
             this.RestartOnFailure = true;
             this.RestartDelay = "10 sec";
             this.LogonDelay = "30 sec";

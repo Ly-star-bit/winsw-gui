@@ -782,6 +782,9 @@
     <sys:String x:Key="M.Wiz.KeepAlive">Start it again if it stops</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveHint">The trigger re-fires on a timer: a tick that finds the program already running does nothing, and one that finds it gone starts it. This stands in for the recovery actions a service gets from the service control manager, which a task never sees. It also brings back a program that exited on purpose.</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveInterval">Check every</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDays">Days to keep</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDaysHint">A new file each day, with the date in its name (such as _20260923.out.log). Once there are more than this many, the oldest are deleted.</sys:String>
+    <sys:String x:Key="M.Wiz.RecoveryHint">Waits before each restart: {0}. The last wait repeats for as long as the program keeps failing; an hour without a failure starts again from the first.</sys:String>
     <sys:String x:Key="M.Wiz.StartAfterRegister">Start the task after registering it</sys:String>
     <sys:String x:Key="M.Wiz.Register">Register</sys:String>
     <sys:String x:Key="M.Wiz.Registering">Registering the task for '{0}'…</sys:String>

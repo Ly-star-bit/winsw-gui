@@ -771,6 +771,9 @@
     <sys:String x:Key="M.Wiz.KeepAlive">程式停了就重新拉起</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveHint">觸發程序按間隔反覆觸發：發現程式還在執行就什麼都不做，發現已經沒了就重新啟動。服務靠的是服務控制管理員的復原動作，工作看不到那些，這一項就是它的替代。注意它也會把主動正常結束的程式重新拉起來。</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveInterval">檢查間隔</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDays">保留天數</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDaysHint">每天一個新檔案，檔名帶日期（如 _20260923.out.log）。超過這個數量後，最舊的會被刪除。</sys:String>
+    <sys:String x:Key="M.Wiz.RecoveryHint">每次重新啟動前的等待：{0}。一直失敗就一直按最後一個間隔重新啟動；1 小時內沒再失敗，就從第一個重新算。</sys:String>
     <sys:String x:Key="M.Wiz.StartAfterRegister">註冊後立即啟動工作</sys:String>
     <sys:String x:Key="M.Wiz.Register">註冊</sys:String>
     <sys:String x:Key="M.Wiz.Registering">正在註冊「{0}」的工作…</sys:String>

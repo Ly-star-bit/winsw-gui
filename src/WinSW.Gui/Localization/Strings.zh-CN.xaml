@@ -771,6 +771,9 @@
     <sys:String x:Key="M.Wiz.KeepAlive">程序停了就重新拉起</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveHint">触发器按间隔反复触发：发现程序还在跑就什么都不做，发现已经没了就重新启动。服务靠的是服务控制管理器的恢复动作，任务看不到那些，这一项就是它的替代。注意它也会把主动正常退出的程序重新拉起来。</sys:String>
     <sys:String x:Key="M.Wiz.KeepAliveInterval">检查间隔</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDays">保留天数</sys:String>
+    <sys:String x:Key="M.Wiz.KeepDaysHint">每天一个新文件，文件名带日期（如 _20260923.out.log）。超过这个数量后，最旧的会被删掉。</sys:String>
+    <sys:String x:Key="M.Wiz.RecoveryHint">每次重启前的等待：{0}。一直失败就一直按最后一个间隔重启；1 小时内没再失败，就从第一个重新算。</sys:String>
     <sys:String x:Key="M.Wiz.StartAfterRegister">注册后立即启动任务</sys:String>
     <sys:String x:Key="M.Wiz.Register">注册</sys:String>
     <sys:String x:Key="M.Wiz.Registering">正在注册“{0}”的任务…</sys:String>
