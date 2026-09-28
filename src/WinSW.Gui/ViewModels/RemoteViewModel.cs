@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -40,13 +41,30 @@ namespace WinSW.Gui.ViewModels
         private bool lastRefreshFailed;
         private bool isBusy;
         private bool autoRefresh = true;
+        private bool wrappersOnly;
+
+        /// <summary>
+        /// Set while <see cref="RecentMachines"/> is being reordered, when whatever the machine
+        /// box writes back is the drop-down's doing, not the user's; see <see cref="Remember"/>.
+        /// </summary>
+        private bool rememberingMachine;
         private RemoteServiceStatus? selectedService;
 
         public RemoteViewModel()
         {
+            foreach (string name in MachineHistory.Load(AppSettings.Current.RemoteMachines))
+            {
+                this.RecentMachines.Add(name);
+            }
+
+            // The last machine is filled in, not connected to: a page opened for a look at the
+            // list should not first wait on the network.
+            this.machine = this.RecentMachines.FirstOrDefault() ?? string.Empty;
+            this.wrappersOnly = AppSettings.Current.RemoteWrappersOnly;
+
             this.ServicesView = CollectionViewSource.GetDefaultView(this.Services);
             this.ServicesView.Filter = this.MatchesFilter;
-            this.RefreshCommand = new AsyncRelayCommand(this.RefreshAsync, () => !string.IsNullOrWhiteSpace(this.machine) && !this.isBusy);
+            this.RefreshCommand = new AsyncRelayCommand(() => this.RefreshAsync(reclassify: true), () => !string.IsNullOrWhiteSpace(this.machine) && !this.isBusy);
             this.StartCommand = new AsyncRelayCommand(() => this.ControlAsync(RemoteAction.Start), () => !this.isBusy && this.selectedService?.CanStart == true);
             this.StopCommand = new AsyncRelayCommand(() => this.ControlAsync(RemoteAction.Stop), () => !this.isBusy && this.selectedService?.CanStop == true);
             this.RestartCommand = new AsyncRelayCommand(() => this.ControlAsync(RemoteAction.Restart), () => !this.isBusy && this.selectedService?.Status != null);
@@ -55,13 +73,18 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.autoRefresh && this.Services.Count > 0 && this.RefreshCommand.CanExecute(null))
                 {
-                    await this.RefreshAsync().ConfigureAwait(true);
+                    await this.RefreshAsync(reclassify: false).ConfigureAwait(true);
                 }
             };
 
             this.statusMessage = Localizer.Get("M.Remote.Hint");
             Localizer.Changed += () =>
             {
+                foreach (var row in this.Services)
+                {
+                    row.RefreshLocalized();
+                }
+
                 if (this.Services.Count == 0)
                 {
                     this.StatusMessage = Localizer.Get("M.Remote.Hint");
@@ -74,6 +97,12 @@ namespace WinSW.Gui.ViewModels
         }
 
         public ObservableCollection<RemoteServiceStatus> Services { get; } = new();
+
+        /// <summary>
+        /// Computers connected to before, most recent first, for the machine box's drop-down.
+        /// Names only; the connection is always made with the current user's own credentials.
+        /// </summary>
+        public ObservableCollection<string> RecentMachines { get; } = new();
 
         public ICollectionView ServicesView { get; }
 
@@ -103,7 +132,12 @@ namespace WinSW.Gui.ViewModels
             get => this.machine;
             set
             {
-                if (this.Set(ref this.machine, value))
+                if (this.rememberingMachine)
+                {
+                    return;
+                }
+
+                if (this.Set(ref this.machine, value ?? string.Empty))
                 {
                     this.RefreshCommand.RaiseCanExecuteChanged();
                 }
@@ -131,6 +165,30 @@ namespace WinSW.Gui.ViewModels
         {
             get => this.autoRefresh;
             set => this.Set(ref this.autoRefresh, value);
+        }
+
+        /// <summary>
+        /// List only the services a WinSW wrapper hosts. A service that could not be told either
+        /// way stays in the list: hiding it would pass off a machine that refused the question as
+        /// one with nothing of ours on it.
+        /// </summary>
+        public bool WrappersOnly
+        {
+            get => this.wrappersOnly;
+            set
+            {
+                if (this.Set(ref this.wrappersOnly, value))
+                {
+                    this.ServicesView.Refresh();
+                    if (this.loadedMachine != null && !this.lastRefreshFailed)
+                    {
+                        this.ShowCounts();
+                    }
+
+                    AppSettings.Current.RemoteWrappersOnly = value;
+                    AppSettings.Current.Save();
+                }
+            }
         }
 
         public string StatusMessage
@@ -177,7 +235,7 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            string verb = action.ToString().ToLowerInvariant();
+            string verb = Localizer.Get(RemoteMonitor.VerbKey(action));
             this.IsBusy = true;
             this.StatusMessage = Localizer.Format("M.Remote.Controlling", verb, target.ServiceName, on);
 
@@ -199,13 +257,14 @@ namespace WinSW.Gui.ViewModels
                 this.IsBusy = false;
             }
 
-            ActionLog.Record("remote " + verb, on + "\\" + target.ServiceName, outcome);
+            // The log is English whatever the interface language, like every line in it.
+            ActionLog.Record("remote " + action.ToString().ToLowerInvariant(), on + "\\" + target.ServiceName, outcome);
 
             // The row shows the state it settled in; the line under the list says what was done.
             // Only while the box still names that machine: a refresh reads whatever it names.
             if (string.Equals(this.machine.Trim(), on, StringComparison.OrdinalIgnoreCase))
             {
-                await this.RefreshAsync().ConfigureAwait(true);
+                await this.RefreshAsync(reclassify: false).ConfigureAwait(true);
             }
 
             this.StatusMessage = message;
@@ -213,18 +272,36 @@ namespace WinSW.Gui.ViewModels
 
         public void Deactivate() => this.timer.Stop();
 
-        private async Task RefreshAsync()
+        /// <param name="reclassify">
+        /// Ask every service again whether a wrapper hosts it: true for Connect, including on the
+        /// machine already listed, so a refusal the first time is not kept until another machine
+        /// is chosen. A poll asks only about services not on screen yet.
+        /// </param>
+        private async Task RefreshAsync(bool reclassify)
         {
             string target = this.machine.Trim();
             this.IsBusy = true;
 
+            // A copy: the worker reads it.
+            bool sameMachine = string.Equals(target, this.loadedMachine, StringComparison.OrdinalIgnoreCase);
+            var classified = sameMachine && !reclassify
+                ? this.Services.Select(s => s.ServiceName).ToImmutableHashSet(StringComparer.OrdinalIgnoreCase)
+                : ImmutableHashSet<string>.Empty;
+
             try
             {
-                var list = await Task.Run(() => RemoteMonitor.List(target)).ConfigureAwait(true);
+                var list = await Task.Run(() => RemoteMonitor.List(target, classified)).ConfigureAwait(true);
 
                 if (string.Equals(target, this.loadedMachine, StringComparison.OrdinalIgnoreCase))
                 {
                     this.Merge(list);
+
+                    // The answers may have changed on rows already shown, which the view does
+                    // not re-filter on its own.
+                    if (reclassify && this.wrappersOnly)
+                    {
+                        this.ServicesView.Refresh();
+                    }
                 }
                 else
                 {
@@ -237,6 +314,7 @@ namespace WinSW.Gui.ViewModels
                     }
 
                     this.loadedMachine = target;
+                    this.Remember(target);
                 }
 
                 this.lastRefreshFailed = false;
@@ -254,14 +332,46 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
-        /// Counts what the filter shows, not what the machine has; with a filter set, the total
-        /// is given alongside so a short list is not mistaken for a machine with few services.
+        /// Puts a machine that answered at the top of <see cref="RecentMachines"/>, and keeps the
+        /// list for next time. Only after a connect that worked: a mistyped name is not worth
+        /// remembering.
+        /// </summary>
+        private void Remember(string name)
+        {
+            // An editable ComboBox can clear its text when its selected item moves or goes, and
+            // the two-way binding would carry that into Machine: Connect disabled, and the refresh
+            // after a start or stop skipped because the box no longer names the machine. The
+            // write is ignored while the list changes, and Machine put back on screen after.
+            bool changed;
+            this.rememberingMachine = true;
+            try
+            {
+                changed = MachineHistory.Remember(this.RecentMachines, name);
+            }
+            finally
+            {
+                this.rememberingMachine = false;
+            }
+
+            this.Raise(nameof(this.Machine));
+
+            if (changed)
+            {
+                AppSettings.Current.RemoteMachines = this.RecentMachines.ToList();
+                AppSettings.Current.Save();
+            }
+        }
+
+        /// <summary>
+        /// Counts what the filter shows, not what the machine has; with a filter set or only
+        /// WinSW services shown, the total is given alongside so a short list is not mistaken
+        /// for a machine with few services.
         /// </summary>
         private void ShowCounts()
         {
             int shown = this.ServicesView.Cast<object>().Count();
             this.Raise(nameof(this.RunningCount));
-            this.StatusMessage = this.filterNeedle.Length == 0
+            this.StatusMessage = this.filterNeedle.Length == 0 && !this.wrappersOnly
                 ? Localizer.Format("M.Remote.Loaded", shown, this.loadedMachine, this.RunningCount)
                 : Localizer.Format("M.Remote.LoadedFiltered", shown, this.loadedMachine, this.RunningCount, this.Services.Count);
         }
@@ -304,14 +414,109 @@ namespace WinSW.Gui.ViewModels
 
         private bool MatchesFilter(object item)
         {
-            string needle = this.filterNeedle;
-            if (needle.Length == 0 || item is not RemoteServiceStatus status)
+            if (item is not RemoteServiceStatus status)
             {
                 return true;
             }
 
-            return status.ServiceName.Contains(needle, StringComparison.OrdinalIgnoreCase)
+            if (this.wrappersOnly && status.IsWrapper == false)
+            {
+                return false;
+            }
+
+            string needle = this.filterNeedle;
+            return needle.Length == 0
+                || status.ServiceName.Contains(needle, StringComparison.OrdinalIgnoreCase)
                 || status.DisplayName.Contains(needle, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// The Remote page's list of machines it has connected to: most recent first, each once,
+    /// and only the last few.
+    /// </summary>
+    internal static class MachineHistory
+    {
+        /// <summary>How many machines are kept; a drop-down, not an inventory.</summary>
+        internal const int Limit = 8;
+
+        /// <summary>
+        /// The saved list made fit to show: blanks and repeats dropped, names trimmed, cut to
+        /// <see cref="Limit"/>. The file is the user's to edit, and may hold anything.
+        /// </summary>
+        internal static List<string> Load(IEnumerable<string?>? saved)
+        {
+            var names = new List<string>();
+            foreach (string? entry in saved ?? Enumerable.Empty<string?>())
+            {
+                string name = entry?.Trim() ?? string.Empty;
+                if (name.Length > 0 && IndexOf(names, name) < 0 && names.Count < Limit)
+                {
+                    names.Add(name);
+                }
+            }
+
+            return names;
+        }
+
+        /// <summary>
+        /// Moves <paramref name="machine"/> to the top of <paramref name="recent"/>, adding it
+        /// when new and dropping the oldest past <see cref="Limit"/>. Names are compared the way
+        /// Windows compares them, ignoring case; the spelling last connected with is kept. The
+        /// list is changed in place, a move rather than a remove and insert, so a drop-down
+        /// showing it keeps its selection where it can.
+        /// </summary>
+        /// <returns>False when nothing changed, so there is nothing to save.</returns>
+        internal static bool Remember(ObservableCollection<string> recent, string machine)
+        {
+            string name = machine.Trim();
+            if (name.Length == 0)
+            {
+                return false;
+            }
+
+            int index = IndexOf(recent, name);
+            if (index == 0 && string.Equals(recent[0], name, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (index < 0)
+            {
+                recent.Insert(0, name);
+            }
+            else
+            {
+                if (index > 0)
+                {
+                    recent.Move(index, 0);
+                }
+
+                if (!string.Equals(recent[0], name, StringComparison.Ordinal))
+                {
+                    recent[0] = name;
+                }
+            }
+
+            while (recent.Count > Limit)
+            {
+                recent.RemoveAt(recent.Count - 1);
+            }
+
+            return true;
+        }
+
+        private static int IndexOf(IList<string> names, string name)
+        {
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (string.Equals(names[i], name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
     }
 }

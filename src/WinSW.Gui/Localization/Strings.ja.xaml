@@ -484,11 +484,14 @@
     <sys:String x:Key="M.Remote.LoadedFiltered">{1} の {3} 件のサービスのうち {0} 件が一致、{2} 件が実行中。</sys:String>
     <sys:String x:Key="M.Remote.Failed">{0} を照会できませんでした: {1}</sys:String>
     <sys:String x:Key="M.Remote.ControlTip">そのコンピューターでのあなたの権限で、選択したサービスを操作します。停止は依存するサービスを巻き込まず、代わりに拒否されます。</sys:String>
-    <sys:String x:Key="M.Remote.Controlling">{2} の '{1}' に '{0}' を実行しています…</sys:String>
-    <sys:String x:Key="M.Remote.Controlled">{2} の '{1}' で '{0}' が完了しました。</sys:String>
-    <sys:String x:Key="M.Remote.ControlFailed">'{1}' の '{0}' に失敗しました: {2}</sys:String>
+    <sys:String x:Key="M.Remote.Controlling">{2} の '{1}' を{0}しています…</sys:String>
+    <sys:String x:Key="M.Remote.Controlled">{2} の '{1}' を{0}しました。</sys:String>
+    <sys:String x:Key="M.Remote.ControlFailed">'{1}' の{0}に失敗しました: {2}</sys:String>
     <sys:String x:Key="M.Remote.TimedOut">サービスが {0} 秒以内に状態を切り替えませんでした。</sys:String>
     <sys:String x:Key="M.Remote.Denied">アクセスが拒否されました。{0} のサービスを変更するには、そのマシンの管理者権限が必要です。</sys:String>
+    <sys:String x:Key="M.Remote.MachineTip">コンピューター名またはアドレス。最近接続したものが一覧に残ります。保存するのは名前だけで、パスワードは保存しません。</sys:String>
+    <sys:String x:Key="M.Remote.WrappersOnly">WinSW サービスのみ</sys:String>
+    <sys:String x:Key="M.Remote.WrappersOnlyTip">WinSW ラッパーがホストするサービスだけを表示します。各サービスの登録内容から、接続ごとに一度判定します。判定できなかったサービスは表示されたままです。Windows フォルダー以外に単体で登録された他のプログラムも表示されます。見分けるには、そのコンピューターの管理共有経由でファイルを読む必要があるためです。</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} が利用可能です。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">リリース ページを開く</sys:String>
 

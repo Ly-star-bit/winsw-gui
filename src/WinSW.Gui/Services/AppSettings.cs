@@ -133,6 +133,15 @@ namespace WinSW.Gui.Services
         public Dictionary<string, string> ServiceGroups { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
+        /// Computers the Remote page has connected to, most recent first. Names only: the page
+        /// connects with the signed-in user's own Windows credentials, and keeps none.
+        /// </summary>
+        public List<string>? RemoteMachines { get; set; }
+
+        /// <summary>The Remote page lists only the services a WinSW wrapper hosts.</summary>
+        public bool RemoteWrappersOnly { get; set; } = true;
+
+        /// <summary>
         /// Where new services are installed: one folder per service under this root, with a
         /// single wrapper shared from <c>bin</c>. Null means the default, which is
         /// <c>%ProgramData%\WinSW</c> — the place Windows sets aside for machine-wide

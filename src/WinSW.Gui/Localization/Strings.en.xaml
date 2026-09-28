@@ -489,6 +489,9 @@
     <sys:String x:Key="M.Remote.ControlFailed">'{0}' failed for '{1}': {2}</sys:String>
     <sys:String x:Key="M.Remote.TimedOut">The service did not settle within {0} seconds.</sys:String>
     <sys:String x:Key="M.Remote.Denied">Access was denied. Changing a service on {0} needs administrator rights there.</sys:String>
+    <sys:String x:Key="M.Remote.MachineTip">Computer name or address. The last few you connected to are kept in the list: names only, never a password.</sys:String>
+    <sys:String x:Key="M.Remote.WrappersOnly">WinSW services only</sys:String>
+    <sys:String x:Key="M.Remote.WrappersOnlyTip">Lists only the services a WinSW wrapper hosts, told from how each one was registered, once per connection. A service that could not be checked stays in the list, and so does any other program registered on its own outside the Windows folder: telling it apart would mean reading the file over that computer's admin share.</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} is available.</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">Open release page</sys:String>
 

@@ -26,48 +26,79 @@
         </StackPanel>
 
         <Border Grid.Row="1" Margin="0,0,0,12" Padding="12,10" Style="{StaticResource Card}">
+            <!--
+                Two rows. On one, the fixed columns before Start, Stop and Restart came to about
+                786 px, and at 1024 px with the navigation rail expanded the card is about 700 px
+                wide: the buttons were cut off. The two boxes now share what the first row leaves,
+                down to a floor, and the switches and the buttons have the second row to
+                themselves, about 580 px in the widest language.
+            -->
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <!-- The floors are on the columns: a star column ignores its content's MinWidth. -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="260" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="3*" MinWidth="180" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="2*" MinWidth="140" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Remote.Machine}" />
-                <TextBox Grid.Column="1" AutomationProperties.Name="{DynamicResource M.Remote.Machine}" Text="{Binding Machine, UpdateSourceTrigger=PropertyChanged}">
-                    <TextBox.InputBindings>
-                        <KeyBinding Key="Enter" Command="{Binding RefreshCommand}" />
-                    </TextBox.InputBindings>
-                </TextBox>
-                <TextBlock Grid.Column="2" Margin="16,0,10,0" VerticalAlignment="Center" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Remote.Filter}" />
-                <TextBox Grid.Column="3" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Grid.Column="4" Margin="12,0,0,0" Padding="12,6" Command="{Binding RefreshCommand}" Content="{DynamicResource M.Remote.Connect}" />
-                <CheckBox Grid.Column="5" Margin="14,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Remote.AutoRefresh}" IsChecked="{Binding AutoRefresh}" />
 
-                <!-- On the selected service, through that machine's service control manager. -->
-                <StackPanel Grid.Column="6" HorizontalAlignment="Right" Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xF605;" />
-                            <TextBlock Text="{DynamicResource S.Start}" />
-                        </StackPanel>
-                    </Button>
-                    <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StopCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF72A;" />
-                            <TextBlock Text="{DynamicResource S.Stop}" />
-                        </StackPanel>
-                    </Button>
-                    <Button Padding="12,6" Command="{Binding RestartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
-                            <TextBlock Text="{DynamicResource S.Restart}" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
+                <!--
+                    Enter connects, from code and only with the drop-down closed: a KeyBinding
+                    would take the key from an open drop-down too, and connect to the text as
+                    typed instead of picking the highlighted machine. The list is the machines
+                    connected to before; see RemoteViewModel.Remember for why its text needs care.
+                -->
+                <ComboBox
+                    Grid.Column="1"
+                    AutomationProperties.Name="{DynamicResource M.Remote.Machine}"
+                    IsEditable="True"
+                    ItemsSource="{Binding RecentMachines}"
+                    PreviewKeyDown="OnMachineKeyDown"
+                    Text="{Binding Machine, UpdateSourceTrigger=PropertyChanged}"
+                    ToolTip="{DynamicResource M.Remote.MachineTip}" />
+                <Button Grid.Column="2" Margin="8,0,0,0" Padding="12,6" Command="{Binding RefreshCommand}" Content="{DynamicResource M.Remote.Connect}" />
+                <TextBlock Grid.Column="3" Margin="16,0,10,0" VerticalAlignment="Center" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Remote.Filter}" />
+                <TextBox Grid.Column="4" AutomationProperties.Name="{DynamicResource M.Remote.Filter}" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" />
+
+                <Grid Grid.Row="1" Grid.ColumnSpan="5" Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <CheckBox VerticalAlignment="Center" Content="{DynamicResource M.Remote.WrappersOnly}" IsChecked="{Binding WrappersOnly}" ToolTip="{DynamicResource M.Remote.WrappersOnlyTip}" />
+                        <CheckBox Margin="14,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Remote.AutoRefresh}" IsChecked="{Binding AutoRefresh}" />
+                    </StackPanel>
+
+                    <!-- On the selected service, through that machine's service control manager. -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                        <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xF605;" />
+                                <TextBlock Text="{DynamicResource S.Start}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StopCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF72A;" />
+                                <TextBlock Text="{DynamicResource S.Stop}" />
+                            </StackPanel>
+                        </Button>
+                        <Button Padding="12,6" Command="{Binding RestartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
+                                <TextBlock Text="{DynamicResource S.Restart}" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
             </Grid>
         </Border>
 
@@ -113,7 +144,7 @@
                                 <TextBlock Style="{StaticResource Mono}" Text="{Binding ServiceName}" />
                             </StackPanel>
                             <Border Grid.Column="2" Style="{StaticResource StatusPill}">
-                                <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding Status}" ToolTip="{Binding Error}" />
+                                <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding StatusText}" ToolTip="{Binding Error}" />
                             </Border>
                         </Grid>
                     </DataTemplate>
