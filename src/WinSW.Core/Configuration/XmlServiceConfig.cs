@@ -564,6 +564,14 @@ namespace WinSW
         public int StopTimeoutInMs => (int)this.StopTimeout.TotalMilliseconds;
 
         /// <summary>
+        /// True if every process the service starts should end when the wrapper does, for
+        /// whatever reason it ends, a crash or End task included. The wrapper puts itself in a
+        /// job that ends everything in it as its own process ends; see <see cref="WrapperService"/>.
+        /// Applies when the wrapper runs as a service, not to the console command.
+        /// </summary>
+        public override bool EndProcessesWithWrapper => this.SingleBoolElementOrDefault("endProcessesWithWrapper", base.EndProcessesWithWrapper);
+
+        /// <summary>
         /// Desired process priority or null if not specified.
         /// </summary>
         public override ProcessPriorityClass Priority

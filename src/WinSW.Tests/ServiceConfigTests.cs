@@ -343,6 +343,21 @@ $@"<service>
             Assert.Equal(enabled, config.DelayedAutoStart);
         }
 
+        [Theory]
+        [InlineData(null, false)]
+        [InlineData("true", true)]
+        [InlineData("false", false)]
+        public void EndProcessesWithWrapper(string value, bool expected)
+        {
+            var builder = ConfigXmlBuilder.Create(this.output);
+            if (value != null)
+            {
+                builder = builder.WithTag("endProcessesWithWrapper", value);
+            }
+
+            Assert.Equal(expected, builder.ToServiceConfig(true).EndProcessesWithWrapper);
+        }
+
         [Fact]
         public void Additional_Executable_And_Arguments()
         {

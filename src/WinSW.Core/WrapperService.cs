@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -33,6 +34,14 @@ namespace WinSW
         private Process process = null!;
         private volatile Process? startingProcess;
         private volatile Process? stoppingProcess;
+
+        /// <summary>
+        /// The job the wrapper has put itself in, when the configuration asks for one. Nothing
+        /// here closes this handle, and nothing may: the job ends every process in it when its
+        /// last handle is closed, the wrapper's own process included. The system closes it as
+        /// that process ends, whatever the reason, which is the moment the rest should end too.
+        /// </summary>
+        private IntPtr job;
 
         internal WinSWExtensionManager ExtensionManager { get; }
 
@@ -276,6 +285,12 @@ namespace WinSW
             succeeded = ConsoleApis.SetConsoleCtrlHandler(null, true);
             Debug.Assert(succeeded);
 
+            // Before anything is started, so that everything is started inside it.
+            if (this.config.EndProcessesWithWrapper && !this.foreground)
+            {
+                this.EnterJob();
+            }
+
             this.HandleFileCopies();
 
             // handle downloads
@@ -352,6 +367,56 @@ namespace WinSW
                     Log.Error(e);
                 }
             }
+        }
+
+        /// <summary>
+        /// Puts the wrapper in a job that ends every process in it when the wrapper's process
+        /// ends. A process joins its parent's job as it starts, so from here on everything the
+        /// service starts belongs to it: prestart, the executable and whatever that starts in
+        /// turn, poststart, and the stop commands.
+        /// </summary>
+        /// <remarks>
+        /// The stop path already ends the child's tree, but only when the wrapper gets to run
+        /// it, and only by following parent links between processes that are still alive. A
+        /// crash or End task skips it altogether, and a grandchild whose own parent has already
+        /// exited, such as the interpreter a launcher starts, is out of its reach either way;
+        /// both leave the program running with nothing supervising it, holding the port the
+        /// next start needs. The job ends them with the wrapper however the wrapper ends.
+        /// <para>
+        /// Only under the service control manager: the console command runs as before.
+        /// </para>
+        /// </remarks>
+        private void EnterJob()
+        {
+            Handle job;
+            try
+            {
+                job = JobObject.CreateKillOnClose();
+            }
+            catch (Win32Exception e)
+            {
+                Log.Warn("Failed to create a job for the service's processes. They may outlive the wrapper. " + e.Message);
+                return;
+            }
+
+            try
+            {
+                JobObject.Assign(job, ProcessApis.GetCurrentProcess());
+            }
+            catch (Win32Exception e)
+            {
+                // Before Windows 8 a process can be in only one job, so a wrapper that has been
+                // started in one already cannot join this one. The service still runs; it only
+                // goes without the guarantee.
+                Log.Warn("Failed to put the wrapper in a job for the service's processes. They may outlive the wrapper. " + e.Message);
+
+                // The wrapper is not in it, so closing it ends nothing.
+                job.Dispose();
+                return;
+            }
+
+            this.job = job;
+            Log.Info("Processes the service starts will end when the wrapper does.");
         }
 
         /// <summary>

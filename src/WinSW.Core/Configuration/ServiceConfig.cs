@@ -52,6 +52,8 @@ namespace WinSW.Configuration
 
         public virtual TimeSpan StopTimeout => TimeSpan.FromSeconds(15);
 
+        public virtual bool EndProcessesWithWrapper => false;
+
         // Service management
         public virtual ServiceStartMode StartMode => ServiceStartMode.Automatic;
 

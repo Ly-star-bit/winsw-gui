@@ -230,6 +230,8 @@ It is on for a task registered by the graphical console, and worth turning off w
 `onfailure` has no effect here: those are recovery actions the service control manager takes, and it never sees a scheduled task.
 Restarting a program that has died is the trigger's job — see [Desktop tasks](desktop-tasks.md).
 
+`endProcessesWithWrapper` has no effect here either; it applies only to a wrapper running as a service.
+
 ## `customize` command
 
 Customizes the wrapper executable.

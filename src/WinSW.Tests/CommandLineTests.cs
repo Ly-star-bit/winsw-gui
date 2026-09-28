@@ -144,6 +144,71 @@ $@"<service>
             }
         }
 
+#if NET
+        /// <summary>
+        /// With <c>&lt;endProcessesWithWrapper&gt;</c>, a wrapper that is killed outright, and so
+        /// never runs any of its own clean-up, still takes its child and its grandchild with it.
+        /// Only the .NET build starts the service, as in the first test. It sits in this class
+        /// for the reason the refresh test gives.
+        /// </summary>
+        [ElevatedFact]
+        public void Killing_The_Wrapper_Ends_Its_Child_And_Grandchild_With_EndProcessesWithWrapper()
+        {
+            using var config = Helper.TestXmlServiceConfig.FromXml(
+$@"<service>
+  <id>{Helper.Name}</id>
+  <name>{Helper.DisplayName}</name>
+  <executable>cmd.exe</executable>
+  <arguments>/c ping -n 3600 127.0.0.1</arguments>
+  <endProcessesWithWrapper>true</endProcessesWithWrapper>
+</service>");
+
+            try
+            {
+                _ = Helper.Test(new[] { "install", config.FullPath }, config);
+
+                using var controller = new ServiceController(config.Name);
+                try
+                {
+                    _ = Helper.Test(new[] { "start", config.FullPath }, config);
+
+                    using var wrapper = Process.GetProcessById(ServiceConfigQuery.ProcessId(config.Name));
+                    var child = ChildProcesses.WaitFor(wrapper, "cmd");
+                    using (child.Process)
+                    using (child.Handle)
+                    {
+                        var grandchild = ChildProcesses.WaitFor(child.Process, "ping");
+                        using (grandchild.Process)
+                        using (grandchild.Handle)
+                        {
+                            wrapper.Kill();
+                            Assert.True(wrapper.WaitForExit(10_000));
+
+                            Assert.True(child.Process.WaitForExit(10_000));
+                            Assert.True(grandchild.Process.WaitForExit(10_000));
+                        }
+                    }
+
+                    // The service control manager sees a service that died, and with no
+                    // failure actions it stays stopped.
+                    controller.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                }
+                finally
+                {
+                    controller.Refresh();
+                    if (controller.Status != ServiceControllerStatus.Stopped)
+                    {
+                        _ = Helper.Test(new[] { "stop", config.FullPath }, config);
+                    }
+                }
+            }
+            finally
+            {
+                _ = Helper.Test(new[] { "uninstall", config.FullPath }, config);
+            }
+        }
+#endif
+
         [Fact]
         public void FailOnUnknownCommand()
         {

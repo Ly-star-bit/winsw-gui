@@ -39,6 +39,14 @@ Error `1067` (“The process terminated unexpectedly”) usually means the wrapp
 - Check the Windows Event Log for errors reported by WinSW.
 - Run the executable manually under the same account and working directory as the service to reproduce the failure.
 
+## The program is still running after the wrapper has gone
+
+If the wrapper crashes or is ended from Task Manager, the program it started keeps running with nothing supervising it, and the next start of the service can fail because the leftover still holds its port or files.
+A process whose parent has already exited, such as the interpreter a launcher starts, can outlive even an orderly stop.
+
+- End the leftover process, then start the service again.
+- Set [`<endProcessesWithWrapper>`](xml-config-file.md#endprocesseswithwrapper) to `true` and restart the service, so that every process the service starts ends with the wrapper from then on.
+
 ## Not working on Windows 7
 
 WinSW 3 can run on Windows 7 SP1 if you have .NET Framework 4.6.2 (or later) installed.

@@ -9,6 +9,7 @@ namespace WinSW.Native
     internal static class ProcessApis
     {
         internal const uint CREATE_NEW_PROCESS_GROUP = 0x00000200;
+        internal const uint CREATE_BREAKAWAY_FROM_JOB = 0x01000000;
 
         [DllImport(Libraries.Kernel32, SetLastError = true, CharSet = CharSet.Unicode, EntryPoint = "CreateProcessW")]
         internal static extern bool CreateProcess(

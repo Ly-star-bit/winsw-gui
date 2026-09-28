@@ -45,6 +45,17 @@ namespace WinSW.Tests.Util
             return actions;
         }
 
+        /// <summary>
+        /// The ID of the service's process — the wrapper's — or -1 when it is not running.
+        /// </summary>
+        /// <exception cref="CommandException" />
+        internal static int ProcessId(string serviceName)
+        {
+            using var scm = ServiceManager.Open(ServiceApis.ServiceManagerAccess.Connect);
+            using var service = scm.OpenService(serviceName, ServiceApis.ServiceAccess.QueryStatus);
+            return service.ProcessId;
+        }
+
         private static T Query<T>(string serviceName, ServiceApis.ServiceConfigInfoLevels infoLevel, Func<IntPtr, T> read)
         {
             using var controller = new ServiceController(serviceName);

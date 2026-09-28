@@ -10,6 +10,7 @@ using System.IO;
 using System.IO.Pipes;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.ServiceProcess;
@@ -815,24 +816,38 @@ namespace WinSW
 
                 AutoRefresh(config);
 
+                string commandLine = $"\"{config.ExecutablePath}\" restart" + (pathToConfig is null ? null : $" \"{pathToConfig}\"");
+
                 // run restart from another process group. see README.md for why this is useful.
-                if (!ProcessApis.CreateProcess(
-                    null,
-                    $"\"{config.ExecutablePath}\" restart" + (pathToConfig is null ? null : $" \"{pathToConfig}\""),
-                    IntPtr.Zero,
-                    IntPtr.Zero,
-                    false,
-                    ProcessApis.CREATE_NEW_PROCESS_GROUP,
-                    IntPtr.Zero,
-                    null,
-                    default,
-                    out var processInfo))
+                //
+                // With <endProcessesWithWrapper>, this process is in the job of the wrapper the
+                // restart is about to stop, and a restart left in that job would end with the
+                // wrapper before it got to start the service again. That job lets a process leave
+                // it. A job that does not, one this process is in for some other reason, refuses
+                // the request outright, and the restart then starts where it always has.
+                if (!StartRestart(ProcessApis.CREATE_NEW_PROCESS_GROUP | ProcessApis.CREATE_BREAKAWAY_FROM_JOB, out var processInfo) &&
+                    (Marshal.GetLastWin32Error() != Errors.ERROR_ACCESS_DENIED || !StartRestart(ProcessApis.CREATE_NEW_PROCESS_GROUP, out processInfo)))
                 {
                     Throw.Command.Win32Exception("Failed to invoke restart.");
                 }
 
                 _ = HandleApis.CloseHandle(processInfo.ProcessHandle);
                 _ = HandleApis.CloseHandle(processInfo.ThreadHandle);
+
+                bool StartRestart(uint creationFlags, out ProcessApis.PROCESS_INFORMATION information)
+                {
+                    return ProcessApis.CreateProcess(
+                        null,
+                        commandLine,
+                        IntPtr.Zero,
+                        IntPtr.Zero,
+                        false,
+                        creationFlags,
+                        IntPtr.Zero,
+                        null,
+                        default,
+                        out information);
+                }
             }
 
             static void Status(string? pathToConfig, InvocationContext context)

@@ -215,6 +215,33 @@ See `<onfailure>` below for how to specify time duration:
 <stoptimeout>10sec</stoptimeout>
 ```
 
+### endProcessesWithWrapper
+
+**Optional**
+When set to `true`, every process the service starts ends when the wrapper's process ends, for whatever reason it ends, a crash or *End task* in Task Manager included.
+The default value is `false`.
+
+```xml
+<endProcessesWithWrapper>true</endProcessesWithWrapper>
+```
+
+Stopping the service already ends the executable and what it started, but only when the wrapper itself gets to carry out the stop, and only by following each process back to a parent that is still running.
+If the wrapper crashes or is killed, the executable keeps running with nothing supervising it, holding on to its port and files, and the next start of the service fails against it.
+A process whose parent has already exited, such as the interpreter a launcher starts, is missed even by an orderly stop.
+
+With this option, the wrapper puts itself in a [job object](https://learn.microsoft.com/windows/win32/procthread/job-objects) as the service starts, before it starts `<prestart>`, the executable or `<poststart>`.
+Every process started from then on is in the job too — the executable, whatever the executable starts in turn, and the [additional commands](#additional-commands) — and the job ends all of them when the wrapper's process ends.
+
+- It applies when WinSW runs as a service. The [console](cli-commands.md#console-command) command is not affected.
+- A process that asks to be started outside the job (`CREATE_BREAKAWAY_FROM_JOB`) is allowed to, and does not end with the wrapper.
+  [`restart!`](self-restarting-service.md) does this, so a service can still restart itself.
+  Anything else the program starts that has to outlive the service, such as an updater that stops the service and starts it again, needs to be started the same way.
+- If the wrapper cannot join the job, it writes a warning to the wrapper log and runs the service as if the option were `false`.
+  This can happen on Windows 7 and Windows Server 2008 R2, where a process can be in only one job, when the wrapper has been started inside another job.
+  Windows 8, Windows Server 2012 and later allow jobs within jobs.
+- On those older versions, for the same reason, a program that puts the processes it starts in a job of its own can fail to under this option, unless it starts them outside the wrapper's job first.
+- The job is set up when the service starts. Restart the service after adding the element; an existing service also needs its wrapper replaced with a version that knows the element.
+
 ### Environment
 
 This optional element can be specified multiple times if necessary to specify environment variables to be set for the child process. The syntax is:
