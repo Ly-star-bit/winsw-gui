@@ -158,5 +158,93 @@ namespace WinSW.Gui.Tests
             Assert.Throws<ArgumentException>(() => memory.Remember("demo", "disabled"));
             Assert.Null(memory.For("demo"));
         }
+
+        // Two consoles over one file -------------------------------------------------------
+
+        /// <summary>
+        /// Two consoles, an elevated one beside a standard one, each remembering a service: the
+        /// second to write does not write the first one's out of the file with the copy it read
+        /// before.
+        /// </summary>
+        [Fact]
+        public void TwoConsolesKeepEachOthersStartTypes()
+        {
+            var first = new RememberedStartTypes(this.FilePath);
+            var second = new RememberedStartTypes(this.FilePath);
+            Assert.Null(second.For("web"));
+
+            first.Remember("web", "auto");
+            second.Remember("api", "demand");
+
+            var later = new RememberedStartTypes(this.FilePath);
+            Assert.Equal("auto", later.For("web"));
+            Assert.Equal("demand", later.For("api"));
+
+            // The second console knows of the first one's from its own change on.
+            Assert.Equal("auto", second.For("web"));
+        }
+
+        /// <summary>Nor does it put back what the other has forgotten since it read the file.</summary>
+        [Fact]
+        public void WhatAnotherConsoleForgotStaysForgotten()
+        {
+            var first = new RememberedStartTypes(this.FilePath);
+            first.Remember("web", "auto");
+            var second = new RememberedStartTypes(this.FilePath);
+            Assert.Equal("auto", second.For("web"));
+
+            first.Forget("web");
+            second.Remember("api", "demand");
+
+            var later = new RememberedStartTypes(this.FilePath);
+            Assert.Null(later.For("web"));
+            Assert.Equal("demand", later.For("api"));
+        }
+
+        /// <summary>Forgetting what another console remembered after this one read the file forgets it in the file.</summary>
+        [Fact]
+        public void WhatAnotherConsoleRememberedCanBeForgottenHere()
+        {
+            var first = new RememberedStartTypes(this.FilePath);
+            Assert.Null(first.For("web"));
+            new RememberedStartTypes(this.FilePath).Remember("web", "auto");
+
+            first.Forget("web");
+
+            Assert.Null(new RememberedStartTypes(this.FilePath).For("web"));
+        }
+
+        /// <summary>Written beside the file and moved over it: nothing is left beside it afterwards.</summary>
+        [Fact]
+        public void NothingIsLeftBesideTheFile()
+        {
+            var memory = new RememberedStartTypes(this.FilePath);
+            memory.Remember("web", "auto");
+            memory.Remember("api", "demand");
+            memory.Forget("web");
+
+            Assert.Equal(new[] { this.FilePath }, Directory.GetFiles(this.directory));
+        }
+
+        /// <summary>
+        /// A change that could not be written is kept for the session, and goes into the file with
+        /// the next change rather than being lost when the file is read again for it.
+        /// </summary>
+        [Fact]
+        public void AChangeThatCouldNotBeWrittenIsWrittenWithTheNext()
+        {
+            // A file where the directory should be: nothing can be written under it.
+            File.WriteAllText(this.directory, string.Empty);
+            var memory = new RememberedStartTypes(this.FilePath);
+            memory.Remember("web", "auto");
+            Assert.Equal("auto", memory.For("web"));
+
+            File.Delete(this.directory);
+            memory.Remember("api", "demand");
+
+            var later = new RememberedStartTypes(this.FilePath);
+            Assert.Equal("auto", later.For("web"));
+            Assert.Equal("demand", later.For("api"));
+        }
     }
 }

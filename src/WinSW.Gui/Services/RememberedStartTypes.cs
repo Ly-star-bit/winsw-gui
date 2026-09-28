@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.ServiceProcess;
 using System.Text.Json;
@@ -23,7 +24,12 @@ namespace WinSW.Gui.Services
     /// configuration file keeps its own start mode, which "Apply config" sets again.
     /// </para>
     /// <para>
-    /// Used on the UI thread only; the file is a few lines, read once on first use.
+    /// Used on the UI thread only; the file is a few lines, read on first use and again before
+    /// every change, which goes into the file as it is then rather than over it with what this
+    /// console first read: a second console, an elevated one beside a standard one, may have
+    /// remembered or forgotten a service meanwhile, and writing the whole of an older copy back
+    /// would undo that. What is offered is still what was read last; another console's change is
+    /// seen here from this console's next change on, or its next start.
     /// </para>
     /// </remarks>
     public sealed class RememberedStartTypes
@@ -33,6 +39,14 @@ namespace WinSW.Gui.Services
         private static RememberedStartTypes? current;
 
         private readonly string filePath;
+
+        /// <summary>
+        /// Changes that could not be written, by service, null for one forgotten: made again on the
+        /// file as it is read before the next change, so that a failed write costs no more than it
+        /// did when the file was read only once — the change is kept for this session.
+        /// </summary>
+        private readonly Dictionary<string, string?> unsaved = new(StringComparer.OrdinalIgnoreCase);
+
         private Dictionary<string, string>? types;
 
         public RememberedStartTypes(string filePath) => this.filePath = filePath;
@@ -75,25 +89,71 @@ namespace WinSW.Gui.Services
                 throw new ArgumentException($"'{token}' is not a start type to remember.", nameof(token));
             }
 
-            this.Load()[serviceName] = token;
-            this.Save();
+            this.Change(serviceName, token);
         }
 
-        public void Forget(string serviceName)
+        public void Forget(string serviceName) => this.Change(serviceName, null);
+
+        /// <summary>Makes one change to <paramref name="types"/>; true when it changed anything.</summary>
+        private static bool Apply(Dictionary<string, string> types, string serviceName, string? token)
         {
-            if (this.Load().Remove(serviceName))
+            if (token is null)
             {
-                this.Save();
+                return types.Remove(serviceName);
+            }
+
+            if (types.TryGetValue(serviceName, out string? had) && had == token)
+            {
+                return false;
+            }
+
+            types[serviceName] = token;
+            return true;
+        }
+
+        /// <summary>
+        /// Remembers <paramref name="token"/> for <paramref name="serviceName"/>, or forgets the
+        /// service when it is null, in the file as it is now; see the remarks. Written only when
+        /// that changes the file.
+        /// </summary>
+        private void Change(string serviceName, string? token)
+        {
+            // What this console already holds stands in for a file that cannot be read now: the
+            // change is not to wipe what another console wrote because of a moment's lock.
+            var current = this.Read() ?? new Dictionary<string, string>(this.Load(), StringComparer.OrdinalIgnoreCase);
+            foreach (var (name, pending) in this.unsaved)
+            {
+                Apply(current, name, pending);
+            }
+
+            bool changed = Apply(current, serviceName, token) || this.unsaved.Count > 0;
+            this.types = current;
+            if (!changed)
+            {
+                return;
+            }
+
+            if (this.Save(current))
+            {
+                this.unsaved.Clear();
+            }
+            else
+            {
+                // Kept for this session all the same; only a restart of the console forgets it.
+                this.unsaved[serviceName] = token;
             }
         }
 
-        private Dictionary<string, string> Load()
-        {
-            if (this.types != null)
-            {
-                return this.types;
-            }
+        private Dictionary<string, string> Load() =>
+            this.types ??= this.Read() ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// The file as it is now: empty when there is none, null when it cannot be read. Unreadable
+        /// is the same as empty for what is offered — the worst it costs is a restore not offered —
+        /// but not for what is written over it.
+        /// </summary>
+        private Dictionary<string, string>? Read()
+        {
             // Service names are not case-sensitive; what the reader builds is.
             var loaded = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             try
@@ -112,22 +172,39 @@ namespace WinSW.Gui.Services
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException or NotSupportedException)
             {
-                // Unreadable is the same as empty: the worst it costs is a restore not offered.
+                return null;
             }
 
-            return this.types = loaded;
+            return loaded;
         }
 
-        private void Save()
+        /// <summary>
+        /// Written beside the file and moved over it, as <see cref="RememberedRuns"/> writes its
+        /// own: a console ending halfway through a write leaves the last whole file rather than half
+        /// of one. The file written beside it is named after the process, so that two consoles
+        /// writing at once do not swap in each other's half-written copy.
+        /// </summary>
+        private bool Save(Dictionary<string, string> types)
         {
+            string staging = this.filePath + "." + Environment.ProcessId.ToString(CultureInfo.InvariantCulture) + ".tmp";
             try
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(this.filePath)!);
-                File.WriteAllText(this.filePath, JsonSerializer.Serialize(this.types, Options));
+                File.WriteAllText(staging, JsonSerializer.Serialize(types, Options));
+                File.Move(staging, this.filePath, overwrite: true);
+                return true;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // Kept for this session all the same; only a restart of the console forgets it.
+                try
+                {
+                    File.Delete(staging);
+                }
+                catch (Exception again) when (again is IOException or UnauthorizedAccessException)
+                {
+                }
+
+                return false;
             }
         }
     }
