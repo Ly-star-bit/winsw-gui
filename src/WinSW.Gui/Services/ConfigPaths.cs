@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using WinSW.Gui.Model;
 
 namespace WinSW.Gui.Services
@@ -90,5 +92,44 @@ namespace WinSW.Gui.Services
             string.IsNullOrWhiteSpace(model.LogName)
                 ? Path.GetFileNameWithoutExtension(configPath)
                 : model.LogName!;
+
+        /// <summary>
+        /// The name of the wrapper's own log, <c>&lt;name&gt;.wrapper.log</c> in the log
+        /// directory. The wrapper names it after the configuration file whatever
+        /// <c>&lt;logname&gt;</c> says, which names only the program's output, so a service
+        /// with a log name of its own has a wrapper log that does not start with it.
+        /// </summary>
+        public static string ResolveWrapperLogName(string configPath) =>
+            Path.GetFileNameWithoutExtension(configPath) + ".wrapper.log";
+
+        /// <summary>
+        /// A service's log files in <paramref name="directory"/>, newest first and each once:
+        /// the .log and .txt files whose names start with <paramref name="stem"/>, which are
+        /// the program's output under every log mode, numbered or dated once rolled; the
+        /// .log.old files roll mode sets aside at each start, which hold the run before the
+        /// current one; and the wrapper's own log, <paramref name="wrapperLogName"/>, which
+        /// starts with the stem only while <c>&lt;logname&gt;</c> is left unset.
+        /// </summary>
+        public static IReadOnlyList<FileInfo> FindLogFiles(string directory, string stem, string wrapperLogName)
+        {
+            var info = new DirectoryInfo(directory);
+            var found = info
+                .EnumerateFiles(stem + "*")
+                .Where(IsLogFile)
+                .ToList();
+
+            var wrapperLog = new FileInfo(Path.Combine(info.FullName, wrapperLogName));
+            if (wrapperLog.Exists && !found.Any(f => string.Equals(f.FullName, wrapperLog.FullName, StringComparison.OrdinalIgnoreCase)))
+            {
+                found.Add(wrapperLog);
+            }
+
+            return found.OrderByDescending(f => f.LastWriteTime).ToList();
+        }
+
+        private static bool IsLogFile(FileInfo file) =>
+            file.Extension.Equals(".log", StringComparison.OrdinalIgnoreCase)
+            || file.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase)
+            || file.Name.EndsWith(".log.old", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -14,7 +14,10 @@ namespace WinSW.Gui.Services
         {
             this.Time = time;
             this.Type = type;
-            this.EventId = eventId;
+
+            // Whoever reads the record, the ID is its low sixteen bits: an EventLogEntry's
+            // InstanceId carries the qualifier above them, and an event ID is never wider.
+            this.EventId = eventId & 0xFFFF;
             this.Source = source;
             this.Message = message;
         }

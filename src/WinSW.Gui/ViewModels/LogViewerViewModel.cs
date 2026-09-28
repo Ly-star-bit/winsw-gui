@@ -61,15 +61,13 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// The service's log files in <paramref name="directory"/>, newest first: everything
-        /// the appenders may produce for it — .out.log, .err.log, .wrapper.log and the numbered
-        /// or dated files the rolling modes add.
+        /// the appenders may produce for it — .out.log, .err.log, the numbered or dated files
+        /// the rolling modes add and the .log.old files of roll mode — and the wrapper's own
+        /// log, which is named after the configuration rather than the log name. See
+        /// <see cref="ConfigPaths.FindLogFiles"/>, which the diagnostics bundle goes by too.
         /// </summary>
-        internal static IReadOnlyList<LogFileEntry> Scan(string directory, string stem) =>
-            new DirectoryInfo(directory)
-                .EnumerateFiles(stem + "*")
-                .Where(f => f.Extension.Equals(".log", StringComparison.OrdinalIgnoreCase)
-                    || f.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(f => f.LastWriteTime)
+        internal static IReadOnlyList<LogFileEntry> Scan(string directory, string stem, string wrapperLogName) =>
+            ConfigPaths.FindLogFiles(directory, stem, wrapperLogName)
                 .Select(f => new LogFileEntry(f))
                 .ToList();
 
@@ -235,6 +233,9 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>The file-name stem the list was last scanned for, in <see cref="LogDirectory"/>.</summary>
         private string logStem = string.Empty;
+
+        /// <summary>The name of the wrapper's log the list was last scanned for, beside <see cref="logStem"/>.</summary>
+        private string wrapperLogName = string.Empty;
 
         /// <summary>When the list was last scanned, in <see cref="Environment.TickCount64"/> milliseconds.</summary>
         private long lastFileScan;
@@ -694,9 +695,10 @@ namespace WinSW.Gui.ViewModels
                 var model = ServiceConfigModel.Load(entry.ConfigPath);
                 string directory = ConfigPaths.ResolveLogDirectory(model, entry.ConfigPath);
                 string stem = ConfigPaths.ResolveLogBaseName(model, entry.ConfigPath);
+                string wrapperLog = ConfigPaths.ResolveWrapperLogName(entry.ConfigPath);
 
                 string? previous = this.selectedFile?.Path;
-                if (fresh || directory != this.LogDirectory || stem != this.logStem)
+                if (fresh || directory != this.LogDirectory || stem != this.logStem || wrapperLog != this.wrapperLogName)
                 {
                     this.SelectedFile = null;
                     this.Files.Clear();
@@ -704,10 +706,11 @@ namespace WinSW.Gui.ViewModels
 
                 this.LogDirectory = directory;
                 this.logStem = stem;
+                this.wrapperLogName = wrapperLog;
                 this.lastFileScan = Environment.TickCount64;
 
                 bool exists = Directory.Exists(directory);
-                IReadOnlyList<LogFileEntry> found = exists ? LogFileEntry.Scan(directory, stem) : Array.Empty<LogFileEntry>();
+                IReadOnlyList<LogFileEntry> found = exists ? LogFileEntry.Scan(directory, stem, wrapperLog) : Array.Empty<LogFileEntry>();
                 LogFileEntry.Merge(this.Files, found, this.selectedFile);
 
                 this.StatusMessage = !exists
@@ -737,6 +740,7 @@ namespace WinSW.Gui.ViewModels
             var entry = this.service;
             string directory = this.LogDirectory;
             string stem = this.logStem;
+            string wrapperLog = this.wrapperLogName;
             if (this.isScanning || entry is null || stem.Length == 0)
             {
                 return;
@@ -746,8 +750,8 @@ namespace WinSW.Gui.ViewModels
             this.lastFileScan = Environment.TickCount64;
             try
             {
-                var found = await Task.Run(() => LogFileEntry.Scan(directory, stem)).ConfigureAwait(true);
-                if (!ReferenceEquals(entry, this.service) || directory != this.LogDirectory || stem != this.logStem)
+                var found = await Task.Run(() => LogFileEntry.Scan(directory, stem, wrapperLog)).ConfigureAwait(true);
+                if (!ReferenceEquals(entry, this.service) || directory != this.LogDirectory || stem != this.logStem || wrapperLog != this.wrapperLogName)
                 {
                     // Another service, or another configuration, was put on screen meanwhile.
                     return;

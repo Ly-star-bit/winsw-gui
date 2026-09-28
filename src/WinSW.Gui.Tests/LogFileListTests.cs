@@ -26,19 +26,52 @@ namespace WinSW.Gui.Tests
 
         public void Dispose() => Directory.Delete(this.directory, recursive: true);
 
-        /// <summary>Only this service's logs, newest first.</summary>
+        /// <summary>
+        /// Only this service's logs, newest first — among them the .log.old files roll mode
+        /// sets aside at each start, which hold the run before the one on screen.
+        /// </summary>
         [Fact]
         public void TheScanFindsTheServicesLogsNewestFirst()
         {
             this.Write("svc.out.log", Noon);
             this.Write("svc.0.out.log", Noon.AddHours(-2));
             this.Write("svc.err.log", Noon.AddHours(-1));
-            this.Write("svc.out.log.old", Noon);
+            this.Write("svc.out.log.old", Noon.AddHours(-3));
+            this.Write("svc.out.old", Noon);
             this.Write("other.out.log", Noon);
 
-            var names = LogFileEntry.Scan(this.directory, "svc").Select(f => f.Name);
+            var names = this.Scan().Select(f => f.Name);
 
-            Assert.Equal(new[] { "svc.out.log", "svc.err.log", "svc.0.out.log" }, names);
+            Assert.Equal(new[] { "svc.out.log", "svc.err.log", "svc.0.out.log", "svc.out.log.old" }, names);
+        }
+
+        /// <summary>
+        /// The wrapper names its own log after the configuration file, whatever
+        /// <c>&lt;logname&gt;</c> says, so with a log name of its own a service's wrapper log
+        /// does not start with it — and is listed all the same.
+        /// </summary>
+        [Fact]
+        public void TheWrappersLogIsFoundUnderTheConfigurationsName()
+        {
+            this.Write("backend.out.log", Noon);
+            this.Write("api.wrapper.log", Noon.AddMinutes(-1));
+            this.Write("api.out.log", Noon.AddMinutes(-2));
+
+            var names = LogFileEntry.Scan(this.directory, "backend", "api.wrapper.log").Select(f => f.Name);
+
+            Assert.Equal(new[] { "backend.out.log", "api.wrapper.log" }, names);
+        }
+
+        /// <summary>When the log name is the configuration's name, the wrapper's log is listed once.</summary>
+        [Fact]
+        public void AWrapperLogUnderTheStemIsListedOnce()
+        {
+            this.Write("svc.out.log", Noon);
+            this.Write("svc.wrapper.log", Noon.AddMinutes(-1));
+
+            var names = this.Scan().Select(f => f.Name);
+
+            Assert.Equal(new[] { "svc.out.log", "svc.wrapper.log" }, names);
         }
 
         /// <summary>
@@ -50,13 +83,13 @@ namespace WinSW.Gui.Tests
         {
             this.Write("svc_20260922.out.log", Noon.AddDays(-1));
             this.Write("svc_20260921.out.log", Noon.AddDays(-2));
-            var files = new ObservableCollection<LogFileEntry>(LogFileEntry.Scan(this.directory, "svc"));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
             var onScreen = files[0];
 
             File.Delete(Path.Combine(this.directory, "svc_20260921.out.log"));
             this.Write("svc_20260923.out.log", Noon);
 
-            var added = LogFileEntry.Merge(files, LogFileEntry.Scan(this.directory, "svc"), onScreen);
+            var added = LogFileEntry.Merge(files, this.Scan(), onScreen);
 
             Assert.Equal(new[] { "svc_20260923.out.log" }, added.Select(f => f.Name));
             Assert.Equal(new[] { "svc_20260923.out.log", "svc_20260922.out.log" }, files.Select(f => f.Name));
@@ -72,7 +105,7 @@ namespace WinSW.Gui.Tests
         {
             this.Write("svc.out.log", Noon);
             this.Write("svc.err.log", Noon.AddMinutes(-1));
-            var files = new ObservableCollection<LogFileEntry>(LogFileEntry.Scan(this.directory, "svc"));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
             var onScreen = files.Single(f => f.Name == "svc.out.log");
 
             var added = LogFileEntry.Merge(files, Array.Empty<LogFileEntry>(), onScreen);
@@ -86,14 +119,14 @@ namespace WinSW.Gui.Tests
         public void AnEntryStillThereIsUpdatedInPlace()
         {
             string path = this.Write("svc.out.log", Noon.AddMinutes(-5));
-            var files = new ObservableCollection<LogFileEntry>(LogFileEntry.Scan(this.directory, "svc"));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
             var entry = files[0];
             var changed = new List<string?>();
             entry.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
 
             File.AppendAllText(path, "more output\n");
             File.SetLastWriteTime(path, Noon);
-            LogFileEntry.Merge(files, LogFileEntry.Scan(this.directory, "svc"), entry);
+            LogFileEntry.Merge(files, this.Scan(), entry);
 
             Assert.Same(entry, Assert.Single(files));
             Assert.Equal(new FileInfo(path).Length, entry.Length);
@@ -107,7 +140,7 @@ namespace WinSW.Gui.Tests
         {
             this.Write("svc.out.log", Noon);
             this.Write("svc.err.log", Noon.AddMinutes(-1));
-            var files = new ObservableCollection<LogFileEntry>(LogFileEntry.Scan(this.directory, "svc"));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
             var before = files.ToList();
             int notices = 0;
             files.CollectionChanged += (_, _) => notices++;
@@ -116,7 +149,7 @@ namespace WinSW.Gui.Tests
                 file.PropertyChanged += (_, _) => notices++;
             }
 
-            var added = LogFileEntry.Merge(files, LogFileEntry.Scan(this.directory, "svc"), files[0]);
+            var added = LogFileEntry.Merge(files, this.Scan(), files[0]);
 
             Assert.Empty(added);
             Assert.Equal(0, notices);
@@ -129,10 +162,10 @@ namespace WinSW.Gui.Tests
         {
             this.Write("svc_20260922.out.log", Noon.AddDays(-1));
             this.Write("svc.wrapper.log", Noon.AddHours(-3));
-            var files = new ObservableCollection<LogFileEntry>(LogFileEntry.Scan(this.directory, "svc"));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
 
             this.Write("svc_20260923.out.log", Noon);
-            var added = LogFileEntry.Merge(files, LogFileEntry.Scan(this.directory, "svc"), files[0]);
+            var added = LogFileEntry.Merge(files, this.Scan(), files[0]);
 
             Assert.Equal(new[] { "svc_20260923.out.log" }, LogFileEntry.NewerThanTheRest(files, added).Select(f => f.Name));
         }
@@ -147,16 +180,37 @@ namespace WinSW.Gui.Tests
         {
             string err = this.Write("svc.err.log", Noon.AddMinutes(-5));
             this.Write("svc.out.log", Noon.AddMinutes(-30));
-            var files = new ObservableCollection<LogFileEntry>(LogFileEntry.Scan(this.directory, "svc"));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
             var onScreen = files.Single(f => f.Name == "svc.out.log");
 
             File.SetLastWriteTime(err, Noon.AddMinutes(-1));
             File.Move(err, Path.Combine(this.directory, "svc.0.err.log"));
             this.Write("svc.err.log", Noon);
-            var added = LogFileEntry.Merge(files, LogFileEntry.Scan(this.directory, "svc"), onScreen);
+            var added = LogFileEntry.Merge(files, this.Scan(), onScreen);
 
             Assert.Equal(new[] { "svc.0.err.log" }, added.Select(f => f.Name));
             Assert.Empty(LogFileEntry.NewerThanTheRest(files, added));
+        }
+
+        /// <summary>
+        /// At each start roll mode sets the file on screen aside as .old and begins a new one
+        /// under its name: the .old file joins the list, and is not news, since the file that
+        /// took over the name is newer.
+        /// </summary>
+        [Fact]
+        public void RollModesOldFileJoinsTheListWithoutBeingNews()
+        {
+            string output = this.Write("svc.out.log", Noon.AddMinutes(-5));
+            var files = new ObservableCollection<LogFileEntry>(this.Scan());
+            var onScreen = files[0];
+
+            File.Move(output, output + ".old");
+            this.Write("svc.out.log", Noon);
+            var added = LogFileEntry.Merge(files, this.Scan(), onScreen);
+
+            Assert.Equal(new[] { "svc.out.log.old" }, added.Select(f => f.Name));
+            Assert.Empty(LogFileEntry.NewerThanTheRest(files, added));
+            Assert.Same(onScreen, files[0]);
         }
 
         /// <summary>The first files of a service that had written none are not news, only the list.</summary>
@@ -166,11 +220,13 @@ namespace WinSW.Gui.Tests
             var files = new ObservableCollection<LogFileEntry>();
             this.Write("svc.out.log", Noon);
 
-            var added = LogFileEntry.Merge(files, LogFileEntry.Scan(this.directory, "svc"), onScreen: null);
+            var added = LogFileEntry.Merge(files, this.Scan(), onScreen: null);
 
             Assert.Single(added);
             Assert.Empty(LogFileEntry.NewerThanTheRest(files, added));
         }
+
+        private IReadOnlyList<LogFileEntry> Scan() => LogFileEntry.Scan(this.directory, "svc", "svc.wrapper.log");
 
         private string Write(string name, DateTime written)
         {

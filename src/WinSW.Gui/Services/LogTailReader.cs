@@ -38,6 +38,29 @@ namespace WinSW.Gui.Services
         WhileReleased,
     }
 
+    /// <summary>The end of a log file as text, read once by <see cref="LogTailReader.ReadTail"/>.</summary>
+    public sealed class LogTail
+    {
+        public LogTail(string text, Encoding? encoding, long skippedBytes)
+        {
+            this.Text = text;
+            this.Encoding = encoding;
+            this.SkippedBytes = skippedBytes;
+        }
+
+        /// <summary>The text, with the file's own line breaks.</summary>
+        public string Text { get; }
+
+        /// <summary>The encoding the text was read in, or null when every byte of it was ASCII.</summary>
+        public Encoding? Encoding { get; }
+
+        /// <summary>How much of the file comes before the text and was not read, not counting a byte-order mark.</summary>
+        public long SkippedBytes { get; }
+
+        /// <summary>The encoding's name the way the viewer shows it.</summary>
+        public string EncodingName => this.Encoding?.WebName.ToUpperInvariant() ?? "ASCII";
+    }
+
     /// <summary>
     /// Incrementally reads a log file that another process is still writing to.
     /// </summary>
@@ -501,9 +524,17 @@ namespace WinSW.Gui.Services
         /// Picks an encoding for the complete lines in <paramref name="bytes"/>. Returns null
         /// when nothing decides it yet, i.e. everything so far is plain ASCII.
         /// </summary>
-        private Encoding? Decide(byte[] bytes, int count)
+        private Encoding? Decide(byte[] bytes, int count) => Decide(this.choice, bytes.AsSpan(0, count));
+
+        /// <summary>
+        /// The rule <see cref="Decide(byte[], int)"/> applies, for whole lines that follow no
+        /// byte-order mark: the encoding chosen, or under <see cref="LogEncodingChoice.Auto"/>
+        /// UTF-8 when the bytes are valid UTF-8 and the system ANSI code page when they are
+        /// not. Null when that leaves it open, because every byte is plain ASCII.
+        /// </summary>
+        internal static Encoding? Decide(LogEncodingChoice choice, ReadOnlySpan<byte> bytes)
         {
-            switch (this.choice)
+            switch (choice)
             {
                 case LogEncodingChoice.Utf8:
                     return LenientUtf8;
@@ -512,9 +543,9 @@ namespace WinSW.Gui.Services
             }
 
             bool nonAscii = false;
-            for (int i = 0; i < count; i++)
+            foreach (byte b in bytes)
             {
-                if (bytes[i] >= 0x80)
+                if (b >= 0x80)
                 {
                     nonAscii = true;
                     break;
@@ -528,13 +559,139 @@ namespace WinSW.Gui.Services
 
             try
             {
-                StrictUtf8.GetCharCount(bytes, 0, count);
+                StrictUtf8.GetCharCount(bytes);
                 return LenientUtf8;
             }
             catch (DecoderFallbackException)
             {
                 return SystemAnsiEncoding;
             }
+        }
+
+        /// <summary>
+        /// The encoding a byte-order mark at the start of a file names, and how many bytes the
+        /// mark takes; null and 0 when <paramref name="head"/>, the file's first bytes, starts
+        /// with none.
+        /// </summary>
+        internal static Encoding? FromPreamble(ReadOnlySpan<byte> head, out int length)
+        {
+            if (head.Length >= 3 && head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF)
+            {
+                length = 3;
+                return LenientUtf8;
+            }
+
+            if (head.Length >= 2 && head[0] == 0xFF && head[1] == 0xFE)
+            {
+                length = 2;
+                return System.Text.Encoding.Unicode;
+            }
+
+            length = 0;
+            return null;
+        }
+
+        /// <summary>
+        /// The end of a file once, as text: the whole lines among its last
+        /// <paramref name="maxBytes"/> bytes, and a last line that has no newline yet, decoded
+        /// the way a reader decides for the file on screen. For whoever takes a copy of a log
+        /// rather than watching it — the diagnostics bundle, which decoded everything as UTF-8
+        /// and so turned the GBK a program writes on Chinese Windows into replacement
+        /// characters that nothing could turn back.
+        /// </summary>
+        /// <remarks>
+        /// The encoding is decided on whole lines only. The place the tail is cut at can fall
+        /// inside a character, and so can the end of a file still being written; a character
+        /// cut in two is not valid UTF-8, and would pass a UTF-8 file off as ANSI.
+        /// </remarks>
+        public static LogTail ReadTail(string path, long maxBytes, LogEncodingChoice choice = LogEncodingChoice.Auto)
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            long length = CurrentLength(stream);
+
+            // A mark is at the start of the file whatever part of it is read, and only an
+            // automatic choice goes by it, as a reader's does.
+            Span<byte> head = stackalloc byte[3];
+            int headLength = stream.Read(head);
+            Encoding? marked = null;
+            int preamble = 0;
+            if (choice == LogEncodingChoice.Auto)
+            {
+                marked = FromPreamble(head.Slice(0, headLength), out preamble);
+            }
+
+            bool wide = marked is UnicodeEncoding;
+            int unit = wide ? 2 : 1;
+            long start = Math.Max(preamble, length - Math.Max(0, maxBytes));
+            if (wide && (start - preamble) % 2 != 0)
+            {
+                // UTF-16 comes in pairs of bytes counted from the mark.
+                start++;
+            }
+
+            // Cut short of the start, the text begins at a whole line, as when a reader opens a
+            // file at its tail: after the first newline from the character before the cut on,
+            // so that a cut that falls just after one loses no line.
+            long readFrom = start > preamble ? start - unit : start;
+            var bytes = new byte[Math.Max(0, length - readFrom)];
+            stream.Position = readFrom;
+            int count = 0;
+            int read;
+            while (count < bytes.Length && (read = stream.Read(bytes, count, bytes.Length - count)) > 0)
+            {
+                count += read;
+            }
+
+            int from = 0;
+            if (readFrom < start)
+            {
+                // A tail with no newline in it at all is kept from the cut.
+                int newline = NextNewline(bytes, 0, count, wide);
+                from = Math.Min(count, newline >= 0 ? newline + unit : unit);
+            }
+
+            int lastNewline = LastNewline(bytes, from, count, wide);
+            int whole = lastNewline < 0 ? count : lastNewline + unit;
+            Encoding? encoding = marked ?? Decide(choice, bytes.AsSpan(from, whole - from));
+
+            return new LogTail((encoding ?? LenientUtf8).GetString(bytes, from, count - from), encoding, readFrom + from - preamble);
+        }
+
+        /// <summary>
+        /// Where the first newline at or after <paramref name="from"/> is, or -1. In UTF-16 a
+        /// newline is the pair 0A 00 at an even offset; in UTF-8, GBK and the other ANSI code
+        /// pages the byte 0A is never part of another character.
+        /// </summary>
+        private static int NextNewline(byte[] bytes, int from, int count, bool wide)
+        {
+            for (int i = from; i < count; i += wide ? 2 : 1)
+            {
+                if (bytes[i] == (byte)'\n' && (!wide || (i + 1 < count && bytes[i + 1] == 0)))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        /// <summary>Where the last newline between <paramref name="from"/> and <paramref name="count"/> is, or -1.</summary>
+        private static int LastNewline(byte[] bytes, int from, int count, bool wide)
+        {
+            if (!wide)
+            {
+                return count > from ? Array.LastIndexOf(bytes, (byte)'\n', count - 1, count - from) : -1;
+            }
+
+            for (int i = from + ((count - from) / 2 * 2) - 2; i >= from; i -= 2)
+            {
+                if (bytes[i] == (byte)'\n' && bytes[i + 1] == 0)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private static long CurrentLength(FileStream stream) => RandomAccess.GetLength(stream.SafeFileHandle);
@@ -567,16 +724,8 @@ namespace WinSW.Gui.Services
             this.stream.Position = 0;
             int read = this.stream.Read(head);
 
-            if (read >= 3 && head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF)
-            {
-                this.encoding = LenientUtf8;
-                this.position = Math.Max(this.position, 3);
-            }
-            else if (read >= 2 && head[0] == 0xFF && head[1] == 0xFE)
-            {
-                this.encoding = System.Text.Encoding.Unicode;
-                this.position = Math.Max(this.position, 2);
-            }
+            this.encoding = FromPreamble(head.Slice(0, read), out int preamble);
+            this.position = Math.Max(this.position, preamble);
         }
 
         private void Reset()
