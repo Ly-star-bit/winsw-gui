@@ -158,6 +158,32 @@ namespace WinSW.Gui.Tests
             Assert.Equal("utf-8", reader.Encoding!.WebName);
         }
 
+        /// <summary>
+        /// The tail begins just inside the mark, a file a byte or two longer than the tail: the
+        /// first line is still whole, and kept. One byte past the mark, the tail starts inside
+        /// that line, which is then left out rather than shown cut.
+        /// </summary>
+        [Theory]
+        [InlineData(1, true)]
+        [InlineData(2, true)]
+        [InlineData(3, true)]
+        [InlineData(4, false)]
+        public void ATailStartingAtTheMarkKeepsTheFirstLine(int tailStart, bool kept)
+        {
+            // The tail is the last 128 KiB, so a file this long starts it at tailStart.
+            const int tail = 128 * 1024;
+            byte[] mark = Encoding.UTF8.GetPreamble();
+            string first = "first line\n";
+            string rest = new string('x', tail + tailStart - mark.Length - first.Length - 1) + "\n";
+            File.WriteAllBytes(this.path, mark.Concat(new UTF8Encoding(false).GetBytes(first + rest)).ToArray());
+            using var reader = new LogTailReader(this.path);
+
+            var lines = reader.ReadNewLines();
+
+            Assert.Equal(kept, lines.Contains("first line"));
+            Assert.Equal(kept ? 2 : 1, lines.Count);
+        }
+
         /// <summary>Longer than the tail, a file with a mark is still joined at a whole line.</summary>
         [Fact]
         public void AByteOrderMarkedFileLongerThanTheTailStartsAtAWholeLine()
