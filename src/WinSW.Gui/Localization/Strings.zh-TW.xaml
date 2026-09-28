@@ -491,6 +491,30 @@
     <sys:String x:Key="M.Remote.Denied">存取被拒。變更 {0} 上的服務需要那台機器的系統管理員權限。</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} 已發布。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">開啟發布頁面</sys:String>
+
+    <!-- 另一個主控台來接手目前這個：之後啟動的另一個程式或版本，以及「立即更新」；請見 Replacement 和 SelfUpdate。 -->
+    <sys:String x:Key="M.Replace.Title">WinSW 主控台已在執行</sys:String>
+    <sys:String x:Key="M.Replace.Started">剛啟動的：v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Running">正在執行的：v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Ask">要切換到剛啟動的這個嗎？目前的主控台會關閉，由它接手；目前這個在系統匣中監看的話，它也一樣。登入啟動項目和「以 WinSW 開啟」右鍵選單若指向目前這個，會一併改為指向它。選「否」保留目前這個。</sys:String>
+    <sys:String x:Key="M.Replace.OlderFound">已有一個主控台在執行，但它無法自行交接：它是舊版本，或是沒有回應。</sys:String>
+    <sys:String x:Key="M.Replace.OlderAsk">要結束它，改用剛啟動的這個嗎？它裡面尚未儲存的變更會遺失。登入啟動項目和「以 WinSW 開啟」右鍵選單若指向舊的，會改為指向剛啟動的這個。選「否」保留正在執行的那個。</sys:String>
+    <sys:String x:Key="M.Replace.EndTimeout">5 秒後它仍在執行</sys:String>
+    <sys:String x:Key="M.Replace.EndFailed">無法結束 {0} 的主控台：{1}</sys:String>
+    <sys:String x:Key="M.Replace.Next">接著切換到 v{0}（{1}）。接手的主控台只讀取磁碟上的內容。</sys:String>
+    <sys:String x:Key="M.Replace.Failed">無法啟動 {0}：{1}</sys:String>
+    <sys:String x:Key="M.Update.Now">立即更新</sys:String>
+    <sys:String x:Key="M.Update.NowTip">從發布頁面下載與目前程式同類型的檔案，以發布附帶的 SHA256SUMS.txt 驗證，取代目前的程式後重新啟動。有尚未儲存的變更時會先詢問。</sys:String>
+    <sys:String x:Key="M.Update.Downloading">正在下載 v{0}… {1}%</sys:String>
+    <sys:String x:Key="M.Update.Ready">v{0} 已下載並通過驗證，按「立即更新」即可重新啟動為新版本。</sys:String>
+    <sys:String x:Key="M.Update.Next">接著重新啟動為 v{0}。更新後的主控台只讀取磁碟上的內容。</sys:String>
+    <sys:String x:Key="M.Update.NotThisBuild">目前的程式不是發布頁面提供的檔案，無法自行更新。請使用發布頁面。</sys:String>
+    <sys:String x:Key="M.Update.NoAsset">此發布沒有 {0}。請使用發布頁面。</sys:String>
+    <sys:String x:Key="M.Update.NoChecksum">此發布的 {1} 中沒有 {0} 的檢查碼，因此不從這裡安裝。請使用發布頁面。</sys:String>
+    <sys:String x:Key="M.Update.FolderNotWritable">無法寫入主控台所在的資料夾（{0}）。請以系統管理員身分重新啟動，或使用發布頁面。</sys:String>
+    <sys:String x:Key="M.Update.DownloadFailed">下載失敗：{0}</sys:String>
+    <sys:String x:Key="M.Update.Mismatch">下載的 {0} 與 {1} 不符，已刪除，未做任何變更。</sys:String>
+
     <sys:String x:Key="M.Shell.ContextMenu">在 .xml 右鍵選單加入「以 WinSW 開啟」</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">為目前使用者新增右鍵選單項目，無需提升權限。</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">以 WinSW 開啟</sys:String>

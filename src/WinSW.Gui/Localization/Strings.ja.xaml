@@ -491,6 +491,30 @@
     <sys:String x:Key="M.Remote.Denied">アクセスが拒否されました。{0} のサービスを変更するには、そのマシンの管理者権限が必要です。</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} が利用可能です。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">リリース ページを開く</sys:String>
+
+    <!-- 別のコンソールがこのコンソールを引き継ぐ場合: 後から起動した別の実行ファイルやバージョン、および「今すぐ更新」。Replacement と SelfUpdate を参照。 -->
+    <sys:String x:Key="M.Replace.Title">WinSW コンソールは既に実行中です</sys:String>
+    <sys:String x:Key="M.Replace.Started">今起動したもの: v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Running">実行中のもの: v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Ask">今起動したものに切り替えますか? このコンソールは閉じ、そちらが引き継ぎます。このコンソールがトレイから監視している場合は、そちらも同じようにします。サインイン時の起動項目と「WinSW で開く」がこのコンソールを起動するものであれば、そちらに移ります。[いいえ] でこのコンソールを使い続けます。</sys:String>
+    <sys:String x:Key="M.Replace.OlderFound">既に実行中のコンソールがありますが、自分で引き継ぐことができません。以前のリリースのものか、応答していません。</sys:String>
+    <sys:String x:Key="M.Replace.OlderAsk">それを終了して、今起動したものを使いますか? そのコンソールで保存していない変更は失われます。サインイン時の起動項目と「WinSW で開く」が古いものを起動するものであれば、今起動したものに移ります。[いいえ] で実行中のコンソールをそのまま残します。</sys:String>
+    <sys:String x:Key="M.Replace.EndTimeout">5 秒経っても終了しませんでした</sys:String>
+    <sys:String x:Key="M.Replace.EndFailed">{0} のコンソールを終了できませんでした: {1}</sys:String>
+    <sys:String x:Key="M.Replace.Next">続けて v{0} ({1}) に切り替えます。引き継ぐコンソールはディスク上の内容から始まります。</sys:String>
+    <sys:String x:Key="M.Replace.Failed">{0} を起動できませんでした: {1}</sys:String>
+    <sys:String x:Key="M.Update.Now">今すぐ更新</sys:String>
+    <sys:String x:Key="M.Update.NowTip">このビルドと同じ種類の実行ファイルをリリースからダウンロードし、リリースの SHA256SUMS.txt で検証してから、この実行ファイルと置き換えて再起動します。保存していない変更がある場合は先に確認します。</sys:String>
+    <sys:String x:Key="M.Update.Downloading">v{0} をダウンロード中… {1}%</sys:String>
+    <sys:String x:Key="M.Update.Ready">v{0} をダウンロードして検証しました。[今すぐ更新] で新しいバージョンとして再起動します。</sys:String>
+    <sys:String x:Key="M.Update.Next">続けて v{0} として再起動します。更新後のコンソールはディスク上の内容から始まります。</sys:String>
+    <sys:String x:Key="M.Update.NotThisBuild">この実行ファイルはリリースで配布されているものではないため、自分自身を置き換えられません。リリース ページを使ってください。</sys:String>
+    <sys:String x:Key="M.Update.NoAsset">このリリースには {0} がありません。リリース ページを使ってください。</sys:String>
+    <sys:String x:Key="M.Update.NoChecksum">このリリースの {1} に {0} のチェックサムがないため、ここからはインストールしません。リリース ページを使ってください。</sys:String>
+    <sys:String x:Key="M.Update.FolderNotWritable">コンソールのフォルダーに書き込めません ({0})。管理者として再起動するか、リリース ページを使ってください。</sys:String>
+    <sys:String x:Key="M.Update.DownloadFailed">ダウンロードに失敗しました: {0}</sys:String>
+    <sys:String x:Key="M.Update.Mismatch">ダウンロードした {0} が {1} と一致しません。削除しました。何も変更していません。</sys:String>
+
     <sys:String x:Key="M.Shell.ContextMenu">.xml ファイルの右クリックに「WinSW で開く」を追加</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">現在のユーザーに右クリック項目を追加します。昇格は不要です。</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">WinSW で開く</sys:String>

@@ -207,6 +207,22 @@ jobs:
           Copy-Item artifacts/gui/win-x64-fdd/WinSW.Gui.exe release/WinSW.Gui-win-x64-framework-dependent.exe
           Copy-Item artifacts/gui/win-arm64/WinSW.Gui.exe release/WinSW.Gui-win-arm64.exe
 
+      # The console's "Update now" downloads its own kind of executable from the release and
+      # starts it only if it matches this list (src/WinSW.Gui/Services/SelfUpdate.cs); a release
+      # without it can still be downloaded from its page, not updated to in place. sha256sum's
+      # format, so that `sha256sum -c SHA256SUMS.txt` checks a download by hand as well: the
+      # hash in lower case, two spaces, the file name; line feeds, and no byte-order mark, which
+      # Set-Content would not promise.
+      - name: Stage checksums
+        if: startsWith(github.ref, 'refs/tags/gui-v')
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem release/*.exe | Sort-Object Name | ForEach-Object {
+            '{0}  {1}' -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
+          }
+          [IO.File]::WriteAllText((Join-Path $PWD 'release/SHA256SUMS.txt'), ($lines -join "`n") + "`n")
+          Get-Content release/SHA256SUMS.txt
+
       # winget manifests with the real hashes, attached to the release for submission to winget-pkgs.
       - name: Stage winget manifests
         if: startsWith(github.ref, 'refs/tags/gui-v')
@@ -239,8 +255,12 @@ jobs:
 
             WinSW itself is carried inside the console, so the new-service wizard installs a
             service on a machine with no network and no WinSW.exe to hand.
+
+            `SHA256SUMS.txt` lists the SHA-256 of each executable. A running console's *Update now*
+            (Settings) downloads its own kind, checks it against that list and restarts into it.
           files: |
             release/*.exe
+            release/SHA256SUMS.txt
             release/winget-manifests.zip
 
       # Job logs are only readable when signed in. On any failure, file the compiler and test

@@ -2,6 +2,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using WinSW.Gui.Localization;
@@ -66,6 +67,9 @@ namespace WinSW.Gui.ViewModels
     /// </summary>
     public sealed class ShellViewModel : ObservableObject, IDisposable
     {
+        /// <summary>How often a console that stays open asks for a newer release.</summary>
+        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromDays(1);
+
         private NavigationItem? selectedItem;
         private object? currentPage;
         private Language selectedLanguage = Localizer.Current;
@@ -99,7 +103,31 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>The unsaved-changes prompt stands before restarting as administrator.</summary>
         private bool restartingElevated;
+
+        /// <summary>The unsaved-changes prompt stands before handing over to this console; see <see cref="ReplaceWith"/>.</summary>
+        private Replacement? replacementToStart;
+
+        /// <summary>"Update now" is fetching the release.</summary>
+        private bool updating;
+
+        /// <summary>How "Update now" is getting on, or why it stopped; blank before it is first used.</summary>
+        private string updateStatus = string.Empty;
+
+        /// <summary>
+        /// The release "Update now" fetched and checked, waiting beside the executable while the
+        /// unsaved changes are answered; null when there is none.
+        /// </summary>
+        private Replacement? fetchedUpdate;
+
+        /// <summary>When a newer release was last asked for, in UTC.</summary>
+        private DateTime lastUpdateCheck;
         private readonly System.Windows.Threading.DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
+
+        /// <summary>
+        /// Looks each hour whether a day has passed since the last update check. Not a timer of a
+        /// day: one that a server spent asleep through would fire a day after it woke.
+        /// </summary>
+        private readonly System.Windows.Threading.DispatcherTimer updateCheckTimer = new() { Interval = TimeSpan.FromHours(1) };
 
         public ShellViewModel()
         {
@@ -136,8 +164,11 @@ namespace WinSW.Gui.ViewModels
             this.UnsavedDiscardCommand = new AsyncRelayCommand(() => this.DecideUnsavedAsync(save: false));
             this.UnsavedCancelCommand = new RelayCommand(() =>
             {
+                // A release fetched for an update stays where it was downloaded: "Update now"
+                // restarts into it without fetching it again, and the next start deletes it.
                 this.pathToOpen = null;
                 this.restartingElevated = false;
+                this.replacementToStart = null;
                 this.UnsavedPromptVisible = false;
             });
             this.toastTimer.Tick += (_, _) =>
@@ -225,6 +256,7 @@ namespace WinSW.Gui.ViewModels
                     SystemShell.OpenUrl(this.guiUpdate.Url);
                 }
             });
+            this.UpdateNowCommand = new AsyncRelayCommand(this.UpdateNowAsync, () => this.guiUpdate != null && this.CanUpdateInPlace && !this.updating);
 
             this.Dashboard.OpenUninstalledConfigRequested += this.OpenInEditor;
 
@@ -232,6 +264,17 @@ namespace WinSW.Gui.ViewModels
             // rather than going nowhere.
             ErrorLog.Observe(this.CheckGuiUpdateAsync(), "update check");
             ErrorLog.Observe(this.RefreshUnattendedAlertAsync(), "unattended alert status");
+
+            // A console started with Windows stays open for weeks, and used to ask once, at
+            // start. It asks again once a day.
+            this.updateCheckTimer.Tick += (_, _) =>
+            {
+                if (DateTime.UtcNow - this.lastUpdateCheck >= UpdateCheckInterval)
+                {
+                    ErrorLog.Observe(this.CheckGuiUpdateAsync(), "update check");
+                }
+            };
+            this.updateCheckTimer.Start();
 
             // Once, in the background: the wizard needs to know which task names are taken
             // before anyone has opened the desktop-task page.
@@ -306,6 +349,7 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         public void Dispose()
         {
+            this.updateCheckTimer.Stop();
             this.Editor.Dispose();
             this.Logs.Dispose();
         }
@@ -398,6 +442,14 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         public event Action<string?>? RestartElevatedDecided;
 
+        /// <summary>
+        /// Raised when another console is to take over from this one — a later launch's
+        /// executable, or the release "Update now" fetched — with the configuration it is to
+        /// open, if any; the window starts it and closes. Raised, as the restart is, only once the
+        /// unsaved changes have been answered; see <see cref="ReplaceWith"/>.
+        /// </summary>
+        public event Action<Replacement, string?>? ReplaceDecided;
+
         /// <summary>Writes the changes, then goes on: out, to the other configuration, or to the restart.</summary>
         public AsyncRelayCommand UnsavedSaveCommand { get; }
 
@@ -421,7 +473,11 @@ namespace WinSW.Gui.ViewModels
         /// What comes after the answer: the configuration waiting to be opened, or the restart;
         /// blank when the prompt stands before exiting, which its buttons say.
         /// </summary>
-        public string UnsavedPromptNext => this.restartingElevated
+        public string UnsavedPromptNext => this.replacementToStart is { } replacement
+            ? (replacement.IsUpdate
+                ? Localizer.Format("M.Update.Next", replacement.Version)
+                : Localizer.Format("M.Replace.Next", replacement.Version, replacement.ExecutablePath))
+            : this.restartingElevated
             ? Localizer.Get("M.Restart.Next")
             : this.pathToOpen is null ? string.Empty : Localizer.Format("M.Open.Next", this.pathToOpen);
 
@@ -432,20 +488,25 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Asks what to do about the editor's unsaved changes before the window closes.</summary>
         public void AskToExit() => this.AskAboutUnsavedChanges(null);
 
-        /// <summary>The one of three keys that fits what the prompt stands before.</summary>
+        /// <summary>
+        /// The one of three keys that fits what the prompt stands before. Handing over to another
+        /// console is a restart as far as the buttons are concerned.
+        /// </summary>
         private string ForNextStep(string exit, string open, string restart) =>
-            this.restartingElevated ? restart : this.pathToOpen is null ? exit : open;
+            this.restartingElevated || this.replacementToStart != null ? restart : this.pathToOpen is null ? exit : open;
 
         /// <summary>
         /// Puts the prompt up, standing before exiting or, with <paramref name="next"/>, before
-        /// opening that configuration, or with <paramref name="restart"/> before restarting as
-        /// administrator. The latest request is the one answered: an exit that was interrupted
-        /// starts over at the next close anyway.
+        /// opening that configuration, with <paramref name="restart"/> before restarting as
+        /// administrator, or with <paramref name="replacement"/> before handing over to that
+        /// console. The latest request is the one answered: an exit that was interrupted starts
+        /// over at the next close anyway.
         /// </summary>
-        private void AskAboutUnsavedChanges(string? next, bool restart = false)
+        private void AskAboutUnsavedChanges(string? next, bool restart = false, Replacement? replacement = null)
         {
             this.pathToOpen = next;
             this.restartingElevated = restart;
+            this.replacementToStart = replacement;
             this.Raise(nameof(this.UnsavedPromptFile));
             this.Raise(nameof(this.UnsavedPromptNext));
             this.Raise(nameof(this.UnsavedSaveLabel));
@@ -457,11 +518,13 @@ namespace WinSW.Gui.ViewModels
         {
             string? next = this.pathToOpen;
             bool restart = this.restartingElevated;
+            var replacement = this.replacementToStart;
             this.pathToOpen = null;
             this.restartingElevated = false;
+            this.replacementToStart = null;
             this.UnsavedPromptVisible = false;
 
-            if (next is null && !restart)
+            if (next is null && !restart && replacement is null)
             {
                 this.ExitDecided?.Invoke(save);
                 return;
@@ -476,7 +539,11 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            if (restart)
+            if (replacement != null)
+            {
+                this.ReplaceDecided?.Invoke(replacement, replacement.ConfigPath ?? this.ConfigurationToReopen);
+            }
+            else if (restart)
             {
                 this.RestartElevatedDecided?.Invoke(this.ConfigurationToReopen);
             }
@@ -504,6 +571,57 @@ namespace WinSW.Gui.ViewModels
 
             this.RestartElevatedDecided?.Invoke(this.ConfigurationToReopen);
         }
+
+        /// <summary>
+        /// Hands this console's place to <paramref name="replacement"/>: the executable a later
+        /// launch came from, when the user said so, or the release "Update now" fetched. As for
+        /// "Restart as administrator", unsaved changes in the editor are asked about first; then
+        /// <see cref="ReplaceDecided"/> is raised, and the window starts the new console and
+        /// closes. The configuration the launch came with is the one the new console opens;
+        /// otherwise, the one the restart would.
+        /// </summary>
+        public void ReplaceWith(Replacement replacement)
+        {
+            if (this.Editor.IsDirty)
+            {
+                // Answer it looking at the thing that is unsaved.
+                this.Navigate(this.Editor);
+                this.AskAboutUnsavedChanges(null, replacement: replacement);
+                return;
+            }
+
+            this.ReplaceDecided?.Invoke(replacement, replacement.ConfigPath ?? this.ConfigurationToReopen);
+        }
+
+        /// <summary>
+        /// The console that was to take over did not start, and this one stays; see
+        /// <see cref="Replacement.Start"/>. Says why, and records it.
+        /// </summary>
+        public void ReportReplacementFailed(Replacement replacement, string error)
+        {
+            ActionLog.Record(replacement.IsUpdate ? "update console" : "replace console", replacement.ExecutablePath, "not started: " + error);
+
+            string text = Localizer.Format("M.Replace.Failed", replacement.ExecutablePath, error);
+            if (replacement.IsUpdate)
+            {
+                // The fetched file has been put back where it was downloaded, or could not be;
+                // either way the next "Update now" fetches the release again rather than trust it.
+                this.fetchedUpdate = null;
+                this.UpdateStatus = text;
+            }
+
+            this.ShowToast(text, isError: true);
+        }
+
+        /// <summary>
+        /// The console that takes over has started, and this one is closing; recorded with what
+        /// took over, which the log would otherwise only learn from the next start's version.
+        /// </summary>
+        public static void RecordReplacementStarted(Replacement replacement) =>
+            ActionLog.Record(
+                replacement.IsUpdate ? "update console" : "replace console",
+                replacement.ExecutablePath,
+                "v" + UpdateChecker.CurrentGuiVersion + " handed over to v" + replacement.Version);
 
         /// <summary>
         /// The configuration the restarted copy opens, as the command line would: the file in the
@@ -603,6 +721,7 @@ namespace WinSW.Gui.ViewModels
                 {
                     this.Raise(nameof(this.HasGuiUpdate));
                     this.Raise(nameof(this.GuiUpdateText));
+                    this.UpdateNowCommand.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -610,6 +729,105 @@ namespace WinSW.Gui.ViewModels
         public bool HasGuiUpdate => this.guiUpdate != null;
 
         public string GuiUpdateText => this.guiUpdate is null ? string.Empty : Localizer.Format("M.Shell.GuiUpdate", this.guiUpdate.Version);
+
+        /// <summary>
+        /// This executable is one a release carries, so "Update now" can put the new one in its
+        /// place; see <see cref="SelfUpdate.AssetForThisBuild"/>. A build from source is not, and
+        /// is offered only the release page.
+        /// </summary>
+        public bool CanUpdateInPlace { get; } = SelfUpdate.AssetForThisBuild != null && Environment.ProcessPath != null;
+
+        /// <summary>
+        /// Fetches the release's executable for this build, checks it against the release's
+        /// checksum list and restarts into it; see <see cref="SelfUpdate"/>. The release page
+        /// used to be all there was, and on Windows Server that opens in Internet Explorer,
+        /// whose enhanced security blocks the download.
+        /// </summary>
+        public AsyncRelayCommand UpdateNowCommand { get; }
+
+        /// <summary>How "Update now" is getting on, or why it stopped; blank before it is first used.</summary>
+        public string UpdateStatus
+        {
+            get => this.updateStatus;
+            private set => this.Set(ref this.updateStatus, value);
+        }
+
+        private async Task UpdateNowAsync()
+        {
+            var release = this.guiUpdate;
+            string? executable = Environment.ProcessPath;
+            if (release is null || executable is null)
+            {
+                return;
+            }
+
+            // Fetched already, and the unsaved changes were not answered then: straight to them
+            // again, without fetching the release a second time.
+            if (this.fetchedUpdate is { DownloadedFile: { } waiting } fetched
+                && string.Equals(fetched.Version, release.Version, StringComparison.OrdinalIgnoreCase)
+                && System.IO.File.Exists(waiting))
+            {
+                this.ReplaceWith(fetched);
+                return;
+            }
+
+            this.fetchedUpdate = null;
+            this.SetUpdating(true);
+            UpdateDownload download;
+            try
+            {
+                this.UpdateStatus = Localizer.Format("M.Update.Downloading", release.Version, 0);
+
+                // Created here, so that it reports on this thread. A report that arrives after
+                // the download has finished is dropped: it would overwrite what came of it.
+                var progress = new Progress<int>(percent =>
+                {
+                    if (this.updating)
+                    {
+                        this.UpdateStatus = Localizer.Format("M.Update.Downloading", release.Version, percent);
+                    }
+                });
+
+                download = await SelfUpdate.DownloadAsync(release, executable, progress, CancellationToken.None).ConfigureAwait(true);
+            }
+            finally
+            {
+                this.SetUpdating(false);
+            }
+
+            if (download.File is null)
+            {
+                ActionLog.Record("update console", "v" + release.Version, "not fetched: " + download.Problem + (download.Detail is null ? string.Empty : " (" + download.Detail + ")"));
+                this.UpdateStatus = DescribeUpdateProblem(download);
+                return;
+            }
+
+            ActionLog.Record("update console", "v" + release.Version, "fetched and checked against " + SelfUpdate.ChecksumsAsset + ": " + download.File);
+            this.fetchedUpdate = new Replacement(executable, release.Version, configPath: null, downloadedFile: download.File);
+            this.UpdateStatus = Localizer.Format("M.Update.Ready", release.Version);
+            this.ReplaceWith(this.fetchedUpdate);
+        }
+
+        private void SetUpdating(bool busy)
+        {
+            this.updating = busy;
+            this.UpdateNowCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>Why "Update now" has nothing to restart into, in words that say what to do instead.</summary>
+        private static string DescribeUpdateProblem(UpdateDownload download)
+        {
+            string detail = download.Detail ?? string.Empty;
+            return download.Problem switch
+            {
+                UpdateProblem.NoAsset => Localizer.Format("M.Update.NoAsset", detail),
+                UpdateProblem.NoChecksum => Localizer.Format("M.Update.NoChecksum", detail, SelfUpdate.ChecksumsAsset),
+                UpdateProblem.FolderNotWritable => Localizer.Format("M.Update.FolderNotWritable", detail),
+                UpdateProblem.DownloadFailed => Localizer.Format("M.Update.DownloadFailed", detail),
+                UpdateProblem.ChecksumMismatch => Localizer.Format("M.Update.Mismatch", detail, SelfUpdate.ChecksumsAsset),
+                _ => Localizer.Get("M.Update.NotThisBuild"),
+            };
+        }
 
         /// <summary>"Open in WinSW" on the right-click menu of .xml files, for this user.</summary>
         public bool ContextMenuRegistered
@@ -669,12 +887,28 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>
+        /// Asks for a newer release: at start, then once a day. A check that fails waits for the
+        /// next day's, as the one at start always did.
+        /// </summary>
         private async Task CheckGuiUpdateAsync()
         {
+            this.lastUpdateCheck = DateTime.UtcNow;
             var latest = await UpdateChecker.LatestGuiAsync().ConfigureAwait(true);
-            if (latest != null && UpdateChecker.IsNewer(latest.Version, UpdateChecker.CurrentGuiVersion))
+            if (latest is null || !UpdateChecker.IsNewer(latest.Version, UpdateChecker.CurrentGuiVersion))
+            {
+                return;
+            }
+
+            // The same release again changes nothing: a file fetched for it is still the one to
+            // restart into. A later one takes its place, and "Update now" fetches that instead.
+            if (!string.Equals(latest.Version, this.guiUpdate?.Version, StringComparison.OrdinalIgnoreCase))
             {
                 this.GuiUpdate = latest;
+                if (!this.updating)
+                {
+                    this.UpdateStatus = string.Empty;
+                }
             }
         }
 

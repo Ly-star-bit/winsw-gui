@@ -491,6 +491,30 @@
     <sys:String x:Key="M.Remote.Denied">访问被拒绝。更改 {0} 上的服务需要那台机器的管理员权限。</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} 已发布。</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">打开发布页</sys:String>
+
+    <!-- 另一个控制台来接替当前这个：后来启动的另一个程序或版本，以及“立即更新”；见 Replacement 和 SelfUpdate。 -->
+    <sys:String x:Key="M.Replace.Title">WinSW 控制台已在运行</sys:String>
+    <sys:String x:Key="M.Replace.Started">刚启动的：v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Running">正在运行的：v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Ask">切换到刚启动的这个吗？当前控制台会关闭，由它接替；当前这个在托盘里监视的话，它也一样。登录启动项和“用 WinSW 打开”右键菜单如果指向当前这个，会一并改指向它。选“否”保留当前这个。</sys:String>
+    <sys:String x:Key="M.Replace.OlderFound">已有一个控制台在运行，但它没法自己交接：它是旧版本，或者没有响应。</sys:String>
+    <sys:String x:Key="M.Replace.OlderAsk">结束它，改用刚启动的这个吗？它里面没保存的修改会丢失。登录启动项和“用 WinSW 打开”右键菜单如果指向旧的，会改指向刚启动的这个。选“否”保留正在运行的那个。</sys:String>
+    <sys:String x:Key="M.Replace.EndTimeout">5 秒后它仍在运行</sys:String>
+    <sys:String x:Key="M.Replace.EndFailed">无法结束 {0} 的控制台：{1}</sys:String>
+    <sys:String x:Key="M.Replace.Next">接着切换到 v{0}（{1}）。接替的控制台只读取磁盘上的内容。</sys:String>
+    <sys:String x:Key="M.Replace.Failed">无法启动 {0}：{1}</sys:String>
+    <sys:String x:Key="M.Update.Now">立即更新</sys:String>
+    <sys:String x:Key="M.Update.NowTip">从发布页下载与当前程序同类型的文件，用发布附带的 SHA256SUMS.txt 校验，替换当前程序后重启。有未保存的修改会先询问。</sys:String>
+    <sys:String x:Key="M.Update.Downloading">正在下载 v{0}… {1}%</sys:String>
+    <sys:String x:Key="M.Update.Ready">v{0} 已下载并校验通过，点“立即更新”即可重启到新版本。</sys:String>
+    <sys:String x:Key="M.Update.Next">接着重启到 v{0}。更新后的控制台只读取磁盘上的内容。</sys:String>
+    <sys:String x:Key="M.Update.NotThisBuild">当前程序不是发布页提供的文件，无法自行更新。请用发布页。</sys:String>
+    <sys:String x:Key="M.Update.NoAsset">该发布里没有 {0}。请用发布页。</sys:String>
+    <sys:String x:Key="M.Update.NoChecksum">该发布的 {1} 里没有 {0} 的校验值，不从这里安装。请用发布页。</sys:String>
+    <sys:String x:Key="M.Update.FolderNotWritable">控制台所在的文件夹没有写入权限（{0}）。请以管理员身份重启，或用发布页。</sys:String>
+    <sys:String x:Key="M.Update.DownloadFailed">下载失败：{0}</sys:String>
+    <sys:String x:Key="M.Update.Mismatch">下载的 {0} 与 {1} 不符，已删除，没有做任何改动。</sys:String>
+
     <sys:String x:Key="M.Shell.ContextMenu">在 .xml 右键菜单添加“用 WinSW 打开”</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">为当前用户添加右键菜单项，无需提权。</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">用 WinSW 打开</sys:String>

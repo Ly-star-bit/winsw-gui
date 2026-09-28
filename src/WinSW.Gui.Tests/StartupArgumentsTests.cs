@@ -158,6 +158,25 @@ namespace WinSW.Gui.Tests
             Assert.False(arguments.Tray);
         }
 
+        /// <summary>
+        /// Every hand-over starts the new console the way "Restart as administrator" does — the
+        /// executable a later launch came from, and this one's own after "Update now" — so that it
+        /// waits for this one to close, keeps its tray watch and opens its configuration.
+        /// </summary>
+        [Fact]
+        public void AHandOverIsStartedAsTheRestartIs()
+        {
+            string path = Path.GetFullPath(Config);
+
+            Assert.Equal(StartupArguments.ForElevatedRestart(path, keepTray: true), StartupArguments.ForReplacement(path, keepTray: true));
+            Assert.Equal(StartupArguments.ForElevatedRestart(null, keepTray: false), StartupArguments.ForReplacement(null, keepTray: false));
+
+            var arguments = StartupArguments.Parse(StartupArguments.ForReplacement(path, keepTray: true), Everything);
+            Assert.True(arguments.Replacing);
+            Assert.True(arguments.KeepTray);
+            Assert.Equal(path, arguments.ConfigPath);
+        }
+
         [Fact]
         public void ARestartWithoutATrayWatchDoesNotAskForOne()
         {

@@ -491,6 +491,30 @@
     <sys:String x:Key="M.Remote.Denied">Access was denied. Changing a service on {0} needs administrator rights there.</sys:String>
     <sys:String x:Key="M.Shell.GuiUpdate">WinSW GUI {0} is available.</sys:String>
     <sys:String x:Key="M.Shell.OpenRelease">Open release page</sys:String>
+
+    <!-- Another console taking this one's place: a later launch of another executable or version, and "Update now"; see Replacement and SelfUpdate. -->
+    <sys:String x:Key="M.Replace.Title">WinSW console already running</sys:String>
+    <sys:String x:Key="M.Replace.Started">Just started: v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Running">Running now: v{0}  {1}</sys:String>
+    <sys:String x:Key="M.Replace.Ask">Switch to the one just started? This console closes and that one takes its place, watching from the tray if this one does. The sign-in entry and the "Open in WinSW" verb move to it if they start this one. No keeps this one.</sys:String>
+    <sys:String x:Key="M.Replace.OlderFound">A console is already running that cannot hand over by itself: it is from an earlier release, or not responding.</sys:String>
+    <sys:String x:Key="M.Replace.OlderAsk">End it and use the one just started? Changes not saved in it are lost. The sign-in entry and the "Open in WinSW" verb move to the one just started if they start the old one. No leaves it running.</sys:String>
+    <sys:String x:Key="M.Replace.EndTimeout">it was still running after 5 seconds</sys:String>
+    <sys:String x:Key="M.Replace.EndFailed">The console at {0} could not be ended: {1}</sys:String>
+    <sys:String x:Key="M.Replace.Next">Then switch to v{0} ({1}). The console that takes over starts from what is on disk.</sys:String>
+    <sys:String x:Key="M.Replace.Failed">Could not start {0}: {1}</sys:String>
+    <sys:String x:Key="M.Update.Now">Update now</sys:String>
+    <sys:String x:Key="M.Update.NowTip">Downloads this build's executable from the release, checks it against the release's SHA256SUMS.txt, puts it in place of this one and restarts. Unsaved changes are asked about first.</sys:String>
+    <sys:String x:Key="M.Update.Downloading">Downloading v{0}… {1}%</sys:String>
+    <sys:String x:Key="M.Update.Ready">v{0} is downloaded and checked; Update now restarts into it.</sys:String>
+    <sys:String x:Key="M.Update.Next">Then restart into v{0}. The updated console starts from what is on disk.</sys:String>
+    <sys:String x:Key="M.Update.NotThisBuild">This executable is not one a release carries, so it cannot replace itself. Use the release page.</sys:String>
+    <sys:String x:Key="M.Update.NoAsset">The release has no {0}. Use the release page.</sys:String>
+    <sys:String x:Key="M.Update.NoChecksum">The release lists no checksum for {0} in {1}, so it is not installed from here. Use the release page.</sys:String>
+    <sys:String x:Key="M.Update.FolderNotWritable">The console's folder cannot be written to ({0}). Restart as administrator, or use the release page.</sys:String>
+    <sys:String x:Key="M.Update.DownloadFailed">The download failed: {0}</sys:String>
+    <sys:String x:Key="M.Update.Mismatch">The downloaded {0} does not match {1}. It has been deleted, and nothing was changed.</sys:String>
+
     <sys:String x:Key="M.Shell.ContextMenu">"Open in WinSW" on .xml files</sys:String>
     <sys:String x:Key="M.Shell.ContextMenuTip">Adds a right-click entry for the current user; no elevation needed.</sys:String>
     <sys:String x:Key="M.Shell.OpenInWinSW">Open in WinSW</sys:String>

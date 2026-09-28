@@ -15,6 +15,9 @@ namespace WinSW.Gui
         private bool closeConfirmed;
         private bool resizeBorderAttached;
 
+        /// <summary>The question whether to hand over to a launch is on screen; see <see cref="OnLaunched"/>.</summary>
+        private bool askingToHandOver;
+
         /// <summary>
         /// Whether the window has ever been shown. A console started in the tray may never be,
         /// and a window that never had a handle has no placement worth saving: its restore
@@ -59,6 +62,7 @@ namespace WinSW.Gui
 
             this.shell.ExitDecided += this.OnExitDecided;
             this.shell.RestartElevatedDecided += this.OnRestartElevatedDecided;
+            this.shell.ReplaceDecided += this.OnReplaceDecided;
 
             // The size the window is laid out for, read before a saved one replaces it: when a
             // window that does not fit the screen would not fit at that size either, it opens
@@ -117,6 +121,61 @@ namespace WinSW.Gui
             // hidden in the tray is a hang, not a question.
             this.BringToFront();
             this.shell.OpenHandedOverPath(path);
+        }
+
+        /// <summary>
+        /// A later launch has said who it is; see <see cref="ConsoleLaunch"/>. The same console
+        /// comes forward, or opens the configuration it was given, as always. Another one —
+        /// another executable, or this one's path now holding another version — is offered this
+        /// copy's place: it used to be woken over, and a newer download double-clicked beside an
+        /// old console in the tray brought up the old one.
+        /// </summary>
+        public void OnLaunched(ConsoleLaunch launch)
+        {
+            // A launch while the question about an earlier one is on screen is treated as the
+            // same console: one question at a time, and the answer to that one decides.
+            if (this.askingToHandOver || launch.IsSameConsole(UpdateChecker.CurrentGuiVersion, Environment.ProcessPath))
+            {
+                if (launch.ConfigPath is { } path)
+                {
+                    this.OpenHandedOver(path);
+                }
+                else
+                {
+                    this.BringToFront();
+                }
+
+                return;
+            }
+
+            this.BringToFront();
+
+            string question = string.Join(
+                Environment.NewLine + Environment.NewLine,
+                Localizer.Format("M.Replace.Started", launch.Version, launch.ExecutablePath),
+                Localizer.Format("M.Replace.Running", UpdateChecker.CurrentGuiVersion, Environment.ProcessPath),
+                Localizer.Get("M.Replace.Ask"));
+
+            MessageBoxResult answer;
+            this.askingToHandOver = true;
+            try
+            {
+                answer = MessageBox.Show(this, question, Localizer.Get("M.Replace.Title"), MessageBoxButton.YesNo, MessageBoxImage.Question);
+            }
+            finally
+            {
+                this.askingToHandOver = false;
+            }
+
+            if (answer == MessageBoxResult.Yes)
+            {
+                this.shell.ReplaceWith(new Replacement(launch.ExecutablePath, launch.Version, launch.ConfigPath, downloadedFile: null));
+            }
+            else if (launch.ConfigPath is { } handed)
+            {
+                // Kept here, then: the file the launch came with still opens.
+                this.shell.OpenHandedOverPath(handed);
+            }
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -238,6 +297,36 @@ namespace WinSW.Gui
             // Closed as an exit already answered for. Kept to the tray, the window would hide
             // instead and go on holding the session the new copy is waiting for; and it would ask
             // again about changes that were just discarded.
+            this.closeConfirmed = true;
+            this.Close();
+        }
+
+        /// <summary>
+        /// Starts the console that takes over from this one — another executable, or the release
+        /// "Update now" fetched — and makes way for it, as for a restart as administrator. The
+        /// unsaved changes have been asked about already. When it does not start, this copy stays
+        /// as it was and says why.
+        /// </summary>
+        private void OnReplaceDecided(Replacement replacement, string? configPath)
+        {
+            string? error = replacement.Start(configPath, keepTray: this.watchesFromTray);
+            if (error != null)
+            {
+                this.shell.ReportReplacementFailed(replacement, error);
+                return;
+            }
+
+            ShellViewModel.RecordReplacementStarted(replacement);
+
+            // Sign-in and the Explorer verb go on to start the console that took over, when they
+            // started this one. An update keeps the path, and there is nothing to move.
+            if (Environment.ProcessPath is { } own)
+            {
+                Replacement.Repoint(own, replacement.ExecutablePath, Localizer.Get("M.Shell.OpenInWinSW"));
+            }
+
+            // As for the restart: closed as an exit already answered for, so that it neither
+            // hides in the tray holding the session nor asks again about discarded changes.
             this.closeConfirmed = true;
             this.Close();
         }

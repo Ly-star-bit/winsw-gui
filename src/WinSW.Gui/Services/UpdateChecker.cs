@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace WinSW.Gui.Services
@@ -62,7 +63,23 @@ namespace WinSW.Gui.Services
         private const string WrapperReleases = "https://api.github.com/repos/winsw/winsw/releases?per_page=10";
         private const string GuiReleases = "https://api.github.com/repos/Ly-star-bit/winsw-gui/releases?per_page=10";
 
+        /// <summary>
+        /// How long a release file may go without a byte arriving before its download is given
+        /// up. There is no limit on the whole: the self-contained console is some seventy
+        /// megabytes, which a slow line takes minutes over.
+        /// </summary>
+        private static readonly TimeSpan StallTimeout = TimeSpan.FromSeconds(60);
+
+        /// <summary>The limit on a release's checksum list, which is a few lines.</summary>
+        private static readonly TimeSpan TextTimeout = TimeSpan.FromSeconds(30);
+
         private static readonly HttpClient Http = CreateClient();
+
+        /// <summary>
+        /// For release files. Apart from <see cref="Http"/>, whose twenty seconds are for an API
+        /// call and would end a download of the console long before it was done.
+        /// </summary>
+        private static readonly HttpClient Downloads = CreateDownloadClient();
 
         /// <summary>The GUI's own version, as stamped by the build.</summary>
         public static string CurrentGuiVersion
@@ -128,6 +145,81 @@ namespace WinSW.Gui.Services
             }
         }
 
+        /// <summary>A small text file from a release, such as its checksum list; null when it cannot be had.</summary>
+        internal static async Task<string?> DownloadTextAsync(string url, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                limit.CancelAfter(TextTimeout);
+                return await Downloads.GetStringAsync(url, limit.Token).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or InvalidOperationException or UriFormatException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Copies a release file into <paramref name="output"/>, telling <paramref name="progress"/>
+        /// the percentage done each time it grows by one. Throws what the network throws, and a
+        /// <see cref="TimeoutException"/> when nothing has arrived for <see cref="StallTimeout"/>.
+        /// </summary>
+        internal static async Task DownloadToAsync(string url, Stream output, IProgress<int>? progress, CancellationToken cancellationToken)
+        {
+            using var stall = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            stall.CancelAfter(StallTimeout);
+            try
+            {
+                using var response = await Downloads.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                long? length = response.Content.Headers.ContentLength;
+                var input = await response.Content.ReadAsStreamAsync(stall.Token).ConfigureAwait(false);
+                await using (input.ConfigureAwait(false))
+                {
+                    byte[] buffer = new byte[81920];
+                    long received = 0;
+                    int reported = -1;
+                    while (true)
+                    {
+                        // Each read has the whole stall allowance again: what is limited is a
+                        // silence, not the download.
+                        stall.CancelAfter(StallTimeout);
+                        int read = await input.ReadAsync(buffer, stall.Token).ConfigureAwait(false);
+                        if (read == 0)
+                        {
+                            break;
+                        }
+
+                        await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+                        received += read;
+
+                        if (length > 0)
+                        {
+                            int percent = (int)(received * 100 / length.Value);
+                            if (percent > reported)
+                            {
+                                reported = percent;
+                                progress?.Report(percent);
+                            }
+                        }
+                    }
+
+                    // A connection that closed early reads as the end of the file. The checksum
+                    // would catch it too, but as a mismatch, which says the wrong thing.
+                    if (length is long expected && received != expected)
+                    {
+                        throw new IOException($"The download ended after {received} of {expected} bytes.");
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException($"Nothing arrived for {StallTimeout.TotalSeconds} seconds.");
+            }
+        }
+
         private static async Task<ReleaseInfo?> LatestAsync(string url, Func<string, bool> tagFilter)
         {
             try
@@ -177,6 +269,13 @@ namespace WinSW.Gui.Services
             {
                 return null;
             }
+        }
+
+        private static HttpClient CreateDownloadClient()
+        {
+            var client = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("WinSW-GUI/" + CurrentGuiVersion);
+            return client;
         }
 
         private static HttpClient CreateClient()

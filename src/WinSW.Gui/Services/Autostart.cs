@@ -38,7 +38,21 @@ namespace WinSW.Gui.Services
         public static void Register()
         {
             using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-            key.SetValue(ValueName, $"\"{ExecutablePath}\" {TrayArgument}");
+            key.SetValue(ValueName, CommandFor(ExecutablePath));
+        }
+
+        /// <summary>
+        /// Points the entry at <paramref name="executablePath"/> when it starts
+        /// <paramref name="previousPath"/>, whose console the one there replaces; see
+        /// <see cref="Replacement.Repoint"/>. No entry, or one for another copy, is left alone.
+        /// </summary>
+        public static void Repoint(string previousPath, string executablePath)
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKey, writable: true);
+            if (key?.GetValue(ValueName) is string command && command.Contains(previousPath, StringComparison.OrdinalIgnoreCase))
+            {
+                key.SetValue(ValueName, CommandFor(executablePath));
+            }
         }
 
         public static void Unregister()
@@ -48,5 +62,7 @@ namespace WinSW.Gui.Services
         }
 
         private static string ExecutablePath => Environment.ProcessPath ?? string.Empty;
+
+        private static string CommandFor(string executablePath) => $"\"{executablePath}\" {TrayArgument}";
     }
 }

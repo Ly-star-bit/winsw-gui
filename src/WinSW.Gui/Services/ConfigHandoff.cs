@@ -28,6 +28,13 @@ namespace WinSW.Gui.Services
     /// the file itself as a copy of its own — no worse than before.
     /// </para>
     /// <para>
+    /// A launch now sends who it is — see <see cref="ConsoleLaunch"/> — with the configuration
+    /// as part of that, rather than the bare path; a launch with no configuration goes this way
+    /// too, where it used to set an event that said nothing about it. The bare path is still
+    /// taken. The running copy answers as soon as it has the line, before it decides what to do
+    /// about it, so that nothing the user is asked there holds the launch up.
+    /// </para>
+    /// <para>
     /// Pipe names are machine-wide; there is no <c>Local\</c> for them. The session is part of
     /// <see cref="PipeName"/>, so that an account signed in twice, at the console and over
     /// remote desktop, has one pipe per session, as it has one console per session. And both
@@ -48,10 +55,11 @@ namespace WinSW.Gui.Services
         internal const byte Refused = 0;
 
         /// <summary>
-        /// The longest request read. A Windows path is at most 32,767 characters, and none
-        /// takes more than three bytes of UTF-8.
+        /// The longest request read: a launch's line, which holds two paths and a version. A
+        /// Windows path is at most 32,767 characters, and none takes more than three bytes of
+        /// UTF-8.
         /// </summary>
-        internal const int MaxRequestBytes = 3 * 32767;
+        internal const int MaxRequestBytes = 3 * ((2 * 32767) + 64);
 
         /// <summary>
         /// How often the running copy tries to open its pipe when the name is taken,
@@ -91,21 +99,31 @@ namespace WinSW.Gui.Services
         public static bool TrySend(string path) => TrySend(PipeName, path, ConnectTimeout);
 
         /// <summary>
-        /// Takes the paths later launches hand over until <paramref name="stop"/> is cancelled,
-        /// calling <paramref name="open"/> with each on a thread-pool thread.
+        /// Tells the copy running in this session about this launch. True when it took the
+        /// message, and decides from here whether to come forward, open the configuration or offer
+        /// to hand over; false when it could not be reached or did not answer.
+        /// </summary>
+        public static bool TrySend(ConsoleLaunch launch) => TrySend(PipeName, launch.ToRequest(), ConnectTimeout);
+
+        /// <summary>
+        /// Takes what later launches send until <paramref name="stop"/> is cancelled, calling
+        /// <paramref name="open"/> with each bare configuration path and
+        /// <paramref name="launched"/> with each launch that said who it is, on a thread-pool
+        /// thread.
         /// </summary>
         /// <param name="failed">Told of a failure at this end, which is survived.</param>
-        public static Task Listen(Action<string> open, Action<Exception> failed, CancellationToken stop) =>
-            Task.Run(() => ListenAsync(PipeName, open, failed, stop));
+        public static Task Listen(Action<string> open, Action<ConsoleLaunch> launched, Action<Exception> failed, CancellationToken stop) =>
+            Task.Run(() => ListenAsync(PipeName, open, launched, failed, stop));
 
         /// <summary>
         /// Blocks for the exchange: it is made at start, before there is a window, and the
         /// launch has nothing else to do until it knows whether to go on.
         /// </summary>
-        internal static bool TrySend(string pipeName, string path, TimeSpan connectTimeout) =>
-            Task.Run(() => SendAsync(pipeName, path, connectTimeout)).GetAwaiter().GetResult();
+        internal static bool TrySend(string pipeName, string request, TimeSpan connectTimeout) =>
+            Task.Run(() => SendAsync(pipeName, request, connectTimeout)).GetAwaiter().GetResult();
 
-        internal static async Task<bool> SendAsync(string pipeName, string path, TimeSpan connectTimeout)
+        /// <summary>Sends one request — a configuration's path, or a <see cref="ConsoleLaunch"/> line — and reads the answer.</summary>
+        internal static async Task<bool> SendAsync(string pipeName, string request, TimeSpan connectTimeout)
         {
             try
             {
@@ -113,7 +131,7 @@ namespace WinSW.Gui.Services
                 await client.ConnectAsync((int)connectTimeout.TotalMilliseconds).ConfigureAwait(false);
 
                 using var exchange = new CancellationTokenSource(ExchangeTimeout);
-                await client.WriteAsync(Utf8.GetBytes(path + "\n"), exchange.Token).ConfigureAwait(false);
+                await client.WriteAsync(Utf8.GetBytes(request + "\n"), exchange.Token).ConfigureAwait(false);
                 await client.FlushAsync(exchange.Token).ConfigureAwait(false);
 
                 byte[] answer = new byte[1];
@@ -136,7 +154,11 @@ namespace WinSW.Gui.Services
         /// connects to the new instance and is answered next; were the pipe gone, it would wait
         /// out its timeout for nothing, or, where pipes are sockets, be dropped from the queue.
         /// </remarks>
-        internal static async Task ListenAsync(string pipeName, Action<string> open, Action<Exception> failed, CancellationToken stop)
+        internal static Task ListenAsync(string pipeName, Action<string> open, Action<Exception> failed, CancellationToken stop) =>
+            ListenAsync(pipeName, open, null, failed, stop);
+
+        /// <param name="launched">Null refuses a launch that says who it is, as a copy from before that did.</param>
+        internal static async Task ListenAsync(string pipeName, Action<string> open, Action<ConsoleLaunch>? launched, Action<Exception> failed, CancellationToken stop)
         {
             NamedPipeServerStream? waiting = null;
             try
@@ -155,7 +177,7 @@ namespace WinSW.Gui.Services
                     {
                         await connection.WaitForConnectionAsync(stop).ConfigureAwait(false);
                         waiting = TryCreate(pipeName, out _);
-                        await ServeAsync(connection, open, stop).ConfigureAwait(false);
+                        await ServeAsync(connection, open, launched, stop).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException) when (stop.IsCancellationRequested)
                     {
@@ -231,23 +253,40 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// Reads one line and answers it. The path is passed on before the answer is written,
-        /// so that a launch told it was taken can exit knowing the file will open.
+        /// Reads one line and answers it. The request is passed on before the answer is
+        /// written, so that a launch told it was taken can exit knowing it has been heard.
         /// </summary>
-        private static async Task ServeAsync(Stream connection, Action<string> open, CancellationToken stop)
+        private static async Task ServeAsync(Stream connection, Action<string> open, Action<ConsoleLaunch>? launched, CancellationToken stop)
         {
             using var exchange = CancellationTokenSource.CreateLinkedTokenSource(stop);
             exchange.CancelAfter(ExchangeTimeout);
 
-            string? path = await ReadRequestAsync(connection, exchange.Token).ConfigureAwait(false);
-            bool accepted = path != null && IsConfigurationPath(path);
-            if (accepted)
-            {
-                open(path!);
-            }
+            string? request = await ReadRequestAsync(connection, exchange.Token).ConfigureAwait(false);
+            bool accepted = request != null && PassOn(request, open, launched);
 
             await connection.WriteAsync(new[] { accepted ? Accepted : Refused }, exchange.Token).ConfigureAwait(false);
             await connection.FlushAsync(exchange.Token).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Hands a request to whoever takes its kind. False when it is neither a configuration's
+        /// full path nor a launch this end listens for, and nothing was done with it.
+        /// </summary>
+        private static bool PassOn(string request, Action<string> open, Action<ConsoleLaunch>? launched)
+        {
+            if (IsConfigurationPath(request))
+            {
+                open(request);
+                return true;
+            }
+
+            if (launched != null && ConsoleLaunch.FromRequest(request) is { } launch)
+            {
+                launched(launch);
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -45,7 +47,9 @@ namespace WinSW.Gui
             // A configuration to open is handed to the running copy, when there is one that
             // takes it; see SingleInstance. A copy restarted as administrator comes with one as
             // well, and still waits for the copy it replaces rather than handing the file to it.
-            this.instance = SingleInstance.Claim(replacing: arguments.Replacing, wake: !arguments.Tray, configPath: StartupConfigPath);
+            // A running copy from before a launch could say who it is may be ended here, when it
+            // is not this console and the user says so.
+            this.instance = SingleInstance.Claim(replacing: arguments.Replacing, wake: !arguments.Tray, configPath: StartupConfigPath, replaceOlder: ReplaceOlderCopies);
             if (this.instance is null)
             {
                 this.Shutdown();
@@ -90,13 +94,69 @@ namespace WinSW.Gui
             }
 
             this.instance.OnShowRequested(() => this.Dispatcher.BeginInvoke(window.BringToFront));
-            this.instance.OnOpenRequested(path => this.Dispatcher.BeginInvoke(() => window.OpenHandedOver(path)));
+            this.instance.OnOpenRequested(
+                path => this.Dispatcher.BeginInvoke(() => window.OpenHandedOver(path)),
+                launch => this.Dispatcher.BeginInvoke(() => window.OnLaunched(launch)));
+
+            // What the last update left beside the executable. By the copy that holds the
+            // session, which is the one an update restarts into; the copy it restarted from may
+            // still be ending, so this keeps trying for a while in the background.
+            if (this.instance.HoldsSession && Environment.ProcessPath is { } executable)
+            {
+                ErrorLog.Observe(Task.Run(() => SelfUpdate.CleanUpAsync(executable)), "update clean-up");
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)
         {
             this.instance?.Dispose();
             base.OnExit(e);
+        }
+
+        /// <summary>
+        /// Offers to end the consoles found running in this session that could not be told about
+        /// this launch, and ends them on yes; see <see cref="SingleInstance.Claim"/>. True once they
+        /// are gone, and this launch takes their place — the sign-in entry and the Explorer verb
+        /// with it, when they started one of them.
+        /// </summary>
+        /// <remarks>
+        /// Asked before there is a window: the question is the first thing this launch shows, and
+        /// on no it shows nothing else, as the running copy comes forward instead.
+        /// </remarks>
+        private static bool ReplaceOlderCopies(IReadOnlyList<RunningCopy> copies)
+        {
+            // Nothing has needed the strings until now. A launch that defers to the running copy
+            // exits without them.
+            Localizer.Initialize();
+
+            string self = Environment.ProcessPath ?? string.Empty;
+            string title = Localizer.Get("M.Replace.Title");
+            string running = string.Join(Environment.NewLine, copies.Select(c => "v" + c.Version + "  " + c.ExecutablePath));
+            string question = string.Join(
+                Environment.NewLine + Environment.NewLine,
+                Localizer.Get("M.Replace.OlderFound") + Environment.NewLine + running,
+                Localizer.Format("M.Replace.Started", UpdateChecker.CurrentGuiVersion, self),
+                Localizer.Get("M.Replace.OlderAsk"));
+            if (MessageBox.Show(question, title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                return false;
+            }
+
+            if (!RunningCopy.TryEnd(copies, out var failed, out string? reason))
+            {
+                string why = reason ?? Localizer.Get("M.Replace.EndTimeout");
+                ActionLog.Record("replace console", failed!.ExecutablePath, "not ended: " + why);
+                MessageBox.Show(Localizer.Format("M.Replace.EndFailed", failed.ExecutablePath, why), title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+
+            foreach (var copy in copies)
+            {
+                ActionLog.Record("replace console", copy.ExecutablePath, "ended v" + copy.Version + " for v" + UpdateChecker.CurrentGuiVersion + " at " + self);
+                Replacement.Repoint(copy.ExecutablePath, self, Localizer.Get("M.Shell.OpenInWinSW"));
+            }
+
+            return true;
         }
 
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

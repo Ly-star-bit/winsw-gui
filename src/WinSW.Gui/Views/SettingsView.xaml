@@ -32,11 +32,27 @@
                 <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource M.Nav.Settings}" />
                 <TextBlock Margin="0,4,0,18" Style="{StaticResource PageSubtitle}" Text="{DynamicResource M.Settings.Subtitle}" />
 
-                <!-- Newer GUI release -->
+                <!-- Newer GUI release. "Update now" only for an executable a release carries; see SelfUpdate. -->
                 <Border Margin="0,0,0,14" Padding="14,10" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8" Visibility="{Binding HasGuiUpdate, Converter={StaticResource BoolToVisibility}}">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding GuiUpdateText}" />
-                        <Button Margin="14,0,0,0" Padding="10,4" Command="{Binding OpenGuiUpdateCommand}" Content="{DynamicResource M.Shell.OpenRelease}" />
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding GuiUpdateText}" />
+                            <Button
+                                Margin="14,0,0,0"
+                                Padding="10,4"
+                                Command="{Binding UpdateNowCommand}"
+                                Content="{DynamicResource M.Update.Now}"
+                                ToolTip="{DynamicResource M.Update.NowTip}"
+                                Visibility="{Binding CanUpdateInPlace, Converter={StaticResource BoolToVisibility}}" />
+                            <Button Margin="8,0,0,0" Padding="10,4" Command="{Binding OpenGuiUpdateCommand}" Content="{DynamicResource M.Shell.OpenRelease}" />
+                        </StackPanel>
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            Foreground="{DynamicResource TextPrimaryBrush}"
+                            Style="{StaticResource FieldHint}"
+                            Text="{Binding UpdateStatus}"
+                            TextWrapping="Wrap"
+                            Visibility="{Binding UpdateStatus, Converter={StaticResource StringToVisibility}}" />
                     </StackPanel>
                 </Border>
 

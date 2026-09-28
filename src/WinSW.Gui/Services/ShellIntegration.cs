@@ -20,14 +20,24 @@ namespace WinSW.Gui.Services
             }
         }
 
-        public static void Register(string label)
-        {
-            using var key = Registry.CurrentUser.CreateSubKey(VerbKey);
-            key.SetValue(null, label);
-            key.SetValue("Icon", $"\"{ExecutablePath}\",0");
+        public static void Register(string label) => Register(label, ExecutablePath);
 
-            using var command = key.CreateSubKey("command");
-            command.SetValue(null, $"\"{ExecutablePath}\" \"%1\"");
+        /// <summary>
+        /// Points the verb at <paramref name="executablePath"/> when it starts
+        /// <paramref name="previousPath"/>, whose console the one there replaces; see
+        /// <see cref="Replacement.Repoint"/>. No verb, or one for another copy, is left alone.
+        /// </summary>
+        public static void Repoint(string previousPath, string executablePath, string label)
+        {
+            using (var key = Registry.CurrentUser.OpenSubKey(VerbKey + @"\command"))
+            {
+                if (key?.GetValue(null) is not string command || !command.Contains(previousPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+            }
+
+            Register(label, executablePath);
         }
 
         public static void Unregister()
@@ -36,5 +46,15 @@ namespace WinSW.Gui.Services
         }
 
         private static string ExecutablePath => Environment.ProcessPath ?? string.Empty;
+
+        private static void Register(string label, string executablePath)
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(VerbKey);
+            key.SetValue(null, label);
+            key.SetValue("Icon", $"\"{executablePath}\",0");
+
+            using var command = key.CreateSubKey("command");
+            command.SetValue(null, $"\"{executablePath}\" \"%1\"");
+        }
     }
 }

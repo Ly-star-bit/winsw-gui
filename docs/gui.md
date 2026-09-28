@@ -32,7 +32,9 @@ Across the pages:
   sign-in entry that starts the console in the tray, so the watching begins without anyone
   remembering to open it. One console runs per sign-in: launching it again brings the running
   one forward instead of starting a second that would announce every stop twice. A launch
-  with an .xml does the same and hands the file over; see *Command line and Explorer*.
+  with an .xml does the same and hands the file over; see *Command line and Explorer*. A
+  launch of another executable or another version asks instead whether it should take the
+  running one's place; see *Updates*.
 - **Scheduled restarts**: the detail panel can have a service restarted every day, or on
   one day of the week, at a set time — by a task in the task scheduler (`\WinSW\Restart`),
   running as SYSTEM, so nobody needs to be signed in. It restarts only a service that is
@@ -173,7 +175,8 @@ Across the pages:
   first asks whether to save them. Only a console it cannot reach still gets a second one
   beside it: one running at another elevation than the launch (as administrator when the
   launch is not, or the other way round), or one that does not answer — hung, or an older
-  version that does not listen for files (the launch waits two seconds for it).
+  version that does not listen for files (the launch waits two seconds for it). A console
+  from an earlier release is first offered to be ended in the launch's favour; see *Updates*.
 - **Accessibility**: high-contrast mode is honoured automatically; controls carry automation
   names for screen readers.
 - **First run**: an empty dashboard offers to create the first service or open a file, and
@@ -211,8 +214,25 @@ Across the pages:
   so the configuration, the log rotation and the stop hooks are the ones already understood
   here. Stopping asks the wrapper to shut the program down cleanly and only terminates the
   task if that runs out of time. See [Desktop tasks](desktop-tasks.md).
-- **Updates**: the Settings page shows when a newer GUI release exists. Each release also carries
-  winget manifests (`winget-manifests.zip`) ready for submission to winget-pkgs.
+- **Updates**: the Settings page shows when a newer GUI release exists, and a console that
+  stays open — started with Windows, say — asks again once a day. *Update now* downloads the
+  release's executable of the running one's kind (self-contained x64 or arm64, or
+  framework-dependent x64), checks it against the `SHA256SUMS.txt` every release carries,
+  renames the running executable to `<name>.old`, puts the new one under its name and restarts
+  into it; the next start deletes the `.old`. Unsaved changes in the editor are asked about
+  first, and the tray watch, the sign-in entry and the Explorer verb carry on, the path being
+  the same. A file that does not match the list is deleted, never started. A release without
+  the list, a build from source, or a folder the user may not write to (Program Files, without
+  administrator rights) is left to *Open release page* — which on Windows Server opens in
+  Internet Explorer, whose enhanced security blocks the download, hence the button.
+  Launching another executable or another version while a console runs — a newer download
+  double-clicked beside the one in the tray — used to bring the old one forward, which looked
+  like the update had worked. The running console now asks whether the new one should take its
+  place and, on yes, hands over as *Update now* does, moving the sign-in entry and the Explorer
+  verb to the new executable when they started the old one. A console from an earlier release
+  cannot be asked; the launch finds it by its process and offers to end it — losing whatever it
+  had not saved — and to take its place. Each release also carries winget manifests
+  (`winget-manifests.zip`) ready for submission to winget-pkgs.
 
 ## Icon
 

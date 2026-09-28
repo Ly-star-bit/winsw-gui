@@ -16,8 +16,9 @@ namespace WinSW.Gui.Services
     public sealed class StartupArguments
     {
         /// <summary>
-        /// Tells the elevated copy that the one starting it is on its way out: it waits for that
-        /// copy to close instead of deferring to it as a second launch would.
+        /// Tells the new copy that the one starting it is on its way out: it waits for that copy
+        /// to close instead of deferring to it as a second launch would. Given by "Restart as
+        /// administrator", and by every other hand-over; see <see cref="Replacement"/>.
         /// </summary>
         public const string ReplaceArgument = "--replace";
 
@@ -96,7 +97,17 @@ namespace WinSW.Gui.Services
         /// </summary>
         /// <param name="configPath">The configuration it is to open, if any.</param>
         /// <param name="keepTray">This copy watches from the tray; the new one is to do the same.</param>
-        public static string[] ForElevatedRestart(string? configPath, bool keepTray)
+        public static string[] ForElevatedRestart(string? configPath, bool keepTray) => ForReplacement(configPath, keepTray);
+
+        /// <summary>
+        /// The command line for any console that takes over from this one — as administrator,
+        /// another executable a later launch came from, or this one's own after an update; see
+        /// <see cref="Replacement"/>. The same switches serve each: the new copy waits for this
+        /// one to close, keeps its tray watch and opens its configuration.
+        /// </summary>
+        /// <param name="configPath">The configuration it is to open, if any.</param>
+        /// <param name="keepTray">This copy watches from the tray; the new one is to do the same.</param>
+        public static string[] ForReplacement(string? configPath, bool keepTray)
         {
             var arguments = new List<string> { ReplaceArgument };
             if (keepTray)

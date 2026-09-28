@@ -26,6 +26,7 @@ namespace WinSW.Gui.Tests
 
         private readonly CancellationTokenSource stop = new();
         private readonly BlockingCollection<string> opened = new();
+        private readonly BlockingCollection<ConsoleLaunch> launches = new();
         private readonly ConcurrentQueue<Exception> failures = new();
         private Task? listening;
 
@@ -35,6 +36,7 @@ namespace WinSW.Gui.Tests
             this.listening?.Wait(TimeSpan.FromSeconds(10));
             this.stop.Dispose();
             this.opened.Dispose();
+            this.launches.Dispose();
         }
 
         [Fact]
@@ -171,11 +173,76 @@ namespace WinSW.Gui.Tests
             Assert.False(ConfigHandoff.IsConfigurationPath(string.Empty));
         }
 
+        /// <summary>
+        /// A launch that says who it is reaches the running copy as a launch, configuration and
+        /// all, and is answered at once: the copy decides afterwards whether to come forward or to
+        /// offer to hand over, and the launch must not wait on a question put to the user.
+        /// </summary>
+        [Fact]
+        public async Task ALaunchThatSaysWhoItIsReachesTheRunningCopyAsALaunch()
+        {
+            this.ListenForLaunches();
+            string config = Configuration("app.xml");
+            var sent = new ConsoleLaunch("1.3.0", Path.Combine(Path.GetTempPath(), "winsw-handoff", "WinSW.Gui-win-x64.exe"), config);
+
+            Assert.True(await ConfigHandoff.SendAsync(this.pipeName, sent.ToRequest(), Connect));
+
+            Assert.True(this.launches.TryTake(out var heard, TimeSpan.FromSeconds(10)), "the launch should have been heard");
+            Assert.Equal(sent.Version, heard!.Version);
+            Assert.Equal(sent.ExecutablePath, heard.ExecutablePath);
+            Assert.Equal(config, heard.ConfigPath);
+            Assert.Empty(this.opened);
+        }
+
+        /// <summary>A bare path still arrives as one, from a launch that says nothing else.</summary>
+        [Fact]
+        public async Task ACopyListeningForLaunchesStillTakesABarePath()
+        {
+            this.ListenForLaunches();
+            string path = Configuration("app.xml");
+
+            Assert.True(await ConfigHandoff.SendAsync(this.pipeName, path, Connect));
+
+            Assert.Equal(path, this.NextOpened());
+            Assert.Empty(this.launches);
+        }
+
+        /// <summary>
+        /// Refused, the launch knows the copy could not be told who it is, and looks for it by its
+        /// process instead; see RunningCopy.
+        /// </summary>
+        [Fact]
+        public async Task ACopyThatDoesNotListenForLaunchesRefusesOne()
+        {
+            this.Listen();
+            var launch = new ConsoleLaunch("1.3.0", Path.Combine(Path.GetTempPath(), "winsw-handoff", "WinSW.Gui.exe"), null);
+
+            Assert.False(await ConfigHandoff.SendAsync(this.pipeName, launch.ToRequest(), Connect));
+            Assert.Empty(this.opened);
+        }
+
+        /// <summary>
+        /// The longest launch there can be: two paths of the longest length Windows allows, in
+        /// characters that take three bytes each.
+        /// </summary>
+        [Fact]
+        public async Task TheLongestLaunchFitsInARequest()
+        {
+            string longest = new string('\u670D', 32767);
+            string line = new ConsoleLaunch("1.3.0-ci.1234", longest, longest).ToRequest();
+            using var stream = new MemoryStream(Encoding.UTF8.GetBytes(line + "\n"));
+
+            Assert.Equal(line, await ConfigHandoff.ReadRequestAsync(stream, CancellationToken.None));
+        }
+
         /// <summary>A full path on whichever system runs the tests; the file need not exist.</summary>
         private static string Configuration(string name) => Path.Combine(Path.GetTempPath(), "winsw-handoff", name);
 
         private void Listen() =>
             this.listening = Task.Run(() => ConfigHandoff.ListenAsync(this.pipeName, this.opened.Add, this.failures.Enqueue, this.stop.Token));
+
+        private void ListenForLaunches() =>
+            this.listening = Task.Run(() => ConfigHandoff.ListenAsync(this.pipeName, this.opened.Add, this.launches.Add, this.failures.Enqueue, this.stop.Token));
 
         private string NextOpened()
         {

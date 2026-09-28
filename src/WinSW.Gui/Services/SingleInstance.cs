@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,6 +34,15 @@ namespace WinSW.Gui.Services
     /// closing. Told so by <see cref="StartupArguments.ReplaceArgument"/>, it waits for the
     /// session rather than deferring to the copy on its way out; should that copy not be gone in
     /// time, the configuration the new copy came with is opened there, not handed to the old one.
+    /// </para>
+    /// <para>
+    /// A second launch that is not the running console — another executable, or another
+    /// version — used to wake it all the same, so that a newer download double-clicked beside
+    /// an old copy in the tray brought the old one forward and looked like an update that had
+    /// worked. A launch now tells the running copy who it is, and that copy offers to hand over
+    /// to it; see <see cref="ConsoleLaunch"/>. A copy from before that cannot be told, and is
+    /// found by its process instead: the launch offers to end it and take the session itself;
+    /// see <see cref="RunningCopy"/>.
     /// </para>
     /// </remarks>
     public sealed class SingleInstance : IDisposable
@@ -70,9 +80,10 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Claims the session for this process. Null means another copy already holds it, and
-        /// has been given <paramref name="configPath"/> to open or — when
-        /// <paramref name="wake"/> is set — asked to bring its window forward; this one should
-        /// exit.
+        /// has been told about this launch — which it answers by opening
+        /// <paramref name="configPath"/>, bringing its window forward when
+        /// <paramref name="wake"/> is set, or offering to hand over to this console — or, being
+        /// older, asked to bring its window forward; this one should exit.
         /// </summary>
         /// <param name="replacing">
         /// This copy was started by the one it is replacing, which is on its way out: wait for it
@@ -88,7 +99,14 @@ namespace WinSW.Gui.Services
         /// claim still succeeds, without the session: this launch opens the file as a copy of its
         /// own, and the running one stays the one later launches reach.
         /// </param>
-        public static SingleInstance? Claim(bool replacing, bool wake, string? configPath = null)
+        /// <param name="replaceOlder">
+        /// Asked, with what was found, when the running copy could not be told about this launch
+        /// and is another executable or another version: a console from before a launch could say
+        /// who it is. True once those consoles have been ended, and this launch is to take the
+        /// session in their place; false to defer to the running copy as before. Not asked at
+        /// sign-in, nor by a copy that is itself replacing another.
+        /// </param>
+        public static SingleInstance? Claim(bool replacing, bool wake, string? configPath = null, Func<IReadOnlyList<RunningCopy>, bool>? replaceOlder = null)
         {
             Mutex mutex;
             try
@@ -116,19 +134,7 @@ namespace WinSW.Gui.Services
             if (!acquired)
             {
                 mutex.Dispose();
-                if (configPath != null)
-                {
-                    // Not to a copy this one is replacing: that one has not closed in time, but
-                    // it is closing, and would take the file with it.
-                    return !replacing && HandOver(configPath) ? null : new SingleInstance(null, null);
-                }
-
-                if (wake && !WakeRunningCopy())
-                {
-                    return new SingleInstance(null, null);
-                }
-
-                return null;
+                return replacing ? DeferToClosingCopy(wake, configPath) : Meet(wake, configPath, replaceOlder);
             }
 
             EventWaitHandle? showRequests = null;
@@ -160,17 +166,25 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// Calls <paramref name="open"/> — on a thread-pool thread — with each configuration a
-        /// later launch hands to this copy. Only a copy that holds the session listens.
+        /// This copy is the one later launches reach. A copy that started beside another — one
+        /// running as administrator, or one that did not take a configuration — is not.
         /// </summary>
-        public void OnOpenRequested(Action<string> open)
+        public bool HoldsSession => this.mutex != null;
+
+        /// <summary>
+        /// Calls <paramref name="open"/> — on a thread-pool thread — with each bare configuration
+        /// path a later launch hands to this copy, and <paramref name="launched"/> with each launch
+        /// that says who it is; see <see cref="ConsoleLaunch"/>. Only a copy that holds the session
+        /// listens.
+        /// </summary>
+        public void OnOpenRequested(Action<string> open, Action<ConsoleLaunch> launched)
         {
             if (this.mutex is null || this.handoff != null)
             {
                 return;
             }
 
-            this.handoff = ConfigHandoff.Listen(open, e => ErrorLog.Record("configuration hand-off", e), this.handoffStop.Token);
+            this.handoff = ConfigHandoff.Listen(open, launched, e => ErrorLog.Record("configuration hand-off", e), this.handoffStop.Token);
         }
 
         /// <summary>
@@ -215,12 +229,100 @@ namespace WinSW.Gui.Services
             }
         }
 
+        /// <summary>
+        /// The session is held by the copy this one is replacing, which has not closed in time.
+        /// </summary>
+        private static SingleInstance? DeferToClosingCopy(bool wake, string? configPath)
+        {
+            // Not handed to it: it is closing, and would take the file with it.
+            if (configPath != null)
+            {
+                return new SingleInstance(null, null);
+            }
+
+            return wake && !WakeRunningCopy() ? new SingleInstance(null, null) : null;
+        }
+
+        /// <summary>
+        /// The session is held by another copy, which this launch tells about itself; see
+        /// <see cref="ConsoleLaunch"/>. A copy that hears it decides what happens next — it comes
+        /// forward, opens the configuration, or offers to hand over — and this launch exits.
+        /// </summary>
+        private static SingleInstance? Meet(bool wake, string? configPath, Func<IReadOnlyList<RunningCopy>, bool>? replaceOlder)
+        {
+            // At sign-in, with a console already watching: nothing to show, and nobody to ask.
+            if (!wake && configPath is null)
+            {
+                return null;
+            }
+
+            string? executable = Environment.ProcessPath;
+            bool heard = executable != null
+                ? HandOver(new ConsoleLaunch(UpdateChecker.CurrentGuiVersion, executable, configPath))
+                : configPath != null && HandOver(configPath);
+            if (heard)
+            {
+                return null;
+            }
+
+            // Not heard: a copy from before a launch could say who it is, a hung one, or one
+            // running as administrator, which a standard launch can neither reach nor end. The
+            // first is found by its process and, when it is not this console, offered to be
+            // replaced; ended, it lets go of the session as its process goes, and the claim waits
+            // for that as a copy started to replace another does.
+            if (wake && replaceOlder != null && executable != null && IsWithinReach())
+            {
+                var others = RunningCopy.FindOthers(UpdateChecker.CurrentGuiVersion, executable);
+                if (others.Count > 0 && replaceOlder(others))
+                {
+                    return Claim(replacing: true, wake, configPath);
+                }
+            }
+
+            // As before a launch said who it was: a configuration is opened here, in a console
+            // of its own, and anything else brings the running copy forward.
+            if (configPath != null)
+            {
+                return new SingleInstance(null, null);
+            }
+
+            return WakeRunningCopy() ? null : new SingleInstance(null, null);
+        }
+
         private static bool HandOver(string configPath)
         {
             // As when waking it: this process is the one the user just started, so it is the one
             // allowed to hand the foreground on to the window that opens the file.
             NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
             return ConfigHandoff.TrySend(configPath);
+        }
+
+        private static bool HandOver(ConsoleLaunch launch)
+        {
+            NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
+            return ConfigHandoff.TrySend(launch);
+        }
+
+        /// <summary>
+        /// Whether the copy holding the session runs with no more rights than this launch, so
+        /// that it can be ended from here. Its event is closed to a launch with fewer, as in
+        /// <see cref="WakeRunningCopy"/>.
+        /// </summary>
+        private static bool IsWithinReach()
+        {
+            try
+            {
+                if (EventWaitHandle.TryOpenExisting(ShowEventName, out var running))
+                {
+                    running.Dispose();
+                }
+
+                return true;
+            }
+            catch (Exception e) when (e is UnauthorizedAccessException or IOException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
