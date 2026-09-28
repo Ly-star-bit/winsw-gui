@@ -224,11 +224,13 @@ namespace WinSW.Gui.Tests
         public async Task AnOvertakenReadingIsDropped()
         {
             using var slow = new ManualResetEventSlim();
+            using var started = new ManualResetEventSlim();
             int reads = 0;
             var wizard = new WizardViewModel(NetFrameworkInfo.Unknown, () =>
             {
                 if (Interlocked.Increment(ref reads) == 1)
                 {
+                    started.Set();
                     slow.Wait(TimeSpan.FromSeconds(10));
                     return Machine;
                 }
@@ -241,6 +243,10 @@ namespace WinSW.Gui.Tests
 
             wizard.Step = 2;
             var first = wizard.MachineCheck;
+
+            // Both readings run on the thread pool, so the second could otherwise be the one
+            // that reads first — and be the slow one — on a busy machine.
+            Assert.True(started.Wait(TimeSpan.FromSeconds(10)));
             wizard.Step = 1;
             wizard.Step = 2;
             await wizard.MachineCheck;
