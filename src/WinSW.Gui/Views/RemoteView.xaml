@@ -30,8 +30,10 @@
                 Two rows. On one, the fixed columns before Start, Stop and Restart came to about
                 786 px, and at 1024 px with the navigation rail expanded the card is about 700 px
                 wide: the buttons were cut off. The two boxes now share what the first row leaves,
-                down to a floor, and the switches and the buttons have the second row to
-                themselves, about 580 px in the widest language.
+                down to a floor. The switches and the buttons share the second, and wrap: they
+                take about 520 px in Chinese and 580 px in English or Japanese, and at 1024x768
+                with 125 % scaling the card has about 500. The buttons then go under the switches
+                rather than off the card.
             -->
             <Grid>
                 <Grid.RowDefinitions>
@@ -70,19 +72,17 @@
                 <TextBlock Grid.Column="3" Margin="16,0,10,0" VerticalAlignment="Center" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Remote.Filter}" />
                 <TextBox Grid.Column="4" AutomationProperties.Name="{DynamicResource M.Remote.Filter}" Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" />
 
-                <Grid Grid.Row="1" Grid.ColumnSpan="5" Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <CheckBox VerticalAlignment="Center" Content="{DynamicResource M.Remote.WrappersOnly}" IsChecked="{Binding WrappersOnly}" ToolTip="{DynamicResource M.Remote.WrappersOnlyTip}" />
-                        <CheckBox Margin="14,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Remote.AutoRefresh}" IsChecked="{Binding AutoRefresh}" />
-                    </StackPanel>
+                <!--
+                    Each item keeps its gap on its right and above it, so that a wrapped line
+                    starts flush left, clear of the one before. The check boxes' own minimum
+                    width, from the theme, is dropped: it only widened them.
+                -->
+                <WrapPanel Grid.Row="1" Grid.ColumnSpan="5" Margin="0,6,0,0" Orientation="Horizontal">
+                    <CheckBox MinWidth="0" Margin="0,4,14,0" VerticalAlignment="Center" Content="{DynamicResource M.Remote.WrappersOnly}" IsChecked="{Binding WrappersOnly}" ToolTip="{DynamicResource M.Remote.WrappersOnlyTip}" />
+                    <CheckBox MinWidth="0" Margin="0,4,24,0" VerticalAlignment="Center" Content="{DynamicResource M.Remote.AutoRefresh}" IsChecked="{Binding AutoRefresh}" />
 
                     <!-- On the selected service, through that machine's service control manager. -->
-                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
                         <Button Margin="0,0,8,0" Padding="12,6" Command="{Binding StartCommand}" ToolTip="{DynamicResource M.Remote.ControlTip}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xF605;" />
@@ -102,7 +102,7 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
-                </Grid>
+                </WrapPanel>
             </Grid>
         </Border>
 
