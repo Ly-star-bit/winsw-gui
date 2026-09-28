@@ -273,7 +273,7 @@ namespace WinSW.Gui.ViewModels
             {
                 if (!this.isPaused && Environment.TickCount64 - this.lastFileScan >= (long)FileScanInterval.TotalMilliseconds)
                 {
-                    _ = this.RefreshFilesAsync();
+                    ErrorLog.Observe(this.RefreshFilesAsync(), "log file list");
                 }
 
                 await this.PumpAsync().ConfigureAwait(true);
@@ -708,7 +708,7 @@ namespace WinSW.Gui.ViewModels
 
                 // The file was let go of when the page was left: open it again at the place it
                 // was let go at now, rather than a tick from now.
-                _ = this.PumpAsync();
+                ErrorLog.Observe(this.PumpAsync(), "log tail");
             }
         }
 
@@ -876,7 +876,7 @@ namespace WinSW.Gui.ViewModels
             }
 
             this.reader = new LogTailReader(this.selectedFile.Path, this.selectedEncoding.Choice);
-            _ = this.PumpAsync();
+            ErrorLog.Observe(this.PumpAsync(), "log tail");
         }
 
         /// <summary>Closes the handle on the log being tailed.</summary>

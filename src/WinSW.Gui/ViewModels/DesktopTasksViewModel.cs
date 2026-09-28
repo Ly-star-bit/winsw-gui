@@ -225,7 +225,7 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            _ = this.ReloadAsync(quiet: this.Tasks.Count > 0);
+            ErrorLog.Observe(this.ReloadAsync(quiet: this.Tasks.Count > 0), "desktop task list");
             this.statusTimer.Start();
         }
 

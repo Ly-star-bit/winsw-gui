@@ -545,11 +545,11 @@ namespace WinSW.Gui.ViewModels
                     // Only the tree. Moving down the list with the arrow keys used to re-read
                     // every service on the machine for each keypress — the panel needs one
                     // process tree, and the states on screen are at most one tick old.
-                    _ = this.RefreshProcessTreeAsync();
+                    ErrorLog.Observe(this.RefreshProcessTreeAsync(), "process tree");
                     this.RaiseWrapperUpdate();
                     this.RaiseStartTypeRestore();
-                    _ = this.LoadRestartScheduleAsync();
-                    _ = this.LoadLastStopAsync();
+                    ErrorLog.Observe(this.LoadRestartScheduleAsync(), "restart schedule");
+                    ErrorLog.Observe(this.LoadLastStopAsync(), "last stop");
                 }
             }
         }
@@ -978,7 +978,7 @@ namespace WinSW.Gui.ViewModels
             this.selectedService?.ForgetLastStop();
             this.ReadLastStopAgainCommand.RaiseCanExecuteChanged();
             this.OpenErrorLogCommand.RaiseCanExecuteChanged();
-            _ = this.LoadLastStopAsync();
+            ErrorLog.Observe(this.LoadLastStopAsync(), "last stop");
         }
 
         /// <summary>
@@ -1176,7 +1176,7 @@ namespace WinSW.Gui.ViewModels
                 // Behind another page nothing but states was read, if anything was. The counters,
                 // the process tree and the stray check are brought up to date now, rather than
                 // showing what they were when the page was left for another tick.
-                _ = this.RefreshStatusesAsync();
+                ErrorLog.Observe(this.RefreshStatusesAsync(), "service status");
             }
         }
 
@@ -1652,7 +1652,7 @@ namespace WinSW.Gui.ViewModels
                 // card is not on screen: it is read when the page comes back.
                 if (!statesOnly)
                 {
-                    _ = this.LoadLastStopAsync();
+                    ErrorLog.Observe(this.LoadLastStopAsync(), "last stop");
                 }
 
                 // The selection may have moved while the reading was in flight, in which case
