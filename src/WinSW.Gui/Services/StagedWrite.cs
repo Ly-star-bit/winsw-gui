@@ -52,8 +52,18 @@ namespace WinSW.Gui.Services
             // to be deleted. Left that way, a save whose elevated copy failed or was declined
             // would leave the editor resolving its relative paths against the temp directory.
             string? destinationOfRecord = model.FilePath;
+            bool declaredFailureActions = model.DeclaredFailureActions;
             model.Save(staging);
             model.FilePath = destinationOfRecord;
+
+            // Save also notes that the file now has failure rows, if it wrote any. The staged copy
+            // is not the file: until the copy succeeds — and the editor then reads the file back —
+            // rows removed again must not come out as <onfailure action="none"/> in a file that
+            // never had any, which would clear recovery set in services.msc.
+            if (!declaredFailureActions)
+            {
+                model.ForgetDeclaredFailureActions();
+            }
 
             try
             {

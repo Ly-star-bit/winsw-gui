@@ -142,6 +142,47 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
+        /// A file that started without rows, given one and saved — the service now restarts — and
+        /// then cleared and saved again in the same session: the second save has to say "none",
+        /// or Windows keeps the restart the first one applied.
+        /// </summary>
+        [Fact]
+        public void RowsAddedAndSavedThenRemovedWriteNone()
+        {
+            string path = this.Write("<service><id>demo</id><executable>demo.exe</executable></service>");
+            var model = ServiceConfigModel.Load(path);
+
+            model.AddFailureAction();
+            model.Save(path);
+            Assert.Equal(new[] { @"<onfailure action=""restart"" delay=""10 sec"" />" }, OnFailure(File.ReadAllText(path)));
+            Assert.True(model.DeclaredFailureActions);
+
+            model.FailureActions.Clear();
+            model.Save(path);
+
+            Assert.Equal(new[] { @"<onfailure action=""none"" />" }, OnFailure(File.ReadAllText(path)));
+        }
+
+        /// <summary>
+        /// Building the preview is not saving: rows that were only ever shown, never written, leave
+        /// a file that had none still writing nothing.
+        /// </summary>
+        [Fact]
+        public void RowsOnlyPreviewedDoNotCount()
+        {
+            string path = this.Write("<service><id>demo</id><executable>demo.exe</executable></service>");
+            var model = ServiceConfigModel.Load(path);
+
+            model.AddFailureAction();
+            Assert.Single(OnFailure(model.ToXmlString()));
+            model.FailureActions.Clear();
+            model.Save(path);
+
+            Assert.False(model.DeclaredFailureActions);
+            Assert.Empty(OnFailure(File.ReadAllText(path)));
+        }
+
+        /// <summary>
         /// Adding a row to a file whose rows were removed: the "none" read back is replaced, not
         /// followed. Behind it, the restart would come only at the second failure.
         /// </summary>

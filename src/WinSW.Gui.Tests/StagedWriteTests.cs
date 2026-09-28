@@ -131,6 +131,37 @@ namespace WinSW.Gui.Tests
             Assert.Null(model.FilePath);
         }
 
+        /// <summary>
+        /// Rows staged are not rows the file has: a copy that was declined leaves a file that
+        /// never had failure actions still writing none once the rows are removed again, as it
+        /// would have without the attempt. Recovery set in services.msc is not cleared for it.
+        /// </summary>
+        [Fact]
+        public async Task StagedRowsDoNotCountAsTheFilesUntilTheCopyIsMade()
+        {
+            var model = Model();
+            model.AddFailureAction();
+
+            await StagedWrite.ElevatedAsync(model, @"C:\somewhere\demo.xml", (_, _) =>
+                Task.FromResult(CommandResult.Failed("declined")));
+
+            Assert.False(model.DeclaredFailureActions);
+            model.FailureActions.Clear();
+            Assert.DoesNotContain("<onfailure", model.ToXmlString(), StringComparison.Ordinal);
+        }
+
+        /// <summary>And one that declared them keeps declaring them.</summary>
+        [Fact]
+        public async Task AFileThatHadRowsKeepsThem()
+        {
+            var model = ServiceConfigModel.FromXml(@"<service><id>demo</id><executable>demo.exe</executable><onfailure action=""restart"" /></service>", null);
+
+            await StagedWrite.ElevatedAsync(model, @"C:\somewhere\demo.xml", (_, _) =>
+                Task.FromResult(CommandResult.Failed("declined")));
+
+            Assert.True(model.DeclaredFailureActions);
+        }
+
         [Fact]
         public async Task WhatIsStagedIsTheConfiguration()
         {

@@ -431,13 +431,14 @@ namespace WinSW.Gui.Model
         public ObservableCollection<FailureAction> FailureActions { get; } = new();
 
         /// <summary>
-        /// Whether the file had any <c>&lt;onfailure&gt;</c> when it was read. When it did and the
-        /// rows are all removed, saving writes <c>&lt;onfailure action="none"/&gt;</c> instead of
-        /// nothing; see <see cref="BuildDocument"/>.
+        /// Whether the file had any <c>&lt;onfailure&gt;</c> when it was read, or has had since
+        /// this model saved it. When it did and the rows are all removed, saving writes
+        /// <c>&lt;onfailure action="none"/&gt;</c> instead of nothing; see <see cref="BuildDocument"/>.
         /// </summary>
         /// <remarks>
-        /// Fixed when the file is read and never raised: the editor counts anything the model
-        /// raises as an edit, and this is a fact about where the file started, not a change.
+        /// Set when the file is read and when it is saved, never by an edit, and never raised:
+        /// the editor counts anything the model raises as an edit, and this is a fact about the
+        /// file on disk, not a change to the form.
         /// </remarks>
         public bool DeclaredFailureActions => this.declaredFailureActions;
 
@@ -1100,6 +1101,13 @@ namespace WinSW.Gui.Model
 
             this.source = document;
             this.FilePath = Path.GetFullPath(path);
+
+            // Rows just written are rows the file now has, and the service is given them at the
+            // next Save & apply. Read only when the file was loaded, this stayed false for a
+            // file that started without any: rows added and saved, then removed and saved, went
+            // out as no <onfailure> at all, and Windows kept restarting. Raised here and never
+            // lowered, so the preview, which builds the same document, cannot move it.
+            this.declaredFailureActions |= document.SelectSingleNode("service/onfailure") is not null;
         }
 
         /// <summary>
