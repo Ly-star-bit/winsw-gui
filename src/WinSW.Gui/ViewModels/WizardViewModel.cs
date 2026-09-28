@@ -68,11 +68,24 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Set in the constructor, which knows whether this machine can run it; see <see cref="PrefersBundledWrapper"/>.</summary>
         private bool useBundledWrapper;
+
+        /// <summary>
+        /// The file the Download button last fetched into the per-user cache; see
+        /// <see cref="WrapperIsDownloaded"/>. Remembered by its path, so that picking or typing
+        /// another wrapper stops it counting without anything having to be cleared.
+        /// </summary>
+        private string? downloadedWrapper;
         private string manufacturer = string.Empty;
         private ServiceEntry? cloneSource;
 
         /// <summary>The configuration of the service being copied, when there is one; see <see cref="PrefillFrom"/>.</summary>
         private ServiceClone? clone;
+
+        /// <summary>
+        /// The ID and display name a copy was suggested under, and what they were made from; see
+        /// <see cref="RenumberCopy"/>. Null when nothing has been copied.
+        /// </summary>
+        private CopyNames? copyNames;
 
         /// <summary>
         /// The delay the copied recovery was shown with. While <see cref="RestartDelay"/> still
@@ -356,9 +369,10 @@ namespace WinSW.Gui.ViewModels
                         : Path.GetDirectoryName(this.targetPath) ?? string.Empty;
                 }
 
-                if (!this.useBundledWrapper && !string.IsNullOrWhiteSpace(this.wrapperPath))
+                if (!this.UsesSharedLayout && !string.IsNullOrWhiteSpace(this.wrapperPath))
                 {
-                    // A wrapper the user supplied keeps its own folder, as it did before.
+                    // A wrapper the user keeps in a folder of their own keeps that folder, as it
+                    // did before.
                     return Path.GetDirectoryName(this.wrapperPath) ?? string.Empty;
                 }
 
@@ -369,6 +383,22 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>The single wrapper every service under the install root runs from.</summary>
         public string SharedWrapperPath => Path.Combine(this.InstallRoot, "bin", "WinSW.exe");
+
+        /// <summary>
+        /// The wrapper is the one the Download button fetched, which sits in a per-user cache
+        /// rather than anywhere a service should run from; see <see cref="WrapperDownload"/>.
+        /// </summary>
+        private bool WrapperIsDownloaded => SamePath(this.wrapperPath, this.downloadedWrapper);
+
+        /// <summary>
+        /// The service gets the install root's layout — a folder of its own, and the wrapper
+        /// shared from <c>bin</c> — rather than the folder of a wrapper the user keeps: for the
+        /// wrapper this application carries, for one it downloaded, and for the shared one
+        /// itself, picked for a second service, which would otherwise put that service's files
+        /// in <c>bin</c>.
+        /// </summary>
+        private bool UsesSharedLayout =>
+            this.useBundledWrapper || this.WrapperIsDownloaded || SamePath(this.wrapperPath, this.SharedWrapperPath);
 
         /// <summary>
         /// True when the chosen ID already belongs to a registered task or, for a service, is
@@ -524,12 +554,15 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 // One wrapper under the root, shared by every service installed there.
-                if (this.useBundledWrapper && !this.placeNextToProgram)
+                bool shared = this.UsesSharedLayout;
+                if (shared && !this.placeNextToProgram)
                 {
                     return this.SharedWrapperPath;
                 }
 
-                return Path.Combine(directory, this.useBundledWrapper ? "WinSW.exe" : Path.GetFileName(this.wrapperPath));
+                // A download is cached under its release name, WinSW-x64.exe say; installed, it
+                // is WinSW.exe like the bundled one.
+                return Path.Combine(directory, shared ? "WinSW.exe" : Path.GetFileName(this.wrapperPath));
             }
         }
 
@@ -1026,6 +1059,29 @@ namespace WinSW.Gui.ViewModels
             string.Equals(Path.GetExtension(path.Trim()), ".jar", StringComparison.OrdinalIgnoreCase);
 
         /// <summary>
+        /// Whether two paths name the same file, the way Windows compares them: without regard to
+        /// case, and after <c>..</c> and doubled separators. Never for a blank path, and never for
+        /// one that is not a path at all — the wrapper's field holds whatever is being typed.
+        /// Only the strings are compared; nothing on disk is touched.
+        /// </summary>
+        internal static bool SamePath(string? path, string? other)
+        {
+            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(other))
+            {
+                return false;
+            }
+
+            try
+            {
+                return string.Equals(Path.GetFullPath(path.Trim()), Path.GetFullPath(other.Trim()), StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// What java is given for a .jar: <c>-jar "file"</c> ahead of the arguments. Arguments
         /// that already say <c>-jar</c> are a Java command line written out in full — JVM
         /// options in front of it, most likely — and are handed over as they are.
@@ -1084,18 +1140,75 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
-        /// The ID a copy of <paramref name="id"/> is suggested under, with the number that
-        /// goes with it: the first of <c>-2</c>, <c>-3</c> and on that nothing here uses yet.
+        /// The ID and display name a copy of <paramref name="id"/>, shown as <paramref name="name"/>,
+        /// is suggested under: the first number from 2 on — <c>api-2</c> and <c>API (2)</c> — for
+        /// which nothing known here has either name. Windows refuses a display name that another
+        /// service has as its name or display name, as it refuses the ID; see <see cref="ServiceNames"/>.
         /// </summary>
-        private (string Id, int Number) CopyId(string id)
+        private CopyNames CopyId(string id, string name)
         {
+            // Read once: it is every service on the machine, put together anew on each read.
+            var known = this.KnownServices;
             int number = 2;
-            while (number < 100 && this.InUse(id + "-" + number.ToString(CultureInfo.InvariantCulture)))
+            while (number < 100 && Taken(Numbered(number)))
             {
                 number++;
             }
 
-            return (id + "-" + number.ToString(CultureInfo.InvariantCulture), number);
+            return Numbered(number);
+
+            CopyNames Numbered(int n) => new(
+                id,
+                name,
+                id + "-" + n.ToString(CultureInfo.InvariantCulture),
+                string.Format(CultureInfo.InvariantCulture, "{0} ({1})", name, n));
+
+            // A desktop task has only its name to clash, with the other tasks.
+            bool Taken(CopyNames copy) => this.desktopTask
+                ? this.InUse(copy.Id)
+                : known.ClashWithId(copy.Id) != null || known.ClashWithDisplayName(copy.DisplayName, copy.Id) != null;
+        }
+
+        /// <summary>
+        /// Moves a copy's suggested names on to the next free number when a newer reading of the
+        /// machine has them taken — by a service that is not WinSW's, which the dashboard does
+        /// not list, or by another service's display name. Only a name still holding the
+        /// suggestion is changed; one the user has typed stays as typed.
+        /// </summary>
+        /// <remarks>
+        /// Not on the review step, whose findings are about the names it opened with: a name
+        /// taken since then is listed there as a problem, and going back renumbers it.
+        /// </remarks>
+        private void RenumberCopy()
+        {
+            if (this.copyNames is not { } suggested || this.step == LastStep)
+            {
+                return;
+            }
+
+            bool idHeld = string.Equals(this.serviceId, suggested.Id, StringComparison.Ordinal);
+            bool nameHeld = string.Equals(this.displayName, suggested.DisplayName, StringComparison.Ordinal);
+            if (!idHeld && !nameHeld)
+            {
+                return;
+            }
+
+            var renumbered = this.CopyId(suggested.BaseId, suggested.BaseName);
+            if (renumbered == suggested)
+            {
+                return;
+            }
+
+            this.copyNames = renumbered;
+            if (idHeld)
+            {
+                this.ServiceId = renumbered.Id;
+            }
+
+            if (nameHeld)
+            {
+                this.DisplayName = renumbered.DisplayName;
+            }
         }
 
         /// <summary>
@@ -1183,6 +1296,7 @@ namespace WinSW.Gui.ViewModels
         private void ApplyServiceNames(ServiceNames names)
         {
             this.machineServices = names;
+            this.RenumberCopy();
             this.RaiseNameChecks();
             this.RefreshCommands();
 
@@ -1232,14 +1346,20 @@ namespace WinSW.Gui.ViewModels
         {
             var read = this.readServices;
 
-            // Which wrapper is written is settled before the worker starts; whether a picked
-            // one is the .NET Framework build is a question for its file, so its path goes along.
-            bool askFramework = probe != null && this.framework.TooOldForWrapper;
-            bool bundled = this.useBundledWrapper;
-            string pickedWrapper = this.wrapperPath;
+            // Which wrapper the service will run is settled before the worker starts, the way the
+            // install settles it; whether that is the .NET Framework build is a question for its
+            // file, so the paths go along.
+            WrapperPlan? wrapper = probe != null && this.framework.TooOldForWrapper
+                ? new WrapperPlan(
+                    this.useBundledWrapper,
+                    this.useBundledWrapper ? string.Empty : this.wrapperPath,
+                    this.EffectiveWrapperPath,
+                    this.brandWrapper,
+                    SamePath(this.EffectiveWrapperPath, this.SharedWrapperPath))
+                : null;
 
             var (names, findings, frameworkBuild) = await Task
-                .Run(() => Examine(read, probe, askFramework, bundled, pickedWrapper))
+                .Run(() => Examine(read, probe, wrapper))
                 .ConfigureAwait(true);
 
             if (generation != this.machineCheckGeneration)
@@ -1260,9 +1380,15 @@ namespace WinSW.Gui.ViewModels
                 warnings.Add(Localizer.Format("M.Wiz.IdIsDisplayName", this.serviceId.Trim(), shown.Label));
             }
 
-            if (frameworkBuild)
+            if (frameworkBuild == FrameworkWrapper.Installed)
             {
                 warnings.Add(Localizer.Format("M.Wiz.NetFxWrapper", this.framework.Version, NetFramework.OfflineInstaller));
+            }
+            else if (frameworkBuild == FrameworkWrapper.AlreadyInPlace)
+            {
+                // Downloading the self-contained build again would not help here: the install
+                // would keep this one all the same.
+                warnings.Add(Localizer.Format("M.Wiz.NetFxWrapperInPlace", wrapper!.Value.Destination, this.framework.Version, NetFramework.OfflineInstaller));
             }
 
             warnings.AddRange(findings);
@@ -1306,20 +1432,18 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// The worker's half of <see cref="CheckMachineAsync"/>: the services, what the probe's
-        /// check finds, and — only when <paramref name="askFramework"/> — whether the wrapper to
-        /// be installed is the .NET Framework build this machine cannot run.
+        /// check finds, and — only when there is a <paramref name="wrapper"/> to ask about —
+        /// whether the service would run the .NET Framework build this machine cannot run.
         /// </summary>
-        private static (ServiceNames Names, IReadOnlyList<string> Findings, bool FrameworkBuild) Examine(
+        private static (ServiceNames Names, IReadOnlyList<string> Findings, FrameworkWrapper FrameworkBuild) Examine(
             Func<ServiceNames> read,
             ServiceConfigModel? probe,
-            bool askFramework,
-            bool bundled,
-            string pickedWrapper)
+            WrapperPlan? wrapper)
         {
             var names = read();
             if (probe is null)
             {
-                return (names, Array.Empty<string>(), false);
+                return (names, Array.Empty<string>(), FrameworkWrapper.None);
             }
 
             IReadOnlyList<string> findings;
@@ -1334,9 +1458,62 @@ namespace WinSW.Gui.ViewModels
                 findings = Array.Empty<string>();
             }
 
-            bool frameworkBuild = askFramework
-                && (bundled || (pickedWrapper.Length > 0 && WrapperKind.ReleaseAssetFor(pickedWrapper) == "WinSW-net461.exe"));
-            return (names, findings, frameworkBuild);
+            return (names, findings, wrapper is { } plan ? FrameworkBuildIn(plan) : FrameworkWrapper.None);
+        }
+
+        /// <summary>
+        /// Whether the wrapper <paramref name="plan"/> ends up registering is the .NET Framework
+        /// build, read the way <see cref="InstallAsync"/> decides what to register: a wrapper
+        /// already at the destination is kept — the shared one above all, which other services
+        /// may be running from — unless a branded copy is made over it; otherwise the service
+        /// runs what is copied or branded from the source. Reads the files, so on a worker.
+        /// </summary>
+        private static FrameworkWrapper FrameworkBuildIn(WrapperPlan plan)
+        {
+            bool kept = !plan.Brand
+                && plan.Destination.Length > 0
+                && (plan.Bundled || plan.DestinationIsShared || !SamePath(plan.Destination, plan.Source))
+                && ServiceDiscovery.IsWrapperExecutable(plan.Destination);
+            if (kept)
+            {
+                return IsFrameworkBuild(plan.Destination) ? FrameworkWrapper.AlreadyInPlace : FrameworkWrapper.None;
+            }
+
+            return plan.Bundled || IsFrameworkBuild(plan.Source) ? FrameworkWrapper.Installed : FrameworkWrapper.None;
+
+            static bool IsFrameworkBuild(string path) =>
+                path.Length > 0 && WrapperKind.ReleaseAssetFor(path) == WrapperDownload.FrameworkAsset;
+        }
+
+        /// <summary>
+        /// Where the service's wrapper comes from, for <see cref="FrameworkBuildIn"/> to read on a
+        /// worker: taken on the UI thread, as strings.
+        /// </summary>
+        /// <param name="Bundled">The source is the wrapper this application carries, a .NET Framework build.</param>
+        /// <param name="Source">The file picked or downloaded; empty for the bundled one.</param>
+        /// <param name="Destination">Where the service will run it from; see <see cref="EffectiveWrapperPath"/>.</param>
+        /// <param name="Brand">A branded copy is made from the source, over whatever is at the destination.</param>
+        /// <param name="DestinationIsShared">The destination is the root's shared wrapper, which is never replaced.</param>
+        private readonly record struct WrapperPlan(bool Bundled, string Source, string Destination, bool Brand, bool DestinationIsShared);
+
+        /// <summary>The names a copy is suggested under, and the source's names they are numbered from; see <see cref="CopyId"/>.</summary>
+        /// <param name="BaseId">The source's ID, which the copy's is numbered from.</param>
+        /// <param name="BaseName">The source's display name, or its ID when it has none.</param>
+        /// <param name="Id">The ID suggested, such as <c>api-2</c>.</param>
+        /// <param name="DisplayName">The display name suggested, such as <c>API (2)</c>.</param>
+        private readonly record struct CopyNames(string BaseId, string BaseName, string Id, string DisplayName);
+
+        /// <summary>What <see cref="FrameworkBuildIn"/> found: the .NET Framework build this machine cannot run, and where it would come from.</summary>
+        private enum FrameworkWrapper
+        {
+            /// <summary>Not that build, or not known to be.</summary>
+            None,
+
+            /// <summary>The wrapper being installed is that build; the self-contained download is the way round it.</summary>
+            Installed,
+
+            /// <summary>The wrapper already at the destination is, and the install keeps it; downloading changes nothing.</summary>
+            AlreadyInPlace,
         }
 
         /// <summary>
@@ -1348,70 +1525,34 @@ namespace WinSW.Gui.ViewModels
             bundledAvailable && !framework.TooOldForWrapper;
 
         /// <summary>
-        /// Fetches the wrapper build matching this machine from the latest WinSW release,
-        /// into the program's folder when one is chosen, so a first-time user never has to
-        /// go looking for WinSW.exe.
+        /// Fetches the wrapper build matching this machine from the latest WinSW release, so a
+        /// first-time user never has to go looking for WinSW.exe. It goes into a per-user cache
+        /// and is installed from there like the bundled one, never next to the program; see
+        /// <see cref="WrapperDownload"/>.
         /// </summary>
         private async Task DownloadWrapperAsync()
         {
-            string? folder = !string.IsNullOrWhiteSpace(this.targetPath)
-                ? Path.GetDirectoryName(this.targetPath)
-                : Dialogs.PickFolder(Localizer.Get("M.Dlg.WrapperFolder"));
-            if (folder is null)
-            {
-                return;
-            }
-
             this.IsBusy = true;
             this.StatusMessage = Localizer.Get("M.Wiz.FetchingRelease");
             try
             {
                 var latest = await UpdateChecker.LatestWrapperAsync().ConfigureAwait(true);
-                string asset = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture switch
+                if (latest is null
+                    || WrapperDownload.AssetFor(System.Runtime.InteropServices.RuntimeInformation.OSArchitecture, this.framework.TooOldForWrapper, latest.Assets) is not { } asset)
                 {
-                    System.Runtime.InteropServices.Architecture.Arm64 => "WinSW-arm64.exe",
-                    System.Runtime.InteropServices.Architecture.X64 => "WinSW-x64.exe",
-                    _ => "WinSW-x86.exe",
-                };
-
-                if (latest is null || !latest.Assets.TryGetValue(asset, out string? url))
-                {
-                    // Older releases only ship x64/x86; fall back to the framework build — but
-                    // not on a machine whose framework is too old to run it, where the download
-                    // is the way round the bundled wrapper in the first place.
-                    if (latest != null && !this.framework.TooOldForWrapper && latest.Assets.TryGetValue("WinSW-net461.exe", out url))
-                    {
-                        asset = "WinSW-net461.exe";
-                    }
-                    else
-                    {
-                        this.StatusMessage = Localizer.Get("M.Wiz.ReleaseUnavailable");
-                        return;
-                    }
+                    this.StatusMessage = Localizer.Get("M.Wiz.ReleaseUnavailable");
+                    return;
                 }
 
                 this.StatusMessage = Localizer.Format("M.Dash.Downloading", asset, latest.Version);
-                string? downloaded = await UpdateChecker.DownloadAsync(url, folder).ConfigureAwait(true);
-                if (downloaded is null)
+                if (await WrapperDownload.FetchAsync(latest.Assets[asset]).ConfigureAwait(true) is not { } downloaded)
                 {
                     this.StatusMessage = Localizer.Get("M.Dash.DownloadFailed");
                     return;
                 }
 
-                string final = Path.Combine(folder, "WinSW.exe");
-                if (!string.Equals(downloaded, final, StringComparison.OrdinalIgnoreCase))
-                {
-                    File.Copy(downloaded, final, overwrite: true);
-                    File.Delete(downloaded);
-                }
-
-                this.UseBundledWrapper = false;
-                this.WrapperPath = final;
-
-                // The download may have landed on the path already chosen, in which case the
-                // setter saw no change and did not re-read; the file exists now either way.
-                this.wrapperExists = File.Exists(final);
-                this.StatusMessage = Localizer.Format("M.Wiz.WrapperDownloaded", latest.Version, final);
+                this.UseDownloadedWrapper(downloaded);
+                this.StatusMessage = Localizer.Format("M.Wiz.WrapperDownloaded", latest.Version, downloaded);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
@@ -1421,6 +1562,27 @@ namespace WinSW.Gui.ViewModels
             {
                 this.IsBusy = false;
             }
+        }
+
+        /// <summary>
+        /// Takes <paramref name="file"/>, just downloaded into the cache, as the wrapper: the
+        /// service then gets the root's layout, and the install copies the file into place.
+        /// </summary>
+        internal void UseDownloadedWrapper(string file)
+        {
+            // Remembered first: the setters below ask where the service goes, and the answer
+            // depends on it.
+            this.downloadedWrapper = file;
+            this.UseBundledWrapper = false;
+            this.WrapperPath = file;
+
+            // The download may have landed on the path already chosen, in which case the setter
+            // saw no change and did not re-read; the file exists now either way.
+            this.wrapperExists = File.Exists(file);
+            this.Raise(nameof(this.InstallDirectory));
+            this.Raise(nameof(this.ConfigPath));
+            this.Raise(nameof(this.EffectiveWrapperPath));
+            this.RefreshCommands();
         }
 
         public ServiceConfigModel BuildModel()
@@ -1544,10 +1706,11 @@ namespace WinSW.Gui.ViewModels
                 this.Problems.Add(Localizer.Format("M.Wiz.NotWrapper", this.wrapperPath));
             }
 
-            // Installing the bundled wrapper writes WinSW.exe into the program's folder. If
-            // something else already answers to that name, say so before overwriting it.
-            if (this.useBundledWrapper
-                && this.EffectiveWrapperPath is { Length: > 0 } destination
+            // Installing copies the wrapper into place when it is not already there — the bundled
+            // one, a downloaded one, a branded copy. If something else already answers to that
+            // name, say so before overwriting it.
+            if (this.EffectiveWrapperPath is { Length: > 0 } destination
+                && (this.useBundledWrapper || !SamePath(destination, this.wrapperPath))
                 && File.Exists(destination)
                 && !ServiceDiscovery.IsWrapperExecutable(destination))
             {
@@ -1941,13 +2104,10 @@ namespace WinSW.Gui.ViewModels
             // is never empty — see ServiceClone.
             this.WorkingDirectory = model.WorkingDirectory ?? string.Empty;
 
-            var (id, number) = this.CopyId(model.Id);
-            this.ServiceId = id;
-            this.DisplayName = string.Format(
-                CultureInfo.InvariantCulture,
-                "{0} ({1})",
-                string.IsNullOrWhiteSpace(model.DisplayName) ? model.Id : model.DisplayName,
-                number);
+            var names = this.CopyId(model.Id, string.IsNullOrWhiteSpace(model.DisplayName) ? model.Id : model.DisplayName);
+            this.copyNames = names;
+            this.ServiceId = names.Id;
+            this.DisplayName = names.DisplayName;
             this.Description = model.Description ?? string.Empty;
             this.StartMode = model.StartMode;
             this.DelayedAutoStart = model.DelayedAutoStart;
@@ -1984,6 +2144,11 @@ namespace WinSW.Gui.ViewModels
             this.Raise(nameof(this.RollPatternHint));
             this.StatusMessage = Localizer.Format("M.Wiz.Cloned", entry.ServiceName);
 
+            // The names were checked against what the dashboard lists, which is WinSW's services
+            // alone, and the machine is not read until step 2 opens. Read it now, off the UI
+            // thread, so that the suggestion has moved past a taken name before anyone sees it.
+            this.CheckMachine(environment: this.step == LastStep);
+
             static string DescribeDelay(string? delay) => string.IsNullOrWhiteSpace(delay) ? "0 sec" : delay.Trim();
         }
 
@@ -1991,7 +2156,9 @@ namespace WinSW.Gui.ViewModels
         {
             this.CloneSource = null;
             this.clone = null;
+            this.copyNames = null;
             this.cloneRestartDelay = null;
+            this.downloadedWrapper = null;
             this.UseBundledWrapper = PrefersBundledWrapper(BundledWrapper.IsAvailable, this.framework);
             this.PlaceNextToProgram = false;
             this.suggestedWorkingDirectory = string.Empty;

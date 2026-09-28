@@ -576,7 +576,7 @@
     <sys:String x:Key="M.Empty.Open">開啟設定檔…</sys:String>
     <sys:String x:Key="M.Wiz.Download">下載</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">從 GitHub 下載適合本機的最新 WinSW</sys:String>
-    <sys:String x:Key="M.Wiz.WrapperHint">沒有 WinSW.exe？按「下載」會把最新版放到程式旁邊。</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperHint">沒有 WinSW.exe？按「下載」取得適合本機的最新自包含版本，安裝方式和內建的一樣：放進安裝根目錄下的 bin。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">改為安裝到程式自己的資料夾裡</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">.jar 檔會透過 Java 啟動：服務會執行 java -jar 加上這個檔案，後面再接上面的參數。Java 必須在系統 PATH 裡，服務看不到你自己的 PATH。如果參數裡已經寫了 -jar，會原樣交給 Java。</sys:String>
     <sys:String x:Key="M.Wiz.PyHintVenv">.py 指令碼用它所在虛擬環境的 Python 執行：服務會用 {0} 執行這個檔案，後面再接上面的參數。</sys:String>
@@ -597,7 +597,7 @@
     <sys:String x:Key="M.Wiz.DisplayNameTaken">顯示名稱「{0}」已被服務 {1} 使用。Windows 要求服務的顯示名稱不能重複，會拒絕安裝（錯誤 1078）。請回到第 2 步換一個。</sys:String>
     <sys:String x:Key="M.Wiz.NetFxTooOld">本機的 .NET Framework 是 {0}。本程式內建的 WinSW 需要 4.6.2 或更新版本，在這台機器上安裝或啟動會失敗，所以預設不使用：請按「下載」取得自包含版本，它不需要 .NET Framework。也可以先安裝 .NET Framework 4.8（離線安裝程式 {1}，下載網址 {2}），重新啟動伺服器後再使用內建的。</sys:String>
     <sys:String x:Key="M.Wiz.NetFxWrapper">包裝器是 .NET Framework 版本，需要 .NET Framework 4.6.2 或更新版本，而本機是 {0}，服務會在安裝或第一次啟動時失敗。請回到第 1 步下載自包含版本，或先安裝 .NET Framework 4.8（離線安裝程式 {1}）並重新啟動伺服器。</sys:String>
-    <sys:String x:Key="M.Dlg.WrapperFolder">選擇 WinSW.exe 的存放位置</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxWrapperInPlace">{0} 已經存在，新服務會直接使用它：已有的包裝器不會被取代，因為其他服務可能正在用它執行。它是 .NET Framework 版本，需要 4.6.2 或更新版本，而本機是 {1}，服務會在安裝或第一次啟動時失敗 —— 重新下載自包含版本也沒有用。請先安裝 .NET Framework 4.8（離線安裝程式 {2}）並重新啟動伺服器，或在第 1 步勾選「品牌化 wrapper」，讓這個服務使用自己的包裝器。</sys:String>
     <sys:String x:Key="M.Wiz.FetchingRelease">正在查詢最新的 WinSW 版本…</sys:String>
     <sys:String x:Key="M.Wiz.ReleaseUnavailable">無法取得 WinSW 發布清單。請檢查網路，或選擇現有的 WinSW.exe。</sys:String>
     <sys:String x:Key="M.Wiz.WrapperDownloaded">已下載 WinSW v{0} 到 {1}。</sys:String>

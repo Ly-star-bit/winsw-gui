@@ -587,7 +587,7 @@
     <sys:String x:Key="M.Empty.Open">Open a configuration file…</sys:String>
     <sys:String x:Key="M.Wiz.Download">Download</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">Fetch the latest WinSW build for this machine from GitHub</sys:String>
-    <sys:String x:Key="M.Wiz.WrapperHint">Don't have WinSW.exe? Download puts the latest build next to your program.</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperHint">Don't have WinSW.exe? Download fetches the latest self-contained build for this machine, which is installed the way the built-in one is: into bin under the install root.</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">Install into the program's own folder instead</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">A .jar is started through Java: the service runs java -jar with this file, followed by the arguments above. Java has to be on the system PATH — a service does not see your own. Arguments that already contain -jar are handed to Java as written.</sys:String>
     <sys:String x:Key="M.Wiz.PyHintVenv">A .py script is run by the Python of its virtual environment: the service runs {0} with this file, followed by the arguments above.</sys:String>
@@ -608,7 +608,7 @@
     <sys:String x:Key="M.Wiz.DisplayNameTaken">Display name '{0}' is already used by the service {1}. Windows needs every service's display name to be unique and would refuse the install (error 1078): choose another on step 2.</sys:String>
     <sys:String x:Key="M.Wiz.NetFxTooOld">This machine has .NET Framework {0}. The WinSW built into this application needs 4.6.2 or later and would fail at install or at the first start here, so it is not selected: use Download for the self-contained build, which needs no .NET Framework. Or install .NET Framework 4.8 first (offline installer {1}, from {2}), restart the server, and then use the built-in one.</sys:String>
     <sys:String x:Key="M.Wiz.NetFxWrapper">The wrapper is the .NET Framework build, which needs .NET Framework 4.6.2 or later, and this machine has {0}: the service will fail at install or at its first start. Go back to step 1 and download the self-contained build, or install .NET Framework 4.8 first (offline installer {1}) and restart the server.</sys:String>
-    <sys:String x:Key="M.Dlg.WrapperFolder">Choose where to put WinSW.exe</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxWrapperInPlace">{0} is already there, and the new service would run it: a wrapper already in place is never replaced, since other services may be running from it. It is the .NET Framework build, which needs 4.6.2 or later, and this machine has {1}, so the service will fail at install or at its first start — downloading the self-contained build does not change that. Install .NET Framework 4.8 first (offline installer {2}) and restart the server, or give this service a wrapper of its own with the branding option on step 1.</sys:String>
     <sys:String x:Key="M.Wiz.FetchingRelease">Looking up the latest WinSW release…</sys:String>
     <sys:String x:Key="M.Wiz.ReleaseUnavailable">The WinSW release list could not be fetched. Check the network connection, or pick a WinSW.exe you already have.</sys:String>
     <sys:String x:Key="M.Wiz.WrapperDownloaded">WinSW v{0} downloaded to {1}.</sys:String>

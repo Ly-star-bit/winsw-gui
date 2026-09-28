@@ -576,7 +576,7 @@
     <sys:String x:Key="M.Empty.Open">構成ファイルを開く…</sys:String>
     <sys:String x:Key="M.Wiz.Download">ダウンロード</sys:String>
     <sys:String x:Key="M.Wiz.DownloadTip">GitHub からこのマシン向けの最新 WinSW を取得</sys:String>
-    <sys:String x:Key="M.Wiz.WrapperHint">WinSW.exe がない場合は「ダウンロード」で最新ビルドをプログラムの隣に配置します。</sys:String>
+    <sys:String x:Key="M.Wiz.WrapperHint">WinSW.exe がない場合は「ダウンロード」でこのマシン用の最新の自己完結型ビルドを取得します。同梱のものと同じく、インストール先ルートの bin に配置されます。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">代わりにプログラム自身のフォルダーへインストールする</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">.jar は Java 経由で起動されます。サービスは java -jar にこのファイルを付け、その後に上の引数を続けて実行します。Java はシステムの PATH に入っている必要があります（サービスからはユーザーの PATH は見えません）。引数にすでに -jar が含まれている場合は、そのまま Java に渡します。</sys:String>
     <sys:String x:Key="M.Wiz.PyHintVenv">.py スクリプトは、その仮想環境の Python で実行されます。サービスは {0} でこのファイルを実行し、その後に上の引数を続けます。</sys:String>
@@ -597,7 +597,7 @@
     <sys:String x:Key="M.Wiz.DisplayNameTaken">表示名 '{0}' はサービス {1} が既に使っています。Windows ではサービスの表示名が重複できず、インストールは拒否されます (エラー 1078)。ステップ 2 で別の表示名を指定してください。</sys:String>
     <sys:String x:Key="M.Wiz.NetFxTooOld">このマシンの .NET Framework は {0} です。このアプリに同梱の WinSW には 4.6.2 以降が必要で、ここではインストール時か初回起動時に失敗するため、既定では選択していません。「ダウンロード」で .NET Framework が不要な自己完結型ビルドを取得してください。または先に .NET Framework 4.8 (オフライン インストーラー {1}、入手先 {2}) をインストールしてサーバーを再起動すれば、同梱のものを使えます。</sys:String>
     <sys:String x:Key="M.Wiz.NetFxWrapper">ラッパーは .NET Framework 版で .NET Framework 4.6.2 以降が必要ですが、このマシンは {0} です。サービスはインストール時か初回起動時に失敗します。ステップ 1 に戻って自己完結型ビルドをダウンロードするか、先に .NET Framework 4.8 (オフライン インストーラー {1}) をインストールしてサーバーを再起動してください。</sys:String>
-    <sys:String x:Key="M.Dlg.WrapperFolder">WinSW.exe の配置先を選択</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxWrapperInPlace">{0} は既に配置されており、新しいサービスはそれを使います。配置済みのラッパーは、他のサービスが実行中の可能性があるため置き換えません。これは .NET Framework 版で 4.6.2 以降が必要ですが、このマシンは {1} のため、サービスはインストール時か初回起動時に失敗します。自己完結型ビルドをダウンロードし直しても変わりません。先に .NET Framework 4.8 (オフライン インストーラー {2}) をインストールしてサーバーを再起動するか、ステップ 1 の「ラッパーをブランド化」でこのサービス専用のラッパーにしてください。</sys:String>
     <sys:String x:Key="M.Wiz.FetchingRelease">最新の WinSW リリースを確認中…</sys:String>
     <sys:String x:Key="M.Wiz.ReleaseUnavailable">WinSW のリリース一覧を取得できませんでした。ネットワークを確認するか、手元の WinSW.exe を選択してください。</sys:String>
     <sys:String x:Key="M.Wiz.WrapperDownloaded">WinSW v{0} を {1} にダウンロードしました。</sys:String>

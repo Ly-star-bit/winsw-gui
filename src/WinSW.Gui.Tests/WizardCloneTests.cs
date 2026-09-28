@@ -18,6 +18,7 @@ namespace WinSW.Gui.Tests
     /// Messages are compared by key: outside the application no dictionary is loaded, and
     /// <see cref="Localization.Localizer"/> hands back the key itself.
     /// </remarks>
+    [Collection("install root")]
     public sealed class WizardCloneTests : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "winsw-gui-" + Guid.NewGuid().ToString("n"));
