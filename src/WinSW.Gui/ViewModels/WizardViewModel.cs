@@ -58,6 +58,21 @@ namespace WinSW.Gui.ViewModels
         private bool runElevated;
         private string keepAliveInterval = "1 min";
 
+        /// <summary>What the program turned out to be, read from disk when it changes; see <see cref="PythonProject"/>.</summary>
+        private PythonTarget python = PythonTarget.None;
+        private string suggestedServiceId = string.Empty;
+        private string suggestedDisplayName = string.Empty;
+
+        /// <summary>
+        /// Whether the variables a Python program needs have been filled in for the current
+        /// program. They are offered once, when the program becomes a Python one, so that a row
+        /// the user removed stays removed while they go on typing.
+        /// </summary>
+        private bool pythonEnvironmentOffered;
+
+        /// <summary>The rows filled in that way, taken back out if the program stops being Python before they are edited.</summary>
+        private readonly List<EnvironmentVariable> offeredVariables = new();
+
         public WizardViewModel()
         {
             this.NextCommand = new RelayCommand(() => this.Step++, () => !this.isBusy && this.step < LastStep && this.CanLeaveCurrentStep());
@@ -99,10 +114,21 @@ namespace WinSW.Gui.ViewModels
                 }
             });
 
+            this.AddEnvironmentVariableCommand = new RelayCommand(() =>
+                this.EnvironmentVariables.Add(new EnvironmentVariable { Name = "NAME", Value = string.Empty }));
+            this.RemoveEnvironmentVariableCommand = new RelayCommand(p =>
+            {
+                if (p is EnvironmentVariable variable)
+                {
+                    this.EnvironmentVariables.Remove(variable);
+                }
+            });
+
             Localizer.Changed += () =>
             {
                 this.Raise(nameof(this.StepTitle));
                 this.Raise(nameof(this.InstallLabel));
+                this.Raise(nameof(this.PythonHint));
                 if (this.step == LastStep)
                 {
                     this.RefreshPreview();
@@ -283,6 +309,12 @@ namespace WinSW.Gui.ViewModels
 
         public ObservableCollection<string> Problems { get; } = new();
 
+        /// <summary>
+        /// Things on the review step that will probably go wrong but do not stop the install:
+        /// a path may be right on the machine the service is really meant for.
+        /// </summary>
+        public ObservableCollection<string> Warnings { get; } = new();
+
         public RelayCommand NextCommand { get; }
 
         public RelayCommand BackCommand { get; }
@@ -431,8 +463,14 @@ namespace WinSW.Gui.ViewModels
             {
                 if (this.Set(ref this.targetPath, value))
                 {
+                    this.python = PythonProject.Inspect(value);
                     this.Raise(nameof(this.TargetIsJar));
+                    this.Raise(nameof(this.TargetIsPython));
+                    this.Raise(nameof(this.TargetIsPythonScript));
+                    this.Raise(nameof(this.PythonInterpreterMissing));
+                    this.Raise(nameof(this.PythonHint));
                     this.SuggestDefaults();
+                    this.OfferPythonEnvironment();
                     this.Raise(nameof(this.InstallDirectory));
                     this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
@@ -443,6 +481,31 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>The program is a .jar, which is run through java; see <see cref="BuildModel"/>.</summary>
         public bool TargetIsJar => IsJar(this.targetPath);
+
+        /// <summary>Python runs the program, so the variables it needs under a service are offered.</summary>
+        public bool TargetIsPython => this.python.IsPython;
+
+        /// <summary>The program is a .py script, which is run through an interpreter; see <see cref="BuildModel"/>.</summary>
+        public bool TargetIsPythonScript => this.python.IsScript;
+
+        /// <summary>A script was picked and there is no Python a service could run it with.</summary>
+        public bool PythonInterpreterMissing => this.python.InterpreterSource == PythonInterpreterSource.NotFound;
+
+        /// <summary>Which Python will run the picked script, or why none will.</summary>
+        public string PythonHint => this.python.InterpreterSource switch
+        {
+            PythonInterpreterSource.VirtualEnvironment => Localizer.Format("M.Wiz.PyHintVenv", this.python.Interpreter),
+            PythonInterpreterSource.SystemPath => Localizer.Format("M.Wiz.PyHintPath", this.python.Interpreter),
+            PythonInterpreterSource.NotFound => Localizer.Get("M.Wiz.PyHintMissing"),
+            _ => string.Empty,
+        };
+
+        /// <summary>The <c>&lt;env&gt;</c> entries the service starts with; filled in for a Python program.</summary>
+        public ObservableCollection<EnvironmentVariable> EnvironmentVariables { get; } = new();
+
+        public RelayCommand AddEnvironmentVariableCommand { get; }
+
+        public RelayCommand RemoveEnvironmentVariableCommand { get; }
 
         public string Arguments
         {
@@ -610,23 +673,35 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            string stem = Path.GetFileNameWithoutExtension(this.targetPath);
+            // A program in a virtual environment's Scripts folder is a launcher named after the
+            // tool — uvicorn, python — and a script is as often as not called main.py; neither
+            // names the service. The folder the environment was made in, the project, does.
+            string? root = this.python.ProjectRoot;
+            string name = ProjectName(root) ?? Path.GetFileNameWithoutExtension(this.targetPath);
 
-            if (string.IsNullOrWhiteSpace(this.serviceId))
+            // Both follow the program for as long as they still hold what was suggested: a
+            // path typed a character at a time would otherwise leave the ID its first letter.
+            if (string.IsNullOrWhiteSpace(this.serviceId) || string.Equals(this.serviceId, this.suggestedServiceId, StringComparison.Ordinal))
             {
-                this.ServiceId = stem.Replace(' ', '-');
+                this.suggestedServiceId = name.Replace(' ', '-');
+                this.ServiceId = this.suggestedServiceId;
             }
 
-            if (string.IsNullOrWhiteSpace(this.displayName))
+            if (string.IsNullOrWhiteSpace(this.displayName) || string.Equals(this.displayName, this.suggestedDisplayName, StringComparison.Ordinal))
             {
-                this.DisplayName = stem;
+                this.suggestedDisplayName = name;
+                this.DisplayName = name;
             }
 
             // The executable's own folder is the right working directory for a program, and
-            // the wrong one for an interpreter: python.exe lives in the Python installation,
-            // not beside the script it is being asked to run. When an argument names a file
-            // that exists, that file's folder is what the program actually works in.
-            string suggestion = ScriptDirectory(this.arguments) ?? Path.GetDirectoryName(this.targetPath) ?? string.Empty;
+            // the wrong one for an interpreter or a launcher: python.exe lives in the Python
+            // installation and uvicorn.exe in the environment's Scripts folder, neither beside
+            // the code they are asked to run. What the arguments name comes first, then the
+            // project the environment belongs to. A script picked as the program works in its
+            // own folder, the way a .jar does.
+            string suggestion = this.python.IsScript
+                ? Path.GetDirectoryName(this.targetPath) ?? string.Empty
+                : ScriptDirectory(this.arguments, root) ?? root ?? Path.GetDirectoryName(this.targetPath) ?? string.Empty;
             if (string.IsNullOrWhiteSpace(this.workingDirectory)
                 || string.Equals(this.workingDirectory, this.suggestedWorkingDirectory, StringComparison.OrdinalIgnoreCase))
             {
@@ -642,18 +717,85 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        /// <summary>The folder of the first argument that names a file on disk, or null.</summary>
-        internal static string? ScriptDirectory(string arguments)
+        /// <summary>
+        /// The folder the first argument naming something on disk works in: a file given by
+        /// its full path works in its own folder; a file or a <c>module:app</c> given relative
+        /// to <paramref name="projectRoot"/> works in the project. Null when nothing is named.
+        /// </summary>
+        /// <remarks>
+        /// A relative argument is never looked up from here: this console's current directory
+        /// has nothing to do with the one the service will start in. Relative to the project,
+        /// <c>app\main.py</c> needs the project as its working directory, not <c>app</c>.
+        /// </remarks>
+        internal static string? ScriptDirectory(string arguments, string? projectRoot = null)
         {
+            bool module = false;
             foreach (string token in ServiceDiscovery.SplitCommandLine(arguments))
             {
-                if (token.Length > 2 && !token.StartsWith('-') && !token.StartsWith('/') && File.Exists(token))
+                // What follows python's -m is a module name rather than a path.
+                bool afterModuleSwitch = module;
+                module = token == "-m";
+
+                if (token.Length == 0 || token.StartsWith('-') || token.StartsWith('/'))
+                {
+                    continue;
+                }
+
+                if (projectRoot != null && PythonProject.NamesEntryUnder(token, projectRoot, afterModuleSwitch))
+                {
+                    return projectRoot;
+                }
+
+                if (token.Length > 2 && Path.IsPathRooted(token) && File.Exists(token))
                 {
                     return Path.GetDirectoryName(Path.GetFullPath(token));
                 }
             }
 
             return null;
+        }
+
+        /// <summary>The name of a project folder, or null for none or for a drive's root.</summary>
+        private static string? ProjectName(string? root) =>
+            root is null || Path.GetFileName(Path.TrimEndingDirectorySeparator(root)) is not { Length: > 0 } name ? null : name;
+
+        /// <summary>
+        /// Fills in the variables a Python program needs under a service when the program
+        /// becomes a Python one, and takes them back out, if nobody has touched them, when it
+        /// stops being one. Rows already there under the same name are left as they are.
+        /// </summary>
+        private void OfferPythonEnvironment()
+        {
+            if (this.python.IsPython == this.pythonEnvironmentOffered)
+            {
+                return;
+            }
+
+            this.pythonEnvironmentOffered = this.python.IsPython;
+            if (this.python.IsPython)
+            {
+                foreach (var (name, value) in PythonProject.RecommendedEnvironment)
+                {
+                    if (!this.EnvironmentVariables.Any(v => string.Equals(v.Name.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var variable = new EnvironmentVariable { Name = name, Value = value };
+                        this.offeredVariables.Add(variable);
+                        this.EnvironmentVariables.Add(variable);
+                    }
+                }
+
+                return;
+            }
+
+            foreach (var variable in this.offeredVariables)
+            {
+                if (PythonProject.RecommendedEnvironment.Contains((variable.Name, variable.Value)))
+                {
+                    this.EnvironmentVariables.Remove(variable);
+                }
+            }
+
+            this.offeredVariables.Clear();
         }
 
         internal static bool IsJar(string path) =>
@@ -774,11 +916,26 @@ namespace WinSW.Gui.ViewModels
                 model.Executable = "java";
                 model.Arguments = JarArguments(target, this.arguments);
             }
+            else if (this.python.IsScript)
+            {
+                // A script cannot be started that way either. It is run by the python.exe of
+                // the virtual environment beside it, where its packages are; failing that, by
+                // one on the machine's PATH, written out in full because the PATH a service
+                // sees is whatever services.exe read at boot.
+                model.Executable = this.python.Interpreter ?? "python";
+                model.Arguments = PythonProject.ScriptArguments(target, this.arguments);
+            }
             else
             {
                 model.Executable = target;
                 model.Arguments = NullIfBlank(this.arguments);
             }
+
+            foreach (var variable in this.EnvironmentVariables)
+            {
+                model.EnvironmentVariables.Add(new EnvironmentVariable { Name = variable.Name.Trim(), Value = variable.Value });
+            }
+
             model.WorkingDirectory = NullIfBlank(this.workingDirectory);
             model.StartMode = this.startMode;
             model.DelayedAutoStart = this.delayedAutoStart;
@@ -846,6 +1003,12 @@ namespace WinSW.Gui.ViewModels
                 this.Problems.Add(Localizer.Format("M.Wiz.IdInUse", this.serviceId.Trim()));
             }
 
+            this.Warnings.Clear();
+            if (this.WorkingDirectoryWarning(model) is { } warning)
+            {
+                this.Warnings.Add(warning);
+            }
+
             try
             {
                 this.ConfigPreview = model.ToXmlString();
@@ -854,6 +1017,50 @@ namespace WinSW.Gui.ViewModels
             {
                 this.ConfigPreview = $"<!-- {e.Message} -->";
             }
+        }
+
+        /// <summary>
+        /// A working directory that is part of Python rather than of the application: a
+        /// Scripts folder, an installation or a virtual environment. An application started
+        /// there cannot import its own modules, and the service fails and is restarted, over and
+        /// over. Read the way the wrapper resolves it, so that leaving the field empty with the
+        /// configuration placed in a Scripts folder is caught too.
+        /// </summary>
+        private string? WorkingDirectoryWarning(ServiceConfigModel model)
+        {
+            string configPath = this.ConfigPath;
+            string directory;
+            try
+            {
+                if (configPath.Length > 0)
+                {
+                    directory = ConfigPaths.ResolveWorkingDirectory(model, configPath);
+                }
+                else if (!string.IsNullOrWhiteSpace(model.WorkingDirectory))
+                {
+                    directory = Environment.ExpandEnvironmentVariables(model.WorkingDirectory!);
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            catch (Exception e) when (e is ArgumentException or IOException or NotSupportedException)
+            {
+                // A path that cannot even be resolved is no Python folder; there is nothing to
+                // say about it here.
+                return null;
+            }
+
+            var folder = PythonProject.Classify(directory, out string? projectRoot);
+            return (folder, projectRoot) switch
+            {
+                (PythonFolder.VirtualEnvironmentScripts, { } root) => Localizer.Format("M.Wiz.WorkDirVenvScripts", directory, root),
+                (PythonFolder.VirtualEnvironment, { } root) => Localizer.Format("M.Wiz.WorkDirVenv", directory, root),
+                (PythonFolder.VirtualEnvironmentScripts or PythonFolder.InstallationScripts, _) => Localizer.Format("M.Wiz.WorkDirScripts", directory),
+                (PythonFolder.VirtualEnvironment or PythonFolder.Installation, _) => Localizer.Format("M.Wiz.WorkDirPython", directory),
+                _ => null,
+            };
         }
 
         private async Task InstallAsync()
@@ -1108,6 +1315,8 @@ namespace WinSW.Gui.ViewModels
             this.UseBundledWrapper = BundledWrapper.IsAvailable;
             this.PlaceNextToProgram = false;
             this.suggestedWorkingDirectory = string.Empty;
+            this.suggestedServiceId = string.Empty;
+            this.suggestedDisplayName = string.Empty;
             this.BrandWrapper = false;
             this.Manufacturer = string.Empty;
             this.Step = 1;
@@ -1133,6 +1342,12 @@ namespace WinSW.Gui.ViewModels
             this.StatusMessage = string.Empty;
             this.ConfigPreview = string.Empty;
             this.Problems.Clear();
+            this.Warnings.Clear();
+
+            // Emptying the program above took back only the offered rows nobody had edited.
+            this.EnvironmentVariables.Clear();
+            this.offeredVariables.Clear();
+            this.pythonEnvironmentOffered = false;
         }
 
         private void RefreshCommands()

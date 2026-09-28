@@ -200,7 +200,7 @@
     <sys:String x:Key="M.Filter.Config">WinSW 構成|*.xml|すべてのファイル|*.*</sys:String>
     <sys:String x:Key="M.Filter.ConfigSave">WinSW 構成|*.xml</sys:String>
     <sys:String x:Key="M.Filter.Wrapper">WinSW 実行ファイル|*.exe</sys:String>
-    <sys:String x:Key="M.Filter.Programs">プログラム|*.exe;*.bat;*.cmd;*.jar|すべてのファイル|*.*</sys:String>
+    <sys:String x:Key="M.Filter.Programs">プログラム|*.exe;*.bat;*.cmd;*.jar;*.py|すべてのファイル|*.*</sys:String>
     <sys:String x:Key="M.Editor.Unsaved">未保存の構成</sys:String>
     <sys:String x:Key="M.Editor.NoConfig">'{0}' には編集できる構成ファイルがありません。</sys:String>
     <sys:String x:Key="M.Editor.Loaded">{0} を読み込みました。</sys:String>
@@ -573,6 +573,15 @@
     <sys:String x:Key="M.Wiz.WrapperHint">WinSW.exe がない場合は「ダウンロード」で最新ビルドをプログラムの隣に配置します。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">代わりにプログラム自身のフォルダーへインストールする</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">.jar は Java 経由で起動されます。サービスは java -jar にこのファイルを付け、その後に上の引数を続けて実行します。Java はシステムの PATH に入っている必要があります（サービスからはユーザーの PATH は見えません）。引数にすでに -jar が含まれている場合は、そのまま Java に渡します。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintVenv">.py スクリプトは、その仮想環境の Python で実行されます。サービスは {0} でこのファイルを実行し、その後に上の引数を続けます。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintPath">.py スクリプトは、システムの PATH にある Python で実行されます。サービスは {0} でこのファイルを実行し、その後に上の引数を続けます。スクリプトの隣に仮想環境 (.venv または venv) があれば、そちらが使われます。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintMissing">.py スクリプトの実行には Python が必要ですが、システムの PATH にも、スクリプトの隣の仮想環境 (.venv または venv) にも python.exe がありません。このままではサービスは python を実行して起動に失敗します。先に仮想環境を作成するか、Python をすべてのユーザー向けにインストールしてください。</sys:String>
+    <sys:String x:Key="M.Wiz.Environment">環境変数</sys:String>
+    <sys:String x:Key="M.Wiz.PythonEnvHint">Python 向けに 2 つを入力済みです。PYTHONUNBUFFERED=1 で print の出力がすぐにログへ書き込まれ、PYTHONIOENCODING=utf-8 でシステムのコード ページにない文字による UnicodeEncodeError でプログラムが落ちるのを防ぎます。</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenvScripts">作業ディレクトリ {0} は仮想環境の Scripts フォルダーで、ランチャーしかありません。ここで起動するとアプリは自身のモジュールを読み込めず (uvicorn では Could not import module)、サービスは失敗と再起動を繰り返します。代わりにプロジェクト フォルダーを使ってください: {1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirScripts">作業ディレクトリ {0} は Python の Scripts フォルダーで、ランチャーしかありません。ここで起動するとアプリは自身のモジュールを読み込めず、サービスは失敗と再起動を繰り返します。代わりにコードのあるフォルダーを使ってください。</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenv">作業ディレクトリ {0} は仮想環境そのもののフォルダーで、アプリのフォルダーではありません。ここで起動すると、アプリは自身のモジュールも、読み込むファイルも見つけられません。代わりにプロジェクト フォルダーを使ってください: {1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirPython">作業ディレクトリ {0} は Python のインストール先で、アプリのフォルダーではありません。ここで起動すると、アプリは自身のモジュールも、読み込むファイルも見つけられません。代わりにコードのあるフォルダーを使ってください。</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">インストール先:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">この ID のサービスは既にインストールされています。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">サービス ID '{0}' はこのマシンで既に使用されています。</sys:String>

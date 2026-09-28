@@ -200,7 +200,7 @@
     <sys:String x:Key="M.Filter.Config">WinSW 配置|*.xml|所有文件|*.*</sys:String>
     <sys:String x:Key="M.Filter.ConfigSave">WinSW 配置|*.xml</sys:String>
     <sys:String x:Key="M.Filter.Wrapper">WinSW 可执行文件|*.exe</sys:String>
-    <sys:String x:Key="M.Filter.Programs">程序|*.exe;*.bat;*.cmd;*.jar|所有文件|*.*</sys:String>
+    <sys:String x:Key="M.Filter.Programs">程序|*.exe;*.bat;*.cmd;*.jar;*.py|所有文件|*.*</sys:String>
     <sys:String x:Key="M.Editor.Unsaved">未保存的配置</sys:String>
     <sys:String x:Key="M.Editor.NoConfig">“{0}”没有可编辑的配置文件。</sys:String>
     <sys:String x:Key="M.Editor.Loaded">已载入 {0}。</sys:String>
@@ -573,6 +573,15 @@
     <sys:String x:Key="M.Wiz.WrapperHint">没有 WinSW.exe？点“下载”会把最新版放到程序旁边。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">改为安装到程序自己的文件夹里</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">.jar 文件通过 Java 启动：服务会运行 java -jar 加上这个文件，后面再接上面的参数。Java 必须在系统 PATH 里，服务看不到你自己的 PATH。如果参数里已经写了 -jar，会原样交给 Java。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintVenv">.py 脚本用它所在虚拟环境的 Python 运行：服务会用 {0} 运行这个文件，后面再接上面的参数。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintPath">.py 脚本用系统 PATH 上的 Python 运行：服务会用 {0} 运行这个文件，后面再接上面的参数。如果脚本旁边有虚拟环境（.venv 或 venv），会优先用它。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintMissing">.py 脚本要靠 Python 运行，但系统 PATH 上和脚本旁边的虚拟环境（.venv 或 venv）里都没有 python.exe。服务会直接运行 python，启动会失败：请先创建虚拟环境，或为所有用户安装 Python。</sys:String>
+    <sys:String x:Key="M.Wiz.Environment">环境变量</sys:String>
+    <sys:String x:Key="M.Wiz.PythonEnvHint">Python 程序已预填两项：PYTHONUNBUFFERED=1 让 print 的输出立即写进日志；PYTHONIOENCODING=utf-8 避免系统代码页装不下的字符让程序报 UnicodeEncodeError 崩溃。</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenvScripts">工作目录 {0} 是虚拟环境的 Scripts 文件夹，里面只有启动器。在这里启动，程序导入不了自己的模块（uvicorn 会报 Could not import module），服务会反复失败、反复重启。请改用项目目录：{1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirScripts">工作目录 {0} 是 Python 的 Scripts 文件夹，里面只有启动器。在这里启动，程序导入不了自己的模块，服务会反复失败、反复重启。请改用存放代码的目录。</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenv">工作目录 {0} 是虚拟环境本身的目录，不是程序的目录。在这里启动，程序导入不了自己的模块，也找不到要读的文件。请改用项目目录：{1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirPython">工作目录 {0} 是 Python 的安装目录，不是程序的目录。在这里启动，程序导入不了自己的模块，也找不到要读的文件。请改用存放代码的目录。</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">安装目录：</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">已有同 ID 的服务安装在本机。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">服务 ID“{0}”在本机已被使用。</sys:String>

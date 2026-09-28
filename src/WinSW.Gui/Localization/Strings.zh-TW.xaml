@@ -200,7 +200,7 @@
     <sys:String x:Key="M.Filter.Config">WinSW 設定|*.xml|所有檔案|*.*</sys:String>
     <sys:String x:Key="M.Filter.ConfigSave">WinSW 設定|*.xml</sys:String>
     <sys:String x:Key="M.Filter.Wrapper">WinSW 執行檔|*.exe</sys:String>
-    <sys:String x:Key="M.Filter.Programs">程式|*.exe;*.bat;*.cmd;*.jar|所有檔案|*.*</sys:String>
+    <sys:String x:Key="M.Filter.Programs">程式|*.exe;*.bat;*.cmd;*.jar;*.py|所有檔案|*.*</sys:String>
     <sys:String x:Key="M.Editor.Unsaved">未儲存的設定</sys:String>
     <sys:String x:Key="M.Editor.NoConfig">「{0}」沒有可編輯的設定檔。</sys:String>
     <sys:String x:Key="M.Editor.Loaded">已載入 {0}。</sys:String>
@@ -573,6 +573,15 @@
     <sys:String x:Key="M.Wiz.WrapperHint">沒有 WinSW.exe？按「下載」會把最新版放到程式旁邊。</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">改為安裝到程式自己的資料夾裡</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">.jar 檔會透過 Java 啟動：服務會執行 java -jar 加上這個檔案，後面再接上面的參數。Java 必須在系統 PATH 裡，服務看不到你自己的 PATH。如果參數裡已經寫了 -jar，會原樣交給 Java。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintVenv">.py 指令碼用它所在虛擬環境的 Python 執行：服務會用 {0} 執行這個檔案，後面再接上面的參數。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintPath">.py 指令碼用系統 PATH 上的 Python 執行：服務會用 {0} 執行這個檔案，後面再接上面的參數。如果指令碼旁邊有虛擬環境（.venv 或 venv），會優先使用它。</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintMissing">.py 指令碼需要 Python 才能執行，但系統 PATH 上和指令碼旁邊的虛擬環境（.venv 或 venv）裡都沒有 python.exe。服務會直接執行 python，啟動會失敗：請先建立虛擬環境，或為所有使用者安裝 Python。</sys:String>
+    <sys:String x:Key="M.Wiz.Environment">環境變數</sys:String>
+    <sys:String x:Key="M.Wiz.PythonEnvHint">Python 程式已預先填入兩項：PYTHONUNBUFFERED=1 讓 print 的輸出立即寫進日誌；PYTHONIOENCODING=utf-8 避免系統字碼頁容納不了的字元讓程式因 UnicodeEncodeError 當掉。</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenvScripts">工作目錄 {0} 是虛擬環境的 Scripts 資料夾，裡面只有啟動器。從這裡啟動，程式無法匯入自己的模組（uvicorn 會回報 Could not import module），服務會一再失敗、一再重新啟動。請改用專案資料夾：{1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirScripts">工作目錄 {0} 是 Python 的 Scripts 資料夾，裡面只有啟動器。從這裡啟動，程式無法匯入自己的模組，服務會一再失敗、一再重新啟動。請改用存放程式碼的資料夾。</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenv">工作目錄 {0} 是虛擬環境本身的資料夾，不是程式的資料夾。從這裡啟動，程式無法匯入自己的模組，也找不到要讀取的檔案。請改用專案資料夾：{1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirPython">工作目錄 {0} 是 Python 的安裝目錄，不是程式的資料夾。從這裡啟動，程式無法匯入自己的模組，也找不到要讀取的檔案。請改用存放程式碼的資料夾。</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">安裝資料夾：</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">已有相同 ID 的服務安裝在本機。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">服務 ID「{0}」在本機已被使用。</sys:String>

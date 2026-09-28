@@ -211,7 +211,7 @@
     <sys:String x:Key="M.Filter.Config">WinSW configuration|*.xml|All files|*.*</sys:String>
     <sys:String x:Key="M.Filter.ConfigSave">WinSW configuration|*.xml</sys:String>
     <sys:String x:Key="M.Filter.Wrapper">WinSW executable|*.exe</sys:String>
-    <sys:String x:Key="M.Filter.Programs">Programs|*.exe;*.bat;*.cmd;*.jar|All files|*.*</sys:String>
+    <sys:String x:Key="M.Filter.Programs">Programs|*.exe;*.bat;*.cmd;*.jar;*.py|All files|*.*</sys:String>
     <sys:String x:Key="M.Editor.Unsaved">Unsaved configuration</sys:String>
     <sys:String x:Key="M.Editor.NoConfig">'{0}' has no configuration file to edit.</sys:String>
     <sys:String x:Key="M.Editor.Loaded">Loaded {0}.</sys:String>
@@ -584,6 +584,15 @@
     <sys:String x:Key="M.Wiz.WrapperHint">Don't have WinSW.exe? Download puts the latest build next to your program.</sys:String>
     <sys:String x:Key="M.Wiz.PlaceNextToProgram">Install into the program's own folder instead</sys:String>
     <sys:String x:Key="M.Wiz.JarHint">A .jar is started through Java: the service runs java -jar with this file, followed by the arguments above. Java has to be on the system PATH — a service does not see your own. Arguments that already contain -jar are handed to Java as written.</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintVenv">A .py script is run by the Python of its virtual environment: the service runs {0} with this file, followed by the arguments above.</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintPath">A .py script is run by the Python on the system PATH: the service runs {0} with this file, followed by the arguments above. A virtual environment beside the script (.venv or venv) would be used instead.</sys:String>
+    <sys:String x:Key="M.Wiz.PyHintMissing">A .py script needs Python to run it, and there is no python.exe on the system PATH or in a virtual environment beside the script (.venv or venv). The service would run 'python' and fail to start: create the virtual environment first, or install Python for all users.</sys:String>
+    <sys:String x:Key="M.Wiz.Environment">Environment variables</sys:String>
+    <sys:String x:Key="M.Wiz.PythonEnvHint">Filled in for Python: PYTHONUNBUFFERED=1 gets print output into the log as it happens, and PYTHONIOENCODING=utf-8 stops characters the system code page cannot hold from crashing the program with UnicodeEncodeError.</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenvScripts">The working directory {0} is the Scripts folder of a virtual environment, which holds only launchers. Started there, the application cannot import its own modules (uvicorn says 'Could not import module'), and the service fails and restarts over and over. Use the project folder instead: {1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirScripts">The working directory {0} is a Python Scripts folder, which holds only launchers. Started there, the application cannot import its own modules, and the service fails and restarts over and over. Use the folder that holds your code instead.</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirVenv">The working directory {0} is a virtual environment's own folder, not the application's. Started there, it cannot import its own modules or find the files it reads. Use the project folder instead: {1}</sys:String>
+    <sys:String x:Key="M.Wiz.WorkDirPython">The working directory {0} belongs to a Python installation, not to the application. Started there, it cannot import its own modules or find the files it reads. Use the folder that holds your code instead.</sys:String>
     <sys:String x:Key="M.Wiz.InstallDir">Install folder:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">A service with this ID is already installed.</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">Service ID '{0}' is already in use on this machine.</sys:String>
