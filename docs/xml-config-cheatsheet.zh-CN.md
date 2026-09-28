@@ -95,7 +95,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `preshutdown` | ? | 布尔 | `false` | 注册预关机通知，让服务在系统关机时能多拿到一段时间。 |
 | `preshutdownTimeout` | ? | 时长 | 系统默认（3 分钟） | 只配合 `preshutdown` 使用。 |
 
-> 这一组由 `install` 写进 Windows 的服务配置，改完之后由 `refresh` 重新写入 —— `id` 和 `serviceaccount` 除外（见下）。光重启服务没有任何效果，改完必须再执行 `winsw refresh myapp.xml`（或在图形控制台点“保存并应用”）。`preshutdown` 是例外：包装器每次启动服务时才注册它，所以重启一下就生效。
+> 这一组由 `install` 写进 Windows 的服务配置，改完之后由 `refresh` 重新写入 —— `id` 和 `serviceaccount` 除外（见下）。由 Windows、services.msc 或控制台“远程”页重启服务不会应用这些设置（只有 `winsw start`、`stop`、`restart`，也就是控制台“服务”页的按钮，会先自动 refresh，见 `autoRefresh`），所以改完请执行 `winsw refresh myapp.xml`（或在图形控制台点“保存并应用”）。`preshutdown` 是例外：包装器每次启动服务时才注册它，所以重启一下就生效。
 
 `refresh` 只写入文件里写了的内容，不会撤销文件里已经删掉的内容：
 
@@ -121,7 +121,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `proxy` | ? | 文本 + 属性 | — | `<proxy noProxy="localhost,.corp" java="true">http://proxy.example.com:8080</proxy>`。给子进程设置 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`。JVM 不认这几个变量，所以 `java="true"` 会再把 `-Dhttp.proxyHost` 等选项放到 `JAVA_TOOL_OPTIONS` 最前面。协议头必须写。同名的 `env` 优先。 |
 | `download` | * | 属性 | — | 见第 8 节。 |
 | `sharedDirectoryMapping` | ? | 元素 | — | 启动前把 UNC 路径映射成盘符：`<map label="N:" uncpath="\\server\share" />`，可重复，两个属性都必填。 |
-| `autoRefresh` | ? | 布尔 | `true` | 为 `true` 时，从命令行执行 `winsw start`、`stop`、`restart`、`restart!`（控制台的启动、停止、重启按钮就是这么做的），如果文件在服务上次配置之后保存过，会先自动 `refresh` 一次。Windows 自己启动服务时（开机、services.msc 或 `sc start`、失败动作触发的重启）不会 refresh，包装器只写一条警告，所以改完配置请执行 `refresh`（控制台里的“保存并应用”）。 |
+| `autoRefresh` | ? | 布尔 | `true` | 为 `true` 时，执行 `winsw start`、`stop`、`restart` 命令前，如果文件在服务上次配置之后保存过，会先自动 `refresh` 一次。控制台“服务”页的启动、停止、重启按钮走的就是这些命令，所以也会 refresh。Windows 自己启动服务时不会 refresh：开机、服务管理器（services.msc）、`sc start`、控制台的“远程”页、失败动作触发的重启都是这样。这时包装器只写一条警告，所以改完配置请执行 `refresh`（控制台里的“保存并应用”）。 |
 
 ### 停止
 

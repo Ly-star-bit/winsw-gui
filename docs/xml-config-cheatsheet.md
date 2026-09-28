@@ -106,9 +106,11 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 
 > `install` writes the elements in this group into the service's Windows configuration, and
 > `refresh` writes them again after an edit — all but `id` and `serviceaccount` (see below).
-> Restarting the service alone changes nothing, so run `winsw refresh myapp.xml` (or
-> *Save & apply* in the console) after editing them. `preshutdown` is the exception: the
-> wrapper registers for it each time the service starts, so a restart is what applies it.
+> A restart by Windows, from services.msc or from the console's Remote page does not apply
+> them (only `winsw start`, `stop` and `restart`, and so the console's Services page, refresh
+> first; see `autoRefresh`), so run `winsw refresh myapp.xml` (or *Save & apply* in the
+> console) after editing them. `preshutdown` is the exception: the wrapper registers for it
+> each time the service starts, so a restart is what applies it.
 
 `refresh` writes what the file says. It does not undo what the file has stopped saying:
 
@@ -140,7 +142,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `proxy` | ? | text + attributes | — | `<proxy noProxy="localhost,.corp" java="true">http://proxy.example.com:8080</proxy>`. Sets `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` for the child process. `java="true"` also puts `-Dhttp.proxyHost` and its companions in front of `JAVA_TOOL_OPTIONS`, since the JVM ignores the variables. The scheme is required. An `env` entry of the same name wins. |
 | `download` | * | attributes | — | See section 8. |
 | `sharedDirectoryMapping` | ? | element | — | Maps UNC paths to drive letters before start. `<map label="N:" uncpath="\\server\share" />`, repeatable. Both attributes required. |
-| `autoRefresh` | ? | bool | `true` | When `true`, `winsw start`, `stop`, `restart` and `restart!` run from the command line — as the console's Start, Stop and Restart buttons do — first `refresh` the service if the file was saved after the service was last configured. Nothing is refreshed when Windows starts the service itself: at boot, from services.msc or `sc start`, or for an `<onfailure>` restart. The wrapper then only writes a warning, so run `refresh` (the console's *Save & apply*) after an edit. |
+| `autoRefresh` | ? | bool | `true` | When `true`, the `winsw start`, `stop` and `restart` commands first `refresh` the service if the file was saved after the service was last configured. The console's Services page starts, stops and restarts services through these commands, so its buttons refresh too. Nothing is refreshed when Windows starts the service itself: at boot, from the Services console (services.msc), with `sc start`, from the console's Remote page, or for an `<onfailure>` restart. The wrapper then only writes a warning, so run `refresh` (the console's *Save & apply*) after an edit. |
 
 ### Stopping
 

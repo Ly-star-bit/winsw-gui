@@ -70,6 +70,22 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
+        /// The console's Services page goes through those commands and refreshes; its Remote page
+        /// starts a service through the service control manager, as services.msc does, and does
+        /// not. Worded as the wrapper's own documentation words it.
+        /// </summary>
+        [Theory]
+        [InlineData("en", "Services page", "Remote page")]
+        [InlineData("zh-CN", "“服务”页", "“远程”页")]
+        public void AutoRefreshSaysWhichOfTheConsolesPagesRefresh(string language, string refreshes, string doesNot)
+        {
+            string line = Row(Guide(language), "| `autoRefresh` |");
+
+            Assert.Contains(refreshes, line, StringComparison.Ordinal);
+            Assert.Contains(doesNot, line, StringComparison.Ordinal);
+        }
+
+        /// <summary>
         /// What refresh leaves alone when the file stops declaring it, listed where the elements
         /// refresh applies are.
         /// </summary>

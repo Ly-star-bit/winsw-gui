@@ -13,3 +13,4 @@ This hidden command is a flavor of the `restart` operation,
 This additional indirection is necessary because WinSW will kill child processes recursively when it stops a service.
 Windows Service Control Manager (SCM) doesn't provide the restart operation as an atomic operation either, so winsw implements restart by a sequence of stop and start.
 The second winsw process in a separate process group ensures that winsw can survive this massacre to execute the start call.
+With [`<endProcessesWithWrapper>`](xml-config-file.md#endprocesseswithwrapper), the second winsw process is also started outside the service's job (`CREATE_BREAKAWAY_FROM_JOB`), so the job does not end it along with the wrapper.

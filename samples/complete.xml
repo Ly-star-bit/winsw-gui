@@ -172,6 +172,18 @@ SECTION: Executable management
   <!--
   <stoparguments>-stop true</stoparguments>
   -->
+
+  <!--
+    OPTION: endProcessesWithWrapper
+    When true, every process the service starts ends when the wrapper's process ends, for whatever reason:
+    a crash or End task included. Nothing is left running unsupervised, holding the service's port or files.
+    Applies when WinSW runs as a service. A process started outside the job (CREATE_BREAKAWAY_FROM_JOB),
+    as 'restart!' starts its second process, does not end with the wrapper.
+    Default value: false
+  -->
+  <!--
+  <endProcessesWithWrapper>true</endProcessesWithWrapper>
+  -->
 <!--
 SECTION: Service management
 -->
