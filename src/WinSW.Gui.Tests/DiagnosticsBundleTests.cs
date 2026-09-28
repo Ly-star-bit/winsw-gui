@@ -118,6 +118,52 @@ namespace WinSW.Gui.Tests
             Assert.StartsWith("服务已启动\n", tail.Text, StringComparison.Ordinal);
         }
 
+        /// <summary>
+        /// A tail that is all one line has no whole line to decide on, and is cut inside a
+        /// character: 100 of 中 are 300 bytes, and the last 31 start on the last byte of one.
+        /// That byte is left out, rather than taken for ANSI and the rest turned to mojibake.
+        /// </summary>
+        [Fact]
+        public void ALineCutInsideACharacterWithNoNewlineIsStillUtf8()
+        {
+            string path = this.WriteText("svc.err.log", new string('中', 100));
+
+            var tail = LogTailReader.ReadTail(path, 31);
+
+            Assert.Equal("UTF-8", tail.EncodingName);
+            Assert.Equal(new string('中', 10), tail.Text);
+            Assert.Equal(270, tail.SkippedBytes);
+        }
+
+        /// <summary>
+        /// A Python job's progress bar with Chinese labels, redrawn with carriage returns and
+        /// never a newline, wherever the cut falls; and with its last character half written,
+        /// as when the bundle is taken while the job is writing.
+        /// </summary>
+        [Fact]
+        public void AProgressBarWithNoNewlineIsUtf8WhereverItIsCut()
+        {
+            string text = string.Concat(Enumerable.Range(0, 200).Select(i => $"\r下载进度 {i}%"));
+            byte[] bytes = Utf8.GetBytes(text);
+            string path = this.WriteBytes("svc.err.log", bytes);
+
+            for (int maxBytes = 20; maxBytes <= 40; maxBytes++)
+            {
+                var tail = LogTailReader.ReadTail(path, maxBytes);
+
+                Assert.Equal("UTF-8", tail.EncodingName);
+                Assert.DoesNotContain("\uFFFD", tail.Text, StringComparison.Ordinal);
+                Assert.EndsWith(tail.Text, text, StringComparison.Ordinal);
+                Assert.Equal(bytes.Length, tail.SkippedBytes + Utf8.GetByteCount(tail.Text));
+            }
+
+            byte[] half = bytes.Concat(Utf8.GetBytes("完").Take(2)).ToArray();
+            var cutAtBothEnds = LogTailReader.ReadTail(this.WriteBytes("svc.out.log", half), 31);
+
+            Assert.Equal("UTF-8", cutAtBothEnds.EncodingName);
+            Assert.DoesNotContain("\uFFFD", cutAtBothEnds.Text.TrimEnd('\uFFFD'), StringComparison.Ordinal);
+        }
+
         /// <summary>A byte-order mark is at the start of the file, and decides even when the tail does not reach it.</summary>
         [Fact]
         public void AByteOrderMarkDecidesAlthoughTheTailDoesNotReachIt()
@@ -304,6 +350,33 @@ namespace WinSW.Gui.Tests
             entries = Bundle(zip => DiagnosticsBundle.AddConsoleLogs(zip, actions, errors));
 
             Assert.Equal(new[] { "console/actions.log", "console/errors.log" }, entries.Select(e => e.Name));
+
+            // Past a megabyte each is moved to .1.log and started again, and what led up to
+            // the problem is in the file before: it goes in too, ahead of the newer one.
+            this.WriteText("actions.1.log", "2026-09-23 09:00:00\tCORP\\henry\trestart\tsvc\tok\n");
+            this.WriteText("errors.1.log", "2026-09-23 09:00:01 earlier\n");
+            entries = Bundle(zip => DiagnosticsBundle.AddConsoleLogs(zip, actions, errors));
+
+            Assert.Equal(
+                new[] { "console/actions.1.log", "console/actions.log", "console/errors.1.log", "console/errors.log" },
+                entries.Select(e => e.Name));
+            Assert.Contains("restart\tsvc\tok", entries[0].Text, StringComparison.Ordinal);
+        }
+
+        /// <summary>The file the bundle takes as the one before is the file the action log rolls to.</summary>
+        [Fact]
+        public void TheFileTheActionLogRollsToGoesIn()
+        {
+            string line = new string('x', 99) + "\n";
+            string actions = this.WriteText("actions.log", string.Concat(Enumerable.Repeat(line, (int)(ActionLog.MaxBytes / line.Length) + 1)));
+            string errors = Path.Combine(this.directory, "errors.log");
+
+            ActionLog.Append(actions, "latest");
+
+            var entries = Bundle(zip => DiagnosticsBundle.AddConsoleLogs(zip, actions, errors));
+
+            Assert.Equal(new[] { "console/actions.1.log", "console/actions.log" }, entries.Select(e => e.Name));
+            Assert.Equal("latest", entries[1].Text.Trim());
         }
 
         /// <summary>The console writes its error log beside its action log; the bundle looks for it there.</summary>

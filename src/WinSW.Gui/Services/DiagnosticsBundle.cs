@@ -154,16 +154,25 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Adds what this console did (<c>actions.log</c>) and what went wrong in it
-        /// (<c>errors.log</c>) under <c>console/</c>, each when it exists. Both are this
-        /// user's on this machine, and cover every service, not just this one.
+        /// (<c>errors.log</c>) under <c>console/</c>, each when it exists, and with each the
+        /// file before it. Both are this user's on this machine, and cover every service, not
+        /// just this one.
         /// </summary>
+        /// <remarks>
+        /// Each is moved to <c>.1.log</c> once it reaches a megabyte and started again, so after
+        /// a busy afternoon the file itself can hold only the last few lines, and what led up to
+        /// the problem is in the one before.
+        /// </remarks>
         internal static void AddConsoleLogs(ZipArchive zip, string actionLogPath, string errorLogPath)
         {
             foreach (string path in new[] { actionLogPath, errorLogPath })
             {
-                if (File.Exists(path))
+                foreach (string file in new[] { Path.ChangeExtension(path, ".1.log"), path })
                 {
-                    AddText(zip, "console/" + Path.GetFileName(path), Tail(path, out _));
+                    if (File.Exists(file))
+                    {
+                        AddText(zip, "console/" + Path.GetFileName(file), Tail(file, out _));
+                    }
                 }
             }
         }

@@ -88,6 +88,15 @@ namespace WinSW.Gui.Services
     /// names now, and once that is not the file held, the held one is read to its end and let
     /// go, and the path is opened again from its first byte.
     /// </para>
+    /// <para>
+    /// A file the wrapper has set aside — roll mode's <c>.old</c>, which the log is renamed
+    /// onto at every start — is never written to again, only replaced; and on Windows before
+    /// POSIX rename semantics (Server 2012 R2 and 2016) a file held open cannot be replaced,
+    /// however widely it is shared: a viewer left on the run before a crash failed the next
+    /// start of the service. Such a file is therefore held only while it is read, let go of
+    /// after every read, and opened again only once it is no longer as it was then. One
+    /// replaced meanwhile had been read to its end, and the new one is read from its first byte.
+    /// </para>
     /// </remarks>
     public sealed class LogTailReader : IDisposable
     {
@@ -112,6 +121,9 @@ namespace WinSW.Gui.Services
         private readonly byte[] buffer = new byte[64 * 1024];
         private readonly MemoryStream pending = new();
 
+        /// <summary>False for a file the wrapper has set aside, which is held only while it is read. See the remarks.</summary>
+        private readonly bool holdOpen;
+
         private FileStream? stream;
         private long position;
         private Encoding? encoding;
@@ -125,13 +137,25 @@ namespace WinSW.Gui.Services
         /// <summary>Set after a roll: the next open starts at the first byte rather than at the tail.</summary>
         private bool fromStart;
 
+        /// <summary>
+        /// How long the file was when it was last read to its end, or -1 when it has not been
+        /// since it was opened. For a set-aside file, which never changes, a length other than
+        /// this means another file, where the file system has no numbers to tell by; the same
+        /// length, and the same number where there is one, means there is nothing to open it for.
+        /// </summary>
+        private long readTo = -1;
+
         public LogTailReader(string path, LogEncodingChoice choice = LogEncodingChoice.Auto)
         {
             this.path = path;
             this.choice = choice;
+            this.holdOpen = !IsSetAside(path);
         }
 
         public string Path => this.path;
+
+        /// <summary>Whether the file is open at the moment. A set-aside file is not, between reads.</summary>
+        internal bool IsHolding => this.stream != null;
 
         /// <summary>Set when the file shrank since the last read: it was reset in place, and is read again from the start.</summary>
         public bool Restarted { get; private set; }
@@ -184,12 +208,15 @@ namespace WinSW.Gui.Services
 
             try
             {
+                bool opened = false;
                 if (this.stream is null)
                 {
-                    if (!File.Exists(this.path) || !this.Open(lines))
+                    if (!File.Exists(this.path) || this.UnchangedSinceRead() || !this.Open(lines))
                     {
                         return lines;
                     }
+
+                    opened = true;
                 }
 
                 // Not FileStream.Length: for a read-only handle .NET may cache it, and this
@@ -199,7 +226,8 @@ namespace WinSW.Gui.Services
                 // A file that is still growing is the one being written, so the path is only
                 // asked about it when nothing has arrived. After a roll the old file never
                 // grows again, so a roll is seen one read after its last line at the latest.
-                bool rolled = length == this.position && this.PathNamesAnotherFile(length);
+                // A file opened just now is the one the path names: there is nothing to ask.
+                bool rolled = !opened && length == this.position && this.PathNamesAnotherFile(length);
                 if (rolled)
                 {
                     // The wrapper may have written to it between the measuring and the rename.
@@ -241,6 +269,8 @@ namespace WinSW.Gui.Services
                     this.DrainCompleteLines(lines);
                 }
 
+                this.readTo = this.position;
+
                 if (rolled)
                 {
                     // Everything the old file will ever hold is read. Let go of it — the wrapper
@@ -264,6 +294,14 @@ namespace WinSW.Gui.Services
                 if (this.stream != null)
                 {
                     this.Reset();
+                }
+            }
+            finally
+            {
+                if (!this.holdOpen)
+                {
+                    // A set-aside file is held for the read and no longer; see the remarks.
+                    this.Release();
                 }
             }
 
@@ -324,7 +362,13 @@ namespace WinSW.Gui.Services
             {
                 this.released = false;
 
-                if (id is null || this.heldId is null || id == this.heldId)
+                // Told apart by file number where there is one. Without, a set-aside file,
+                // which never changes, is told apart by its length; any other file cannot be.
+                bool another = id != null && this.heldId != null
+                    ? id != this.heldId
+                    : !this.holdOpen && this.readTo >= 0 && CurrentLength(this.stream) != this.readTo;
+
+                if (!another)
                 {
                     // The same file, or one that cannot be told apart from it: carry on. A file
                     // that was reset meanwhile is shorter than the place, which the read notices.
@@ -334,11 +378,14 @@ namespace WinSW.Gui.Services
 
                 // Rolled while nothing was reading it. What is left of the old file is not to
                 // be had through this path; the partial line held from it is all there is.
+                // A set-aside file had nothing left: it was let go of at its end, and never
+                // grew after that.
                 this.FlushPartialLine(lines);
                 this.heldId = id;
                 this.position = 0;
+                this.readTo = -1;
                 this.DetectFromPreamble();
-                this.Rollover = LogRollover.WhileReleased;
+                this.Rollover = this.holdOpen ? LogRollover.WhileReleased : LogRollover.ReadToEnd;
                 return false;
             }
 
@@ -353,16 +400,50 @@ namespace WinSW.Gui.Services
                 return true;
             }
 
-            this.position = Math.Max(0, CurrentLength(this.stream) - InitialTailBytes);
-            this.DetectFromPreamble();
+            long tail = Math.Max(0, CurrentLength(this.stream) - InitialTailBytes);
+            this.position = tail;
+            int preamble = this.DetectFromPreamble();
 
-            if (this.position > 0)
+            if (tail > preamble)
             {
                 // Starting mid-file: skip to the next line so the first line shown is whole.
+                // Not when the tail takes in the whole file and only a byte-order mark moved
+                // the place: the first line starts right after the mark, and skipping lost it.
                 this.position = this.StartOfNextLine(this.position);
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// Whether a set-aside file let go of after its last read is still the one under the
+        /// path, as long as it was then, so that there is nothing to open it for. Asked with a
+        /// handle that reads nothing, as the roll check asks: a file that never changes is not
+        /// opened for reading, and scanned, every few hundred milliseconds. False — open it and
+        /// see — for any other file, and whenever there is no certain answer.
+        /// </summary>
+        private bool UnchangedSinceRead()
+        {
+            if (this.holdOpen || !this.released || this.readTo < 0)
+            {
+                return false;
+            }
+
+            try
+            {
+                using var probe = OpenForQuery(this.path);
+                if (probe is null)
+                {
+                    return false;
+                }
+
+                var named = Describe(probe);
+                return named.Length == this.readTo && (named.Id is null || this.heldId is null || named.Id == this.heldId);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -530,7 +611,9 @@ namespace WinSW.Gui.Services
         /// The rule <see cref="Decide(byte[], int)"/> applies, for whole lines that follow no
         /// byte-order mark: the encoding chosen, or under <see cref="LogEncodingChoice.Auto"/>
         /// UTF-8 when the bytes are valid UTF-8 and the system ANSI code page when they are
-        /// not. Null when that leaves it open, because every byte is plain ASCII.
+        /// not. Null when that leaves it open, because every byte is plain ASCII. A character
+        /// cut short at the very end counts for UTF-8, not against it: a line with no newline
+        /// yet is the end of a file still being written, and can stop inside a character.
         /// </summary>
         internal static Encoding? Decide(LogEncodingChoice choice, ReadOnlySpan<byte> bytes)
         {
@@ -559,7 +642,9 @@ namespace WinSW.Gui.Services
 
             try
             {
-                StrictUtf8.GetCharCount(bytes);
+                // A decoder left unflushed keeps an unfinished last character for bytes still
+                // to come instead of rejecting it; anything invalid before that still throws.
+                StrictUtf8.GetDecoder().GetCharCount(bytes, flush: false);
                 return LenientUtf8;
             }
             catch (DecoderFallbackException)
@@ -592,6 +677,14 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Whether <paramref name="path"/> names a file the wrapper has set aside and never
+        /// writes to again, only replaces: roll mode's <c>.old</c>, which the log is renamed
+        /// onto at every start. A reader holds such a file only while it reads it.
+        /// </summary>
+        internal static bool IsSetAside(string path) =>
+            path.EndsWith(".old", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
         /// The end of a file once, as text: the whole lines among its last
         /// <paramref name="maxBytes"/> bytes, and a last line that has no newline yet, decoded
         /// the way a reader decides for the file on screen. For whoever takes a copy of a log
@@ -600,9 +693,12 @@ namespace WinSW.Gui.Services
         /// characters that nothing could turn back.
         /// </summary>
         /// <remarks>
-        /// The encoding is decided on whole lines only. The place the tail is cut at can fall
-        /// inside a character, and so can the end of a file still being written; a character
-        /// cut in two is not valid UTF-8, and would pass a UTF-8 file off as ANSI.
+        /// The encoding is decided on whole lines where there are any. The place the tail is
+        /// cut at can fall inside a character, and so can the end of a file still being
+        /// written; a character cut in two is not valid UTF-8, and would pass a UTF-8 file off
+        /// as ANSI. A tail that is all one line — a progress bar redrawn with carriage returns
+        /// for megabytes on end — is decided from the first character that starts after the
+        /// cut, and, read as UTF-8, starts there too.
         /// </remarks>
         public static LogTail ReadTail(string path, long maxBytes, LogEncodingChoice choice = LogEncodingChoice.Auto)
         {
@@ -643,16 +739,34 @@ namespace WinSW.Gui.Services
             }
 
             int from = 0;
+            int decideFrom = 0;
             if (readFrom < start)
             {
                 // A tail with no newline in it at all is kept from the cut.
                 int newline = NextNewline(bytes, 0, count, wide);
                 from = Math.Min(count, newline >= 0 ? newline + unit : unit);
+                decideFrom = from;
+
+                if (newline < 0 && !wide)
+                {
+                    // The cut can fall inside a character, whose remaining bytes are UTF-8
+                    // continuation bytes, three at most, and invalid on their own. Only the
+                    // deciding passes over them: in an ANSI code page the same bytes can begin
+                    // a character, and the text keeps them unless it is read as UTF-8.
+                    while (decideFrom < count && decideFrom - from < 3 && (bytes[decideFrom] & 0xC0) == 0x80)
+                    {
+                        decideFrom++;
+                    }
+                }
             }
 
             int lastNewline = LastNewline(bytes, from, count, wide);
             int whole = lastNewline < 0 ? count : lastNewline + unit;
-            Encoding? encoding = marked ?? Decide(choice, bytes.AsSpan(from, whole - from));
+            Encoding? encoding = marked ?? Decide(choice, bytes.AsSpan(decideFrom, whole - decideFrom));
+            if ((encoding ?? LenientUtf8) is UTF8Encoding)
+            {
+                from = decideFrom;
+            }
 
             return new LogTail((encoding ?? LenientUtf8).GetString(bytes, from, count - from), encoding, readFrom + from - preamble);
         }
@@ -711,13 +825,18 @@ namespace WinSW.Gui.Services
             return this.stream.Position;
         }
 
-        private void DetectFromPreamble()
+        /// <summary>
+        /// Takes the encoding from a byte-order mark at the start of the file, if the choice is
+        /// automatic and there is one, and moves the place past the mark.
+        /// </summary>
+        /// <returns>How many bytes the mark takes; 0 when there is none.</returns>
+        private int DetectFromPreamble()
         {
             this.encoding = null;
 
             if (this.choice != LogEncodingChoice.Auto || this.stream is null || CurrentLength(this.stream) < 2)
             {
-                return;
+                return 0;
             }
 
             Span<byte> head = stackalloc byte[3];
@@ -726,6 +845,7 @@ namespace WinSW.Gui.Services
 
             this.encoding = FromPreamble(head.Slice(0, read), out int preamble);
             this.position = Math.Max(this.position, preamble);
+            return preamble;
         }
 
         private void Reset()
@@ -738,6 +858,7 @@ namespace WinSW.Gui.Services
             this.heldId = null;
             this.released = false;
             this.fromStart = false;
+            this.readTo = -1;
         }
 
         public void Dispose()

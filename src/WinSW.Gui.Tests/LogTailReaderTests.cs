@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using WinSW.Gui.Services;
 using Xunit;
@@ -138,6 +139,42 @@ namespace WinSW.Gui.Tests
             // what must hold everywhere is that the reader used the ANSI choice, not UTF-8.
             Assert.Single(lines);
             Assert.Equal(LogTailReader.SystemAnsiEncoding.WebName, reader.Encoding!.WebName);
+        }
+
+        /// <summary>
+        /// A file shorter than the tail is read whole, first line included, when it starts with
+        /// a byte-order mark — as the output of a .NET Framework program that sets its console
+        /// to UTF-8 does. The mark moved the place off the start, and the first line, the
+        /// start-up banner, was skipped as if the tail had begun inside it.
+        /// </summary>
+        [Fact]
+        public void AByteOrderMarkDoesNotCostTheFirstLine()
+        {
+            byte[] text = new UTF8Encoding(false).GetBytes("first line\nsecond line\n");
+            File.WriteAllBytes(this.path, Encoding.UTF8.GetPreamble().Concat(text).ToArray());
+            using var reader = new LogTailReader(this.path);
+
+            Assert.Equal(new[] { "first line", "second line" }, reader.ReadNewLines());
+            Assert.Equal("utf-8", reader.Encoding!.WebName);
+        }
+
+        /// <summary>Longer than the tail, a file with a mark is still joined at a whole line.</summary>
+        [Fact]
+        public void AByteOrderMarkedFileLongerThanTheTailStartsAtAWholeLine()
+        {
+            var text = new StringBuilder();
+            for (int i = 0; text.Length < 200 * 1024; i++)
+            {
+                text.Append("line ").Append(i.ToString("D6", System.Globalization.CultureInfo.InvariantCulture)).Append('\n');
+            }
+
+            File.WriteAllBytes(this.path, Encoding.UTF8.GetPreamble().Concat(new UTF8Encoding(false).GetBytes(text.ToString())).ToArray());
+            using var reader = new LogTailReader(this.path);
+
+            var lines = reader.ReadNewLines();
+
+            Assert.All(lines, line => Assert.Matches(@"^line \d{6}$", line));
+            Assert.NotEqual("line 000000", lines[0]);
         }
     }
 }
