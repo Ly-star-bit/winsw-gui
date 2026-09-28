@@ -513,6 +513,11 @@
     <sys:String x:Key="M.Dash.PortEndTitle">结束占用端口的进程？</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">将强制结束 {0}（PID {1}）及其启动的所有进程，不做正常关闭，端口 {2} 随之释放。之后再启动“{3}”。</sys:String>
     <sys:String x:Key="M.Dash.PortParentBody">将强制结束 {0}（PID {1}）及其启动的所有进程（包括 {2}，PID {3}），不做正常关闭，端口 {4} 随之释放。之后再启动“{5}”。</sys:String>
+    <!-- Why a service is counted under Needs attention, one line each in the tooltip on its row. A missing configuration and a program left running are said as their banners say them. RecentStops: {0} the count. ExitCode: {0} the exit code, {1} Windows' own text for it, which may be empty. -->
+    <sys:String x:Key="M.Attention.Restarting">出错停止，Windows 服务恢复即将再次启动它。</sys:String>
+    <sys:String x:Key="M.Attention.RecentStops">最近几分钟内意外停止了 {0} 次。</sys:String>
+    <sys:String x:Key="M.Attention.ExitCode">已停止，退出码 {0}。{1}</sys:String>
+    <sys:String x:Key="M.Attention.AutomaticStopped">启动类型为自动，但当前已停止。</sys:String>
     <sys:String x:Key="M.Sched.Label">定时重启</sys:String>
     <sys:String x:Key="M.Sched.Off">关闭</sys:String>
     <sys:String x:Key="M.Sched.Daily">每天</sys:String>

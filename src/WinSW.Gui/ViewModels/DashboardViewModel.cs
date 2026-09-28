@@ -216,7 +216,7 @@ namespace WinSW.Gui.ViewModels
             this.StopSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("stop"), () => this.CanRunOnSelected("stop"));
             this.RestartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("restart"), () => this.CanRunOnSelected("restart"));
 
-            this.SetFilterCommand = new RelayCommand(p => this.HealthFilter = p as string ?? "all");
+            this.SetFilterCommand = new RelayCommand(p => this.ChooseFilter(p as string ?? "all"));
             this.CreateServiceCommand = new RelayCommand(() => this.CreateServiceRequested?.Invoke());
             this.OpenConfigFileCommand = new RelayCommand(() => this.OpenConfigFileRequested?.Invoke());
 
@@ -627,7 +627,11 @@ namespace WinSW.Gui.ViewModels
 
         public int StoppedCount => this.Services.Count(s => s.Health == ServiceHealth.Stopped);
 
-        public int ProblemCount => this.Services.Count(s => s.Health == ServiceHealth.Broken);
+        /// <summary>
+        /// Services that want a look for any reason, not only an unusable configuration: see
+        /// <see cref="ServiceEntry.Attention"/>. Some of them are also counted as running or stopped.
+        /// </summary>
+        public int ProblemCount => this.Services.Count(s => s.NeedsAttention);
 
         // Confirmation overlay -----------------------------------------------
 
@@ -1748,6 +1752,7 @@ namespace WinSW.Gui.ViewModels
                     held: this.inFlight.Contains(entry.ServiceName),
                     now);
                 entry.CrashCount = this.announcer.CountFor(entry.ServiceName);
+                entry.RecentStops = this.announcer.RecentStopsFor(entry.ServiceName);
 
                 // After the count, which tells how far into its failure actions the service is.
                 entry.NoteRecovery(now);
@@ -2096,6 +2101,23 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>
+        /// A stat card was clicked. The list is filtered then, not as the rows change under it, so
+        /// that a row being worked on does not vanish from under the selection the moment it stops
+        /// needing attention; clicking the card already chosen filters again, for who is in it now.
+        /// </summary>
+        private void ChooseFilter(string filter)
+        {
+            if (string.Equals(filter, this.healthFilter, StringComparison.Ordinal))
+            {
+                this.ServicesView.Refresh();
+            }
+            else
+            {
+                this.HealthFilter = filter;
+            }
+        }
+
         private bool MatchesSearch(object item)
         {
             if (item is not ServiceEntry entry)
@@ -2107,7 +2129,7 @@ namespace WinSW.Gui.ViewModels
             {
                 "running" => entry.Health == ServiceHealth.Running,
                 "stopped" => entry.Health == ServiceHealth.Stopped,
-                "problem" => entry.Health == ServiceHealth.Broken,
+                "problem" => entry.NeedsAttention,
                 _ => true,
             };
 

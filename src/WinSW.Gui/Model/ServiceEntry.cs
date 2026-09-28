@@ -18,6 +18,37 @@ namespace WinSW.Gui.Model
     }
 
     /// <summary>
+    /// Why a service is counted as needing attention; see <see cref="ServiceEntry.Attention"/>.
+    /// Several can hold at once, and are said in this order.
+    /// </summary>
+    [Flags]
+    public enum AttentionReasons
+    {
+        None = 0,
+
+        /// <summary>Its configuration is missing or cannot be used: <see cref="ServiceEntry.Problem"/>.</summary>
+        ConfigProblem = 1,
+
+        /// <summary>
+        /// A program one of its runs left is still running, or something outside every wrapper
+        /// holds its port: <see cref="ServiceEntry.StrayProcess"/>.
+        /// </summary>
+        StrayProcess = 2,
+
+        /// <summary>Stopped by a failure, and Windows' recovery is about to start it again.</summary>
+        RestartingByRecovery = 4,
+
+        /// <summary>It has stopped lately without this console asking it to: <see cref="ServiceEntry.RecentStops"/>.</summary>
+        RecentStops = 8,
+
+        /// <summary>Stopped, and the service control manager holds a failure exit code for the stop.</summary>
+        StoppedWithError = 16,
+
+        /// <summary>Set to start automatically, and stopped.</summary>
+        AutomaticButStopped = 32,
+    }
+
+    /// <summary>
     /// One installed Windows service that is hosted by a WinSW wrapper executable.
     /// </summary>
     public sealed class ServiceEntry : ObservableObject
@@ -75,6 +106,7 @@ namespace WinSW.Gui.Model
         private Services.LastStopText? lastStopText;
         private int stopStamp;
         private int lastStopReadFor = -1;
+        private int recentStops;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -128,6 +160,7 @@ namespace WinSW.Gui.Model
                     this.Raise(nameof(this.IsStartable));
                     this.Raise(nameof(this.CanStart));
                     this.Raise(nameof(this.StartUnavailableTip));
+                    this.RaiseAttention();
                 }
             }
         }
@@ -336,8 +369,8 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.restartingByRecovery, value))
                 {
                     this.Raise(nameof(this.Health));
-                    this.Raise(nameof(this.SortRank));
                     this.Raise(nameof(this.StatusText));
+                    this.RaiseAttention();
                 }
             }
         }
@@ -472,6 +505,7 @@ namespace WinSW.Gui.Model
                 {
                     this.Raise(nameof(this.LastExitCodeText));
                     this.Raise(nameof(this.LastExitCodeSystemText));
+                    this.RaiseAttention();
 
                     // A new code with the status unchanged is a new stop, between two readings.
                     this.ForgetLastStop();
@@ -681,7 +715,7 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.status, value))
                 {
                     this.Raise(nameof(this.Health));
-                    this.Raise(nameof(this.SortRank));
+                    this.RaiseAttention();
                     this.Raise(nameof(this.StatusText));
                     this.Raise(nameof(this.CanStart));
                     this.Raise(nameof(this.CanStop));
@@ -717,7 +751,7 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.problem, value))
                 {
                     this.Raise(nameof(this.Health));
-                    this.Raise(nameof(this.SortRank));
+                    this.RaiseAttention();
                     this.Raise(nameof(this.HasProblem));
                 }
             }
@@ -796,6 +830,7 @@ namespace WinSW.Gui.Model
                     this.Raise(nameof(this.StrayHintText));
                     this.Raise(nameof(this.CanEndStrayParent));
                     this.Raise(nameof(this.StrayParentActionText));
+                    this.RaiseAttention();
                 }
             }
         }
@@ -922,10 +957,154 @@ namespace WinSW.Gui.Model
             set => this.Set(ref this.crashCount, value);
         }
 
-        /// <summary>Order for "sort by status": what needs a look first.</summary>
-        public int SortRank => this.Health switch
+        // Needs attention ----------------------------------------------------
+
+        /// <summary>
+        /// How many times the service has stopped lately without this console asking it to, as the
+        /// crash announcer counts them; see <see cref="Services.CrashAnnouncer.RecentStopsFor"/>. 0
+        /// when it has not, or not for a whole window. Set by the dashboard at every reading.
+        /// </summary>
+        public int RecentStops
         {
-            ServiceHealth.Broken => 0,
+            get => this.recentStops;
+            set
+            {
+                if (this.Set(ref this.recentStops, value))
+                {
+                    this.RaiseAttention();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Why the service wants a look, if it does: what the Needs attention card counts and
+        /// shows, what "sort by status" puts first, and what the row's tooltip says.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Wider than <see cref="Health"/>'s Broken, which only an unusable configuration makes. A
+        /// crashed service, one in a restart loop and one whose program still runs outside it all
+        /// read as plain Stopped or Running there, and hid in those counts while the red card
+        /// said nothing was wrong. Health is left as it is: it colours the row, and the stopped
+        /// and running counts are by it.
+        /// </para>
+        /// <para>
+        /// A service Windows' recovery is about to start again is not also flagged for its exit
+        /// code or its start type: they describe the same stop, which is about to end. A stopped
+        /// service's exit code 1077 says only that nobody has started it since the machine
+        /// booted, which for a manual service is nothing to look at.
+        /// </para>
+        /// </remarks>
+        public AttentionReasons Attention
+        {
+            get
+            {
+                var reasons = AttentionReasons.None;
+                if (this.problem != null)
+                {
+                    reasons |= AttentionReasons.ConfigProblem;
+                }
+
+                if (this.strayProcess != null)
+                {
+                    reasons |= AttentionReasons.StrayProcess;
+                }
+
+                if (this.restartingByRecovery)
+                {
+                    reasons |= AttentionReasons.RestartingByRecovery;
+                }
+
+                if (this.recentStops > 0)
+                {
+                    reasons |= AttentionReasons.RecentStops;
+                }
+
+                if (this.status == ServiceControllerStatus.Stopped && !this.restartingByRecovery)
+                {
+                    if (this.lastExitCode is int code && code != 0 && code != Services.NativeMethods.ERROR_SERVICE_NEVER_STARTED)
+                    {
+                        reasons |= AttentionReasons.StoppedWithError;
+                    }
+
+                    // Not a manual service, which is stopped until somebody wants it, nor a
+                    // disabled one, which is stopped on purpose.
+                    if (this.startType == ServiceStartMode.Automatic)
+                    {
+                        reasons |= AttentionReasons.AutomaticButStopped;
+                    }
+                }
+
+                return reasons;
+            }
+        }
+
+        public bool NeedsAttention => this.Attention != AttentionReasons.None;
+
+        /// <summary>Each reason in <see cref="Attention"/> on a line of its own, for the row's tooltip; null, and so no tooltip, when there is none.</summary>
+        public string? AttentionText => this.NeedsAttention
+            ? this.DescribeAttention(Localizer.Format, Services.LastStopReader.SystemText)
+            : null;
+
+        /// <summary>
+        /// <see cref="Attention"/> in words, one line per reason: the problem and the stray banner as
+        /// the detail panel words them, the rest from <paramref name="format"/>.
+        /// </summary>
+        /// <param name="format">Looks a phrase up by key and fills it in: <c>Localizer.Format</c>.</param>
+        /// <param name="systemText">Windows' own text for an exit code: <see cref="Services.LastStopReader.SystemText"/>.</param>
+        internal string DescribeAttention(Func<string, object?[], string> format, Func<int, string> systemText)
+        {
+            var reasons = this.Attention;
+            var lines = new List<string>();
+
+            if (reasons.HasFlag(AttentionReasons.ConfigProblem))
+            {
+                lines.Add(this.problem!);
+            }
+
+            if (reasons.HasFlag(AttentionReasons.StrayProcess))
+            {
+                lines.Add(this.strayProcess!.Value.Describe(this.ServiceName, format).Banner);
+            }
+
+            if (reasons.HasFlag(AttentionReasons.RestartingByRecovery))
+            {
+                lines.Add(format("M.Attention.Restarting", Array.Empty<object?>()));
+            }
+
+            if (reasons.HasFlag(AttentionReasons.RecentStops))
+            {
+                lines.Add(format("M.Attention.RecentStops", new object?[] { this.recentStops }));
+            }
+
+            if (reasons.HasFlag(AttentionReasons.StoppedWithError))
+            {
+                int code = this.lastExitCode!.Value;
+                lines.Add(format("M.Attention.ExitCode", new object?[] { code, systemText(code) }).TrimEnd());
+            }
+
+            if (reasons.HasFlag(AttentionReasons.AutomaticButStopped))
+            {
+                lines.Add(format("M.Attention.AutomaticStopped", Array.Empty<object?>()));
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private void RaiseAttention()
+        {
+            this.Raise(nameof(this.Attention));
+            this.Raise(nameof(this.NeedsAttention));
+            this.Raise(nameof(this.AttentionText));
+            this.Raise(nameof(this.SortRank));
+        }
+
+        /// <summary>
+        /// Order for "sort by status": what needs a look first, whatever its state, then what is on
+        /// its way to a state, then stopped, then running.
+        /// </summary>
+        public int SortRank => this.NeedsAttention ? 0 : this.Health switch
+        {
             ServiceHealth.Pending => 1,
             ServiceHealth.Stopped => 2,
             ServiceHealth.Running => 3,
@@ -968,6 +1147,7 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.RecoveryText));
             this.Raise(nameof(this.RecoveryDifferenceText));
             this.Raise(nameof(this.StartUnavailableTip));
+            this.Raise(nameof(this.AttentionText));
 
             // Made in the language it was first asked for in.
             if (this.lastStopText != null)

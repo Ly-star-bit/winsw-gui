@@ -513,6 +513,11 @@
     <sys:String x:Key="M.Dash.PortEndTitle">結束佔用連接埠的處理程序？</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序，不做正常關閉，連接埠 {2} 隨之釋放。之後再啟動「{3}」。</sys:String>
     <sys:String x:Key="M.Dash.PortParentBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序（包括 {2}，PID {3}），不做正常關閉，連接埠 {4} 隨之釋放。之後再啟動「{5}」。</sys:String>
+    <!-- Why a service is counted under Needs attention, one line each in the tooltip on its row. A missing configuration and a program left running are said as their banners say them. RecentStops: {0} the count. ExitCode: {0} the exit code, {1} Windows' own text for it, which may be empty. -->
+    <sys:String x:Key="M.Attention.Restarting">因錯誤而停止，Windows 服務復原即將再次啟動它。</sys:String>
+    <sys:String x:Key="M.Attention.RecentStops">最近幾分鐘內意外停止了 {0} 次。</sys:String>
+    <sys:String x:Key="M.Attention.ExitCode">已停止，結束代碼 {0}。{1}</sys:String>
+    <sys:String x:Key="M.Attention.AutomaticStopped">啟動類型為自動，但目前已停止。</sys:String>
     <sys:String x:Key="M.Sched.Label">定時重新啟動</sys:String>
     <sys:String x:Key="M.Sched.Off">關閉</sys:String>
     <sys:String x:Key="M.Sched.Daily">每天</sys:String>

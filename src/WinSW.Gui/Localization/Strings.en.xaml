@@ -524,6 +524,11 @@
     <sys:String x:Key="M.Dash.PortEndTitle">End the process holding the port?</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">{0} (PID {1}) and every process it started will be ended without a graceful shutdown, which frees port {2}. Start '{3}' afterwards.</sys:String>
     <sys:String x:Key="M.Dash.PortParentBody">{0} (PID {1}) and every process it started, {2} (PID {3}) among them, will be ended without a graceful shutdown, which frees port {4}. Start '{5}' afterwards.</sys:String>
+    <!-- Why a service is counted under Needs attention, one line each in the tooltip on its row. A missing configuration and a program left running are said as their banners say them. RecentStops: {0} the count. ExitCode: {0} the exit code, {1} Windows' own text for it, which may be empty. -->
+    <sys:String x:Key="M.Attention.Restarting">Stopped with an error; Windows service recovery is about to start it again.</sys:String>
+    <sys:String x:Key="M.Attention.RecentStops">Stopped unexpectedly {0} time(s) in the last few minutes.</sys:String>
+    <sys:String x:Key="M.Attention.ExitCode">Stopped with exit code {0}. {1}</sys:String>
+    <sys:String x:Key="M.Attention.AutomaticStopped">Set to start automatically, but stopped.</sys:String>
     <sys:String x:Key="M.Sched.Label">Scheduled restart</sys:String>
     <sys:String x:Key="M.Sched.Off">Off</sys:String>
     <sys:String x:Key="M.Sched.Daily">Every day</sys:String>

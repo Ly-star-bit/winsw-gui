@@ -104,6 +104,12 @@ namespace WinSW.Gui.Services
         /// <summary>ERROR_SERVICE_SPECIFIC_ERROR: the real code is in ServiceSpecificExitCode.</summary>
         internal const int ERROR_SERVICE_SPECIFIC_ERROR = 1066;
 
+        /// <summary>
+        /// ERROR_SERVICE_NEVER_STARTED: the exit code the service control manager holds for a
+        /// service nobody has started since the machine booted. Not a failure.
+        /// </summary>
+        internal const int ERROR_SERVICE_NEVER_STARTED = 1077;
+
         // Service configuration ----------------------------------------------
         //
         // What services.msc shows on the Recovery tab, and the delayed flag of an automatic

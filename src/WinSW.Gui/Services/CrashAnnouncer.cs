@@ -137,12 +137,14 @@ namespace WinSW.Gui.Services
                     // Still looping, very likely: the next window follows on without a notice
                     // at its start, and ends like this one.
                     track.WindowStart = now;
+                    track.Before = track.Count;
                     track.Count = 0;
                     track.Untold = 0;
                 }
                 else
                 {
                     track.WindowStart = null;
+                    track.Before = 0;
                     track.Count = 0;
                 }
             }
@@ -182,6 +184,7 @@ namespace WinSW.Gui.Services
                     else
                     {
                         track.WindowStart = now;
+                        track.Before = 0;
                         track.Count = 1;
                         track.Untold = 0;
                         track.RecoveryOwed = true;
@@ -217,6 +220,20 @@ namespace WinSW.Gui.Services
             this.tracks.TryGetValue(serviceName, out var track) && track.WindowStart != null ? track.Count : 0;
 
         /// <summary>
+        /// The stops of <paramref name="serviceName"/> lately: those in the window now open and,
+        /// when it follows on from a window whose count went out, those of that window too; 0 when
+        /// no window is open. What the dashboard flags a service as needing attention for.
+        /// </summary>
+        /// <remarks>
+        /// Not <see cref="CountFor"/>, which starts again from 0 in a window that follows on: a
+        /// loop between two of its stops, running for the moment, would drop out of "needs
+        /// attention" at every window's end until it next stopped. A service stops being flagged
+        /// only when a whole window has passed without a stop.
+        /// </remarks>
+        public int RecentStopsFor(string serviceName) =>
+            this.tracks.TryGetValue(serviceName, out var track) && track.WindowStart != null ? track.Before + track.Count : 0;
+
+        /// <summary>
         /// Drops everything noted about <paramref name="serviceName"/>: it is gone from the list,
         /// or what is installed under the name is no longer what was noted. A count still to go
         /// out goes with it.
@@ -236,6 +253,12 @@ namespace WinSW.Gui.Services
 
             /// <summary>Stops in the open window, told or not.</summary>
             public int Count { get; set; }
+
+            /// <summary>
+            /// Stops in the window the open one follows on from, whose count has gone out; 0 when
+            /// the open window is the first of its run, or none is open.
+            /// </summary>
+            public int Before { get; set; }
 
             /// <summary>Stops in the open window that no notice has covered yet.</summary>
             public int Untold { get; set; }

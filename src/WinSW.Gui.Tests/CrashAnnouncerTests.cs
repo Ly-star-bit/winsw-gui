@@ -355,6 +355,60 @@ namespace WinSW.Gui.Tests
             Assert.Equal(0, this.announcer.CountFor("api"));
         }
 
+        // Recent stops, for "needs attention" -------------------------------------------------
+
+        [Fact]
+        public void ACrashIsRecentUntilAWholeWindowHasPassedWithoutAnother()
+        {
+            this.Running("api", T0);
+            this.Stopped("api", T0.AddSeconds(2), ProcessAborted);
+            this.Running("api", T0.AddSeconds(12));
+
+            Assert.Equal(1, this.announcer.RecentStopsFor("api"));
+
+            this.Running("api", T0.AddSeconds(2) + CrashAnnouncer.Window);
+            Assert.Equal(0, this.announcer.RecentStopsFor("api"));
+        }
+
+        /// <summary>
+        /// A loop running between two of its stops when its window's count goes out is still a loop:
+        /// the stops of the window before stay counted until the one that follows has had its own.
+        /// </summary>
+        [Fact]
+        public void ALoopStaysRecentAcrossTheWindowsEnd()
+        {
+            // Ten crashes, the first at 0:30 and the last at 5:00, and started again at 5:30.
+            this.Loop("api", T0, every: TimeSpan.FromSeconds(30), stops: 10);
+            var told = this.Running("api", T0.AddSeconds(30) + CrashAnnouncer.Window);
+
+            Assert.Equal(StopNoticeKind.RepeatedStops, Assert.Single(told).Kind);
+            Assert.Equal(0, this.announcer.CountFor("api"));
+            Assert.Equal(10, this.announcer.RecentStopsFor("api"));
+
+            // One more in the window that followed on: counted with the ten.
+            this.Stopped("api", T0.AddMinutes(6), ProcessAborted);
+            Assert.Equal(11, this.announcer.RecentStopsFor("api"));
+
+            // A whole window with nothing new in it after that ends the run.
+            this.Running("api", T0.AddMinutes(6).AddSeconds(10));
+            this.Running("api", T0.AddMinutes(11).AddSeconds(30));
+            this.Running("api", T0.AddMinutes(16).AddSeconds(30));
+            Assert.Equal(0, this.announcer.RecentStopsFor("api"));
+        }
+
+        /// <summary>Neither a stop with exit code 0 on its own nor a stop the console caused is one to look at.</summary>
+        [Fact]
+        public void ACleanStopOrAHeldOneIsNotRecent()
+        {
+            this.Running("api", T0);
+            this.Stopped("api", T0.AddSeconds(2), 0);
+            Assert.Equal(0, this.announcer.RecentStopsFor("api"));
+
+            this.Running("web", T0);
+            this.Stopped("web", T0.AddSeconds(2), ProcessAborted, held: true);
+            Assert.Equal(0, this.announcer.RecentStopsFor("web"));
+        }
+
         private IReadOnlyList<StopNotice> Running(string name, DateTime at, bool held = false) =>
             this.announcer.Observe(name, ServiceControllerStatus.Running, 0, held, at);
 

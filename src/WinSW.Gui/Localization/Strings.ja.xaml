@@ -513,6 +513,11 @@
     <sys:String x:Key="M.Dash.PortEndTitle">ポートを使用しているプロセスを終了しますか？</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">{0}（PID {1}）と、それが起動したすべてのプロセスを正常なシャットダウンなしで終了し、ポート {2} を解放します。その後 '{3}' を起動してください。</sys:String>
     <sys:String x:Key="M.Dash.PortParentBody">{0}（PID {1}）と、それが起動したすべてのプロセス（{2}、PID {3} を含む）を正常なシャットダウンなしで終了し、ポート {4} を解放します。その後 '{5}' を起動してください。</sys:String>
+    <!-- Why a service is counted under Needs attention, one line each in the tooltip on its row. A missing configuration and a program left running are said as their banners say them. RecentStops: {0} the count. ExitCode: {0} the exit code, {1} Windows' own text for it, which may be empty. -->
+    <sys:String x:Key="M.Attention.Restarting">エラーで停止しました。Windows のサービスの回復がまもなく再び開始します。</sys:String>
+    <sys:String x:Key="M.Attention.RecentStops">この数分間に {0} 回予期せず停止しました。</sys:String>
+    <sys:String x:Key="M.Attention.ExitCode">終了コード {0} で停止しました。{1}</sys:String>
+    <sys:String x:Key="M.Attention.AutomaticStopped">スタートアップの種類は自動ですが、停止しています。</sys:String>
     <sys:String x:Key="M.Sched.Label">定期再起動</sys:String>
     <sys:String x:Key="M.Sched.Off">オフ</sys:String>
     <sys:String x:Key="M.Sched.Daily">毎日</sys:String>
