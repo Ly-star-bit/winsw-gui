@@ -13,7 +13,7 @@
     <sys:String x:Key="S.ANETDateFormatSuchAs">.NET 日期格式，例如 yyyyMMdd。依時間輪替時必填。</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">接收系統預先關機通知</sys:String>
     <sys:String x:Key="S.Account">帳戶</sys:String>
-    <sys:String x:Key="S.ActionsTheServiceControlManagerTakes">被包裝的處理程序意外結束時，服務控制管理員依序執行的動作。</sys:String>
+    <sys:String x:Key="S.ActionsTheServiceControlManagerTakes">被包裝的程式出錯結束（結束代碼不為 0）時，服務控制管理員執行的動作：第 1 次失敗用第一列，第 2 次用第二列，之後每次失敗都重複最後一列。</sys:String>
     <sys:String x:Key="S.AddAction">新增動作</sys:String>
     <sys:String x:Key="S.AddDependency">新增相依</sys:String>
     <sys:String x:Key="S.AddDownload">新增下載</sys:String>
@@ -643,6 +643,33 @@
     <sys:String x:Key="M.Dash.UpgradeShared">這個 wrapper 由 {0} 個服務共用。它們會被一起停止，檔案替換一次，原本在執行的會重新啟動：{1}。</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">有一條失敗動作沒有選擇動作類型；請選擇 restart / reboot / none，或者刪掉這一行。</sys:String>
+
+    <!-- The failure rows read back under them in the editor: what Windows does on each failure, the last row repeating. -->
+    <sys:String x:Key="M.Recovery.NotSet">沒有失敗動作：用這個檔案安裝的服務失敗後不會自動重新啟動。對已經安裝的服務，「儲存並套用」不會變更它現有的復原設定（在 services.msc 裡設定的，或這個檔案先前的版本寫入的）。</sys:String>
+    <sys:String x:Key="M.Recovery.Cleared">沒有失敗動作。儲存時會寫入 &lt;onfailure action="none"/&gt;：服務失敗後 Windows 不做任何動作，「儲存並套用」也會清除服務目前的復原設定。</sys:String>
+    <sys:String x:Key="M.Recovery.Nothing">服務失敗後 Windows 不做任何動作，服務維持停止。</sys:String>
+    <sys:String x:Key="M.Recovery.Every">每次失敗：{0}</sys:String>
+    <sys:String x:Key="M.Recovery.First">第 1 次失敗：{0}</sys:String>
+    <sys:String x:Key="M.Recovery.Nth">第 {0} 次：{1}</sys:String>
+    <sys:String x:Key="M.Recovery.Then">之後每次：{0}</sys:String>
+    <sys:String x:Key="M.Recovery.Join">{0}；{1}</sys:String>
+    <sys:String x:Key="M.Recovery.Reset">{0}無故障後重新計數</sys:String>
+    <sys:String x:Key="M.Recovery.End">{0}。</sys:String>
+    <sys:String x:Key="M.Recovery.Restart">{0}後重新啟動</sys:String>
+    <sys:String x:Key="M.Recovery.RestartNow">立即重新啟動</sys:String>
+    <sys:String x:Key="M.Recovery.Reboot">{0}後重新啟動電腦</sys:String>
+    <sys:String x:Key="M.Recovery.RebootNow">立即重新啟動電腦</sys:String>
+    <sys:String x:Key="M.Recovery.None">不做任何動作</sys:String>
+    <sys:String x:Key="M.Recovery.Millis">{0} 毫秒</sys:String>
+    <sys:String x:Key="M.Recovery.Second">1 秒</sys:String>
+    <sys:String x:Key="M.Recovery.Seconds">{0} 秒</sys:String>
+    <sys:String x:Key="M.Recovery.Minute">1 分鐘</sys:String>
+    <sys:String x:Key="M.Recovery.Minutes">{0} 分鐘</sys:String>
+    <sys:String x:Key="M.Recovery.Hour">1 小時</sys:String>
+    <sys:String x:Key="M.Recovery.Hours">{0} 小時</sys:String>
+    <sys:String x:Key="M.Recovery.Day">1 天</sys:String>
+    <sys:String x:Key="M.Recovery.Days">{0} 天</sys:String>
+    <sys:String x:Key="M.Recovery.QuickLoop">最後一列會在之後每次失敗時重複：一個起不來的服務每小時最多會被重新啟動約 {0} 次，一直到有人發現為止。建議最後一列至少 1 分鐘（例如 5 分鐘），前面幾列可以維持短延遲。</sys:String>
 
     <!-- The service tab: options the wrapper ignores, and the start modes only drivers can have. -->
     <sys:String x:Key="M.Editor.InteractiveIgnored">這裡沒有「與桌面互動」選項：包裝器不讀取 &lt;interactive&gt;，服務的視窗也到不了登入使用者的桌面。需要視窗的程式請做成「桌面工作」。</sys:String>

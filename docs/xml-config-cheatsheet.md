@@ -282,6 +282,10 @@ Group Managed Service Account: append `$` to the name and omit `<password>`.
   single `<onfailure action="restart" delay="10 sec" />` therefore means "always restart".
 - `reboot` reboots Windows with a bug-check screen. Use it only when you mean it.
 - `resetfailure` is how long the service must stay up before the counter goes back to zero.
+- Leaving `<onfailure>` out clears nothing: `refresh` (the console's Save & apply) leaves the
+  recovery the service already has as it is, whether it came from an earlier version of the
+  file or from services.msc. To take recovery away, write `<onfailure action="none" />`; the
+  console's editor does that when you remove the last row from a file that had some.
 
 Note: these actions fire when the *service* is reported as failed, which for WinSW means
 the wrapped process exited with a non-zero exit code.

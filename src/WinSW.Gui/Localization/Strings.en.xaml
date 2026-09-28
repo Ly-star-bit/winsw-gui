@@ -24,7 +24,7 @@
     <sys:String x:Key="S.ANETDateFormatSuchAs">A .NET date format such as yyyyMMdd. Required for time-based rolling.</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">Accept pre-shutdown notifications</sys:String>
     <sys:String x:Key="S.Account">Account</sys:String>
-    <sys:String x:Key="S.ActionsTheServiceControlManagerTakes">Actions the service control manager takes, in order, each time the wrapped process exits unexpectedly.</sys:String>
+    <sys:String x:Key="S.ActionsTheServiceControlManagerTakes">What the service control manager does each time the wrapped program exits with an error (a non-zero exit code): the first row on the first failure, the second on the second, and the last row again on every failure after that.</sys:String>
     <sys:String x:Key="S.AddAction">Add action</sys:String>
     <sys:String x:Key="S.AddDependency">Add dependency</sys:String>
     <sys:String x:Key="S.AddDownload">Add download</sys:String>
@@ -654,6 +654,33 @@
     <sys:String x:Key="M.Dash.UpgradeShared">This wrapper is shared by {0} services. All of them are stopped, the file is replaced once, and the ones that were running are started again: {1}.</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">A failure action has no action selected; pick restart, reboot or none, or remove the row.</sys:String>
+
+    <!-- The failure rows read back under them in the editor: what Windows does on each failure, the last row repeating. -->
+    <sys:String x:Key="M.Recovery.NotSet">No failure actions: a service installed from this file is not restarted when it fails. For a service that is already installed, Save &amp; apply leaves its recovery settings as they are (set in services.msc, or by an earlier version of this file).</sys:String>
+    <sys:String x:Key="M.Recovery.Cleared">No failure actions. Saving writes &lt;onfailure action="none"/&gt;: Windows does nothing when the service fails, and Save &amp; apply also clears the recovery settings the service has now.</sys:String>
+    <sys:String x:Key="M.Recovery.Nothing">Windows does nothing when the service fails: it stays stopped.</sys:String>
+    <sys:String x:Key="M.Recovery.Every">Every failure: {0}</sys:String>
+    <sys:String x:Key="M.Recovery.First">Failure 1: {0}</sys:String>
+    <sys:String x:Key="M.Recovery.Nth">failure {0}: {1}</sys:String>
+    <sys:String x:Key="M.Recovery.Then">every failure after that: {0}</sys:String>
+    <sys:String x:Key="M.Recovery.Join">{0}; {1}</sys:String>
+    <sys:String x:Key="M.Recovery.Reset">the count starts over after {0} without a failure</sys:String>
+    <sys:String x:Key="M.Recovery.End">{0}.</sys:String>
+    <sys:String x:Key="M.Recovery.Restart">restart after {0}</sys:String>
+    <sys:String x:Key="M.Recovery.RestartNow">restart at once</sys:String>
+    <sys:String x:Key="M.Recovery.Reboot">restart the computer after {0}</sys:String>
+    <sys:String x:Key="M.Recovery.RebootNow">restart the computer at once</sys:String>
+    <sys:String x:Key="M.Recovery.None">do nothing</sys:String>
+    <sys:String x:Key="M.Recovery.Millis">{0} ms</sys:String>
+    <sys:String x:Key="M.Recovery.Second">1 second</sys:String>
+    <sys:String x:Key="M.Recovery.Seconds">{0} seconds</sys:String>
+    <sys:String x:Key="M.Recovery.Minute">1 minute</sys:String>
+    <sys:String x:Key="M.Recovery.Minutes">{0} minutes</sys:String>
+    <sys:String x:Key="M.Recovery.Hour">1 hour</sys:String>
+    <sys:String x:Key="M.Recovery.Hours">{0} hours</sys:String>
+    <sys:String x:Key="M.Recovery.Day">1 day</sys:String>
+    <sys:String x:Key="M.Recovery.Days">{0} days</sys:String>
+    <sys:String x:Key="M.Recovery.QuickLoop">The last row repeats on every later failure, so a service that cannot start is restarted up to about {0} times an hour, for as long as nobody notices. Give the last row a minute or more (5 min, say); the rows before it can stay short.</sys:String>
 
     <!-- The service tab: options the wrapper ignores, and the start modes only drivers can have. -->
     <sys:String x:Key="M.Editor.InteractiveIgnored">There is no option to interact with the desktop: the wrapper ignores &lt;interactive&gt;, and a service's windows never reach the signed-in user. A program that needs a window belongs in Desktop tasks.</sys:String>

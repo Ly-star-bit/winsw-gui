@@ -277,6 +277,9 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
   `<onfailure action="restart" delay="10 sec" />` 就等于“永远自动重启”。
 - `reboot` 会让 Windows 蓝屏重启，慎用。
 - `resetfailure` 是服务要连续正常运行多久，失败计数才归零。
+- 不写 `<onfailure>` 并不会清掉什么：`refresh`（控制台里的“保存并应用”）会保留服务现有的
+  恢复设置，不管它来自这个文件以前的版本还是 services.msc。要取消恢复动作，就写
+  `<onfailure action="none" />`；在控制台编辑器里删掉原有的最后一行时，它会自动这么写。
 
 注意：这些动作是在 *服务* 被判定为失败时触发的，对 WinSW 来说就是被包装的进程以非 0
 退出码结束。

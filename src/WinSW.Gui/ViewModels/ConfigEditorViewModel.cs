@@ -67,6 +67,8 @@ namespace WinSW.Gui.ViewModels
         private string proxyTestTarget = ProxyProbe.DefaultTarget;
         private string proxyTestStatus = string.Empty;
         private bool proxyTestFailed;
+        private string recoverySummary = string.Empty;
+        private string recoveryWarning = string.Empty;
 
         public ConfigEditorViewModel()
         {
@@ -378,6 +380,30 @@ namespace WinSW.Gui.ViewModels
 
         public string[] FailureActionTypes { get; } = { "restart", "reboot", "none" };
 
+        // Failure actions in words -----------------------------------------------
+
+        /// <summary>
+        /// The failure rows read back as what Windows will do, under the rows: which failure gets
+        /// which action, that the last one repeats, and when the count starts over. Empty while a
+        /// row does not parse; the problems list says why.
+        /// </summary>
+        /// <remarks>
+        /// Kept here rather than on the model, and refreshed with the preview: anything the model
+        /// raises marks the file as edited.
+        /// </remarks>
+        public string RecoverySummary
+        {
+            get => this.recoverySummary;
+            private set => this.Set(ref this.recoverySummary, value);
+        }
+
+        /// <summary>Set when the action that repeats is a restart sooner than a minute.</summary>
+        public string RecoveryWarning
+        {
+            get => this.recoveryWarning;
+            private set => this.Set(ref this.recoveryWarning, value);
+        }
+
         public string? FilePath
         {
             get => this.filePath;
@@ -582,6 +608,11 @@ namespace WinSW.Gui.ViewModels
                 // A version of this file, going back to it: relative paths resolve against
                 // where it belongs, not against the history folder it was read from.
                 loaded.FilePath = this.filePath;
+
+                // Restored over a file with failure rows, a version from before they were added
+                // has to say "none" when saved: saying nothing would leave Windows restarting.
+                // The form has no unsaved edits here, so the model is the file on disk.
+                loaded.KeepDeclaredFailureActions(this.Model);
 
                 this.Detach(this.Model);
                 this.Attach(loaded);
@@ -973,6 +1004,10 @@ namespace WinSW.Gui.ViewModels
 
             this.Raise(nameof(this.HasProblems));
 
+            var recovery = this.Model.DescribeRecovery();
+            this.RecoverySummary = recovery?.Describe(Localizer.Get) ?? string.Empty;
+            this.RecoveryWarning = recovery?.DescribeWarning(Localizer.Get) ?? string.Empty;
+
             try
             {
                 this.XmlPreview = this.Model.ToXmlString();
@@ -1012,6 +1047,11 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var replacement = ServiceConfigModel.FromXml(this.xmlEditorText, this.filePath);
+
+                // The same file edited as text: failure rows deleted here were removed all the
+                // same, and must still be written as "none" rather than as nothing.
+                replacement.KeepDeclaredFailureActions(this.Model);
+
                 this.Detach(this.Model);
                 this.Attach(replacement);
                 this.Model = replacement;

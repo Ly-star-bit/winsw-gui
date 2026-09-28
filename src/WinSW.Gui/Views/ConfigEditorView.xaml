@@ -364,6 +364,9 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    <!-- The rows read back as what Windows will do, the last one repeating; and a warning when that last one restarts sooner than a minute. -->
+                                    <TextBlock Margin="0,2,0,8" Style="{StaticResource FieldHint}" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding DataContext.RecoverySummary, RelativeSource={RelativeSource AncestorType=UserControl}}" Visibility="{Binding DataContext.RecoverySummary, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource StringToVisibility}}" />
+                                    <TextBlock Margin="0,0,0,8" Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthPendingBrush}" Text="{Binding DataContext.RecoveryWarning, RelativeSource={RelativeSource AncestorType=UserControl}}" Visibility="{Binding DataContext.RecoveryWarning, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource StringToVisibility}}" />
                                     <Button HorizontalAlignment="Left" Margin="0,0,0,14" Padding="12,6" Content="{DynamicResource S.AddAction}" Command="{Binding DataContext.AddFailureActionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                     <StackPanel Style="{StaticResource Field}">
                                         <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.ResetTheFailureCountAfter}" />

@@ -13,7 +13,7 @@
     <sys:String x:Key="S.ANETDateFormatSuchAs">yyyyMMdd などの .NET 日付書式。時間ベースのローテーションでは必須です。</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">プリシャットダウン通知を受け取る</sys:String>
     <sys:String x:Key="S.Account">アカウント</sys:String>
-    <sys:String x:Key="S.ActionsTheServiceControlManagerTakes">ラップされたプロセスが予期せず終了したときにサービス コントロール マネージャーが順に実行する操作。</sys:String>
+    <sys:String x:Key="S.ActionsTheServiceControlManagerTakes">ラップされたプログラムがエラーで終了したとき（終了コードが 0 以外）にサービス コントロール マネージャーが行う操作です。1 回目の失敗には 1 行目、2 回目には 2 行目を使い、それ以降の失敗では毎回最後の行を繰り返します。</sys:String>
     <sys:String x:Key="S.AddAction">操作を追加</sys:String>
     <sys:String x:Key="S.AddDependency">依存関係を追加</sys:String>
     <sys:String x:Key="S.AddDownload">ダウンロードを追加</sys:String>
@@ -643,6 +643,33 @@
     <sys:String x:Key="M.Dash.UpgradeShared">このラッパーは {0} 個のサービスで共有されています。すべて停止し、ファイルを 1 度置き換え、実行中だったものを再度開始します: {1}。</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">失敗時のアクションが選択されていない行があります。restart / reboot / none のいずれかを選ぶか、行を削除してください。</sys:String>
+
+    <!-- The failure rows read back under them in the editor: what Windows does on each failure, the last row repeating. -->
+    <sys:String x:Key="M.Recovery.NotSet">失敗時の操作はありません。このファイルからインストールしたサービスは、失敗しても再起動されません。インストール済みのサービスでは、「保存して適用」は現在の回復設定（services.msc で設定したもの、またはこのファイルの以前の版が書き込んだもの）を変更しません。</sys:String>
+    <sys:String x:Key="M.Recovery.Cleared">失敗時の操作はありません。保存すると &lt;onfailure action="none"/&gt; が書き込まれ、サービスが失敗しても Windows は何もしません。「保存して適用」でサービスの現在の回復設定も消去されます。</sys:String>
+    <sys:String x:Key="M.Recovery.Nothing">サービスが失敗しても Windows は何もせず、サービスは停止したままになります。</sys:String>
+    <sys:String x:Key="M.Recovery.Every">失敗するたびに：{0}</sys:String>
+    <sys:String x:Key="M.Recovery.First">1 回目の失敗：{0}</sys:String>
+    <sys:String x:Key="M.Recovery.Nth">{0} 回目：{1}</sys:String>
+    <sys:String x:Key="M.Recovery.Then">それ以降は毎回：{0}</sys:String>
+    <sys:String x:Key="M.Recovery.Join">{0}、{1}</sys:String>
+    <sys:String x:Key="M.Recovery.Reset">失敗のないまま {0} 経つと回数をリセット</sys:String>
+    <sys:String x:Key="M.Recovery.End">{0}。</sys:String>
+    <sys:String x:Key="M.Recovery.Restart">{0}後に再起動</sys:String>
+    <sys:String x:Key="M.Recovery.RestartNow">すぐに再起動</sys:String>
+    <sys:String x:Key="M.Recovery.Reboot">{0}後にコンピューターを再起動</sys:String>
+    <sys:String x:Key="M.Recovery.RebootNow">すぐにコンピューターを再起動</sys:String>
+    <sys:String x:Key="M.Recovery.None">何もしない</sys:String>
+    <sys:String x:Key="M.Recovery.Millis">{0} ミリ秒</sys:String>
+    <sys:String x:Key="M.Recovery.Second">1 秒</sys:String>
+    <sys:String x:Key="M.Recovery.Seconds">{0} 秒</sys:String>
+    <sys:String x:Key="M.Recovery.Minute">1 分</sys:String>
+    <sys:String x:Key="M.Recovery.Minutes">{0} 分</sys:String>
+    <sys:String x:Key="M.Recovery.Hour">1 時間</sys:String>
+    <sys:String x:Key="M.Recovery.Hours">{0} 時間</sys:String>
+    <sys:String x:Key="M.Recovery.Day">1 日</sys:String>
+    <sys:String x:Key="M.Recovery.Days">{0} 日</sys:String>
+    <sys:String x:Key="M.Recovery.QuickLoop">最後の行はそれ以降の失敗のたびに繰り返されます。起動できないサービスは、誰かが気付くまで 1 時間に最大で約 {0} 回再起動されます。最後の行は 1 分以上（たとえば 5 分）にしてください。それより前の行は短いままでかまいません。</sys:String>
 
     <!-- The service tab: options the wrapper ignores, and the start modes only drivers can have. -->
     <sys:String x:Key="M.Editor.InteractiveIgnored">デスクトップとの対話オプションはありません。ラッパーは &lt;interactive&gt; を読まず、サービスのウィンドウはサインイン中のユーザーには表示されません。ウィンドウが必要なプログラムは「デスクトップタスク」にしてください。</sys:String>

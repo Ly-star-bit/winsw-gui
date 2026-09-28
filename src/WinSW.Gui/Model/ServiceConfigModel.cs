@@ -113,6 +113,7 @@ namespace WinSW.Gui.Model
         private string? serviceAccountPassword;
         private bool allowServiceLogon;
         private string? serviceAccountPrompt;
+        private bool declaredFailureActions;
         private string? resetFailureAfter;
         private string? logPath;
         private string logMode = "append";
@@ -353,11 +354,77 @@ namespace WinSW.Gui.Model
 
         public ObservableCollection<FailureAction> FailureActions { get; } = new();
 
+        /// <summary>
+        /// Whether the file had any <c>&lt;onfailure&gt;</c> when it was read. When it did and the
+        /// rows are all removed, saving writes <c>&lt;onfailure action="none"/&gt;</c> instead of
+        /// nothing; see <see cref="BuildDocument"/>.
+        /// </summary>
+        /// <remarks>
+        /// Fixed when the file is read and never raised: the editor counts anything the model
+        /// raises as an edit, and this is a fact about where the file started, not a change.
+        /// </remarks>
+        public bool DeclaredFailureActions => this.declaredFailureActions;
+
         public string? ResetFailureAfter
         {
             get => this.resetFailureAfter;
             set => this.Set(ref this.resetFailureAfter, value);
         }
+
+        /// <summary>
+        /// What the service control manager will do when the service fails, as the form stands:
+        /// the rows it will get, the reset period, and whether no rows clears what it has. Null
+        /// while a row or the reset period says something the wrapper cannot read, which
+        /// <see cref="Validate"/> reports.
+        /// </summary>
+        public RecoveryPlan? DescribeRecovery()
+        {
+            var steps = new List<RecoveryStep>();
+            foreach (var action in this.FailureActions)
+            {
+                // The wrapper matches the action exactly, and refuses anything else outright.
+                RecoveryKind kind;
+                switch (action.Action)
+                {
+                    case "restart":
+                        kind = RecoveryKind.Restart;
+                        break;
+                    case "reboot":
+                        kind = RecoveryKind.Reboot;
+                        break;
+                    case "none":
+                        kind = RecoveryKind.None;
+                        break;
+                    default:
+                        return null;
+                }
+
+                // No delay is no wait, as the wrapper has it.
+                var delay = TimeSpan.Zero;
+                if (!string.IsNullOrWhiteSpace(action.Delay) && !TryParseTime(action.Delay!, out delay))
+                {
+                    return null;
+                }
+
+                steps.Add(new RecoveryStep(kind, delay));
+            }
+
+            var resetAfter = RecoveryPlan.DefaultResetAfter;
+            if (!string.IsNullOrWhiteSpace(this.resetFailureAfter) && !TryParseTime(this.resetFailureAfter!, out resetAfter))
+            {
+                return null;
+            }
+
+            return new RecoveryPlan(steps, resetAfter, writesNone: steps.Count == 0 && this.declaredFailureActions);
+        }
+
+        /// <summary>
+        /// Carries <see cref="DeclaredFailureActions"/> over from the model this one replaces, when
+        /// both are the same file edited another way: deleting the rows as XML text is removing
+        /// them all the same.
+        /// </summary>
+        internal void KeepDeclaredFailureActions(ServiceConfigModel earlier) =>
+            this.declaredFailureActions |= earlier.declaredFailureActions;
 
         // Logging ------------------------------------------------------------
 
@@ -694,6 +761,8 @@ namespace WinSW.Gui.Model
                 });
             }
 
+            this.declaredFailureActions = this.FailureActions.Count > 0;
+
             foreach (XmlElement element in root.SelectNodes("sharedDirectoryMapping/map")!.OfType<XmlElement>())
             {
                 this.SharedDirectories.Add(new DriveMapping
@@ -851,7 +920,20 @@ namespace WinSW.Gui.Model
 
             // An action attribute is mandatory and has no empty member; a row without one is
             // dropped rather than written as action="", which the wrapper cannot parse.
-            ReplaceAll(document, root, "onfailure", this.FailureActions.Where(a => !string.IsNullOrWhiteSpace(a.Action)), static (element, item) =>
+            var failureActions = this.FailureActions.Where(a => !string.IsNullOrWhiteSpace(a.Action)).ToList();
+
+            // No <onfailure> at all tells the wrapper to leave the service's recovery as it finds
+            // it, which is right for a file that never had any: recovery set by hand in
+            // services.msc survives Save & apply. It is wrong for a file whose rows were just
+            // removed, the obvious way out of a restart loop: the file would say nothing, and
+            // Windows would go on restarting. <onfailure action="none"/> says "no recovery" to
+            // every wrapper, older ones included, and reads back as the row it is.
+            if (failureActions.Count == 0 && this.declaredFailureActions)
+            {
+                failureActions.Add(new FailureAction { Action = "none", Delay = null });
+            }
+
+            ReplaceAll(document, root, "onfailure", failureActions, static (element, item) =>
             {
                 element.SetAttribute("action", item.Action);
                 SetAttribute(element, "delay", item.Delay);
