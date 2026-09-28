@@ -298,6 +298,15 @@ namespace WinSW.Gui.ViewModels
                 this.Navigate(this.Logs);
             };
 
+            // The Last stop card's "open err.log": the file the card read, which is where the
+            // program said why it stopped, rather than the newest of the service's logs. Attached
+            // before the page is shown, as above: the attach picks the file, the page reads it.
+            this.Dashboard.OpenLogFileRequested += (entry, file) =>
+            {
+                this.Logs.Attach(entry, file);
+                this.Navigate(this.Logs);
+            };
+
             this.Wizard.DesktopTaskCompleted += name =>
             {
                 this.Tasks.SelectWhenReady(name);
