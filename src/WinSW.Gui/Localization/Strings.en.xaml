@@ -468,6 +468,7 @@
     <sys:String x:Key="M.Editor.XmlInvalid">The XML could not be applied: {0}</sys:String>
     <sys:String x:Key="M.Editor.XmlAppliedMaskKept">XML applied to the form, keeping the form's own value for {0} value(s) that came back as ********. Save to write it.</sys:String>
     <sys:String x:Key="M.Editor.XmlAppliedMaskLeft">XML applied to the form, but {0} value(s) still read ******** and the form has nothing to keep in their place. Find them in the XML preview and type the real values, in the form or with Edit XML, before saving.</sys:String>
+    <sys:String x:Key="M.Warn.MaskedValueLeft">Still ******** in {0}: a secret masked for 'Copy as AI prompt' that came back in the pasted answer with no earlier value to put back. Type the real value before saving, or the service is given the asterisks: as the account's password, they stop it from logging on (error 1069).</sys:String>
     <sys:String x:Key="M.History.Button">History</sys:String>
     <sys:String x:Key="M.History.Tip">Earlier versions of this file, set aside each time it is saved from this console; the last 20 are kept. Pick one to see how it differs from the file, and restore it from there.</sys:String>
     <sys:String x:Key="M.History.None">No earlier versions yet</sys:String>

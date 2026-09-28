@@ -21,13 +21,14 @@ namespace WinSW.Gui.Tests
         private const string Secrets = @"<service>
   <id>demo</id>
   <executable>java</executable>
-  <arguments>-Ddb.password=dbpass -Dmq.password=mqpass -jar app.jar</arguments>
+  <arguments>-Ddb.password=dbpass -Dmq.password=mqpass -jar app.jar --cache redis://:redispass@cache:6379/0</arguments>
   <serviceaccount>
     <username>CORP\svc</username>
     <password>hunter2</password>
   </serviceaccount>
   <proxy>http://bob:proxypass@proxy.example.com:8080</proxy>
   <env name=""DB_PASSWORD"" value=""envpass"" />
+  <env name=""DATABASE_URL"" value=""postgresql://app:dburlpass@db:5432/app"" />
   <env name=""JAVA_HOME"" value=""C:\jdk"" />
   <download from=""https://alice:frompass@files.example.com/a.zip"" to=""%BASE%\a.zip"" auth=""basic"" user=""alice"" password=""dlpass-a"" />
   <download from=""https://files.example.com/b.zip"" to=""%BASE%\b.zip"" auth=""basic"" user=""carol"" password=""dlpass-b"" />
@@ -37,9 +38,18 @@ namespace WinSW.Gui.Tests
   </prestart>
 </service>";
 
+        /// <summary>Credentials in URLs under names that do not say secret.</summary>
+        private const string UrlSecrets = @"<service>
+  <id>api</id>
+  <executable>uvicorn</executable>
+  <arguments>app:main --db postgresql://app:S3cretArg@db:5432/app</arguments>
+  <env name=""DATABASE_URL"" value=""postgresql://app:S3cretEnv@db:5432/app"" />
+  <env name=""REDIS_URL"" value=""redis://:S3cretRedis@cache:6379/0"" />
+</service>";
+
         private static readonly string[] SecretValues =
         {
-            "dbpass", "mqpass", "hunter2", "proxypass", "envpass", "frompass", "dlpass-a", "dlpass-b", "hooktoken",
+            "dbpass", "mqpass", "redispass", "hunter2", "proxypass", "envpass", "dburlpass", "frompass", "dlpass-a", "dlpass-b", "hooktoken",
         };
 
         private static string Mask => ConfigRedactor.Mask;
@@ -58,11 +68,53 @@ namespace WinSW.Gui.Tests
             }
 
             // One report entry per place, and everything else survives to be worked on.
-            Assert.Equal(8, masked.Count);
+            Assert.Equal(10, masked.Count);
             Assert.Contains(@"CORP\svc", configuration, StringComparison.Ordinal);
             Assert.Contains(@"C:\jdk", configuration, StringComparison.Ordinal);
             Assert.Contains("-Ddb.password=" + Mask, configuration, StringComparison.Ordinal);
             Assert.Contains("proxy.example.com:8080", configuration, StringComparison.Ordinal);
+            Assert.Contains("@db:5432/app", configuration, StringComparison.Ordinal);
+            Assert.Contains("--cache redis://" + Mask + "@cache:6379/0", configuration, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// DATABASE_URL and REDIS_URL are how a uvicorn or Python service is usually given its
+        /// database password, and neither name says secret; nor does an argument that is a URL.
+        /// The credentials go wherever they stand, and the host they were for stays.
+        /// </summary>
+        [Fact]
+        public void CredentialsInAUrlGoWhateverTheNameAndWhereverTheyStand()
+        {
+            string? configuration = XmlGuide.ConfigurationForPrompt(UrlSecrets, out var masked);
+
+            Assert.NotNull(configuration);
+            Assert.DoesNotContain("S3cret", configuration, StringComparison.Ordinal);
+            Assert.Equal(3, masked.Count);
+            Assert.Contains("app:main --db postgresql://" + Mask + "@db:5432/app", configuration, StringComparison.Ordinal);
+            Assert.Contains("redis://" + Mask + "@cache:6379/0", configuration, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// On the way back each URL gets its own credentials, known by its host: an answer that
+        /// renames the database keeps them, and one that points the variable at another server
+        /// keeps the mask, counted, rather than sending the password there.
+        /// </summary>
+        [Fact]
+        public void CredentialsComeBackToEachUrlByItsHost()
+        {
+            var form = ServiceConfigModel.FromXml(UrlSecrets, null);
+            var answer = ServiceConfigModel.FromXml(XmlGuide.ConfigurationForPrompt(form.ToXmlString(), out _)!, null);
+            answer.Arguments = answer.Arguments!.Replace("/app", "/app2", StringComparison.Ordinal) + " --workers 4";
+            answer.EnvironmentVariables.Single(v => v.Name == "REDIS_URL").Value = "redis://" + Mask + "@cache2:6379/0";
+
+            var (kept, left) = answer.KeepMaskedValues(form);
+
+            Assert.Equal("app:main --db postgresql://app:S3cretArg@db:5432/app2 --workers 4", answer.Arguments);
+            Assert.Equal("postgresql://app:S3cretEnv@db:5432/app", answer.EnvironmentVariables.Single(v => v.Name == "DATABASE_URL").Value);
+            Assert.Equal("redis://" + Mask + "@cache2:6379/0", answer.EnvironmentVariables.Single(v => v.Name == "REDIS_URL").Value);
+            Assert.Equal(2, kept);
+            Assert.Equal(1, left);
+            Assert.Equal(new[] { "<env name=\"REDIS_URL\">" }, answer.MaskedPlaces());
         }
 
         [Fact]
@@ -104,9 +156,10 @@ namespace WinSW.Gui.Tests
             Assert.Equal(SecretValues.Length, kept);
             Assert.Equal(0, left);
             Assert.Equal("hunter2", answer.ServiceAccountPassword);
-            Assert.Equal("-Ddb.password=dbpass -Dmq.password=mqpass -jar app.jar", answer.Arguments);
+            Assert.Equal("-Ddb.password=dbpass -Dmq.password=mqpass -jar app.jar --cache redis://:redispass@cache:6379/0", answer.Arguments);
             Assert.Equal("http://bob:proxypass@proxy.example.com:8080", answer.ProxyAddress);
             Assert.Equal("envpass", answer.EnvironmentVariables.Single(v => v.Name == "DB_PASSWORD").Value);
+            Assert.Equal("postgresql://app:dburlpass@db:5432/app", answer.EnvironmentVariables.Single(v => v.Name == "DATABASE_URL").Value);
             Assert.Equal(@"C:\jdk", answer.EnvironmentVariables.Single(v => v.Name == "JAVA_HOME").Value);
             Assert.Equal("https://alice:frompass@files.example.com/a.zip", answer.Downloads[0].From);
             Assert.Equal("dlpass-a", answer.Downloads[0].Password);
@@ -115,6 +168,7 @@ namespace WinSW.Gui.Tests
 
             string written = answer.ToXmlString();
             Assert.DoesNotContain(Mask, written, StringComparison.Ordinal);
+            Assert.Empty(answer.MaskedPlaces());
             foreach (string secret in SecretValues)
             {
                 Assert.Contains(secret, written, StringComparison.Ordinal);
@@ -165,6 +219,7 @@ namespace WinSW.Gui.Tests
             Assert.Equal("https://alice:frompass@files.example.com/a.zip", answer.Downloads[2].From);
             Assert.Equal(3, kept);
             Assert.Equal(1, left);
+            Assert.Equal(new[] { @"<download to=""%BASE%\c.zip"">" }, answer.MaskedPlaces());
         }
 
         /// <summary>
@@ -205,6 +260,7 @@ namespace WinSW.Gui.Tests
             var (kept, left) = moved.KeepMaskedValues(form);
 
             Assert.Equal($"http://{Mask}@proxy.elsewhere.example:8080", moved.ProxyAddress);
+            Assert.Equal(new[] { "<proxy>" }, moved.MaskedPlaces());
             Assert.Equal(0, kept);
             Assert.Equal(1, left);
         }
@@ -259,6 +315,12 @@ namespace WinSW.Gui.Tests
         [InlineData("https://********@proxy:8080", "http://bob:pw@proxy:8080", "https://********@proxy:8080")]
         [InlineData("http://********@proxy:8080", "http://proxy:8080", "http://********@proxy:8080")]
         [InlineData("http://proxy:8080", "http://bob:pw@proxy:8080", "http://proxy:8080")]
+        [InlineData("--db postgresql://********@db:5432/app2 -v", "app:main --db postgresql://app:pw@db:5432/app", "--db postgresql://app:pw@db:5432/app2 -v")]
+        [InlineData("a http://********@h1 b https://********@h2", "https://u2:p2@h2 http://u1:p1@h1", "a http://u1:p1@h1 b https://u2:p2@h2")]
+        [InlineData("x http://********@h1/a y http://********@h1/b", "http://u1:p1@h1 http://u2:p2@h1", "x http://u1:p1@h1/a y http://u2:p2@h1/b")]
+        [InlineData("postgresql://********@db/app", "postgresql://app:p@ss@db/app", "postgresql://app:p@ss@db/app")]
+        [InlineData("https://********@github.com/org/repo.git", "https://ghp_token123@github.com/org/repo.git", "https://ghp_token123@github.com/org/repo.git")]
+        [InlineData("\"redis://********@cache:6379\"", "\"redis://:pw@cache:6379\"", "\"redis://:pw@cache:6379\"")]
         public void CredentialsComeBackInFrontOfTheSameHostOnly(string pasted, string earlier, string expected) =>
             Assert.Equal(expected, ConfigRedactor.UnmaskUrl(pasted, earlier));
 

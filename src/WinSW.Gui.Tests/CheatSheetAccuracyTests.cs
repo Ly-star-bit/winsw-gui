@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using WinSW.Gui.Services;
 using Xunit;
 
@@ -17,6 +19,8 @@ namespace WinSW.Gui.Tests
     /// </remarks>
     public class CheatSheetAccuracyTests
     {
+        private static readonly Regex ListItem = new(@"^\s*([-*+]|\d+[.)])\s+", RegexOptions.CultureInvariant);
+
         /// <summary>
         /// The wrapper sets <c>BASE</c> to the folder the configuration file is in
         /// (<c>XmlServiceConfig</c>'s constructor). Under the console's layout the wrapper is in
@@ -116,6 +120,61 @@ namespace WinSW.Gui.Tests
             Assert.Contains("`yyyyMM`", paragraph, StringComparison.Ordinal);
             Assert.Contains("`yyyy/MM/dd`", paragraph, StringComparison.Ordinal);
             Assert.Contains("`yyyy-MM-dd`", paragraph, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// The guide window joins the lines of a paragraph, a list item or a quote with a space,
+        /// as Markdown does. Between two Chinese characters, or next to Chinese punctuation, that
+        /// space is a gap in the middle of a sentence; so the Chinese guide never breaks a line
+        /// there, and keeps a block that needs it on one line. A break between Chinese and a word
+        /// or a code span is fine: the space is the one the guide writes there anyway.
+        /// </summary>
+        [Fact]
+        public void TheChineseGuideNeverBreaksALineInsideChineseText()
+        {
+            var lines = Guide("zh-CN").Replace("\r\n", "\n").Split('\n');
+            var gaps = new List<string>();
+            bool code = false;
+            for (int i = 0; i + 1 < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (line.StartsWith("```", StringComparison.Ordinal))
+                {
+                    code = !code;
+                    continue;
+                }
+
+                string next = lines[i + 1].Trim();
+                if (code || StandsAlone(line) || StandsAlone(next) || ListItem.IsMatch(next) || line.StartsWith('>') != next.StartsWith('>'))
+                {
+                    continue;
+                }
+
+                string continued = next.TrimStart('>').TrimStart();
+                if (continued.Length == 0)
+                {
+                    continue;
+                }
+
+                char before = line[line.Length - 1];
+                char after = continued[0];
+                if (IsChinesePunctuation(before) || IsChinesePunctuation(after) || (IsChinese(before) && IsChinese(after)))
+                {
+                    gaps.Add($"line {i + 1}: …{line.Substring(Math.Max(0, line.Length - 12))} / {next.Substring(0, Math.Min(12, next.Length))}…");
+                }
+            }
+
+            Assert.Empty(gaps);
+
+            static bool StandsAlone(string line) =>
+                line.Length == 0 || line.StartsWith("```", StringComparison.Ordinal) || line.StartsWith('|') || line.StartsWith('#')
+                || line.Trim('-').Length == 0 || line.Trim('*').Length == 0 || line.Trim('_').Length == 0;
+
+            static bool IsChinese(char c) => c is (>= '\u3400' and <= '\u4DBF') or (>= '\u4E00' and <= '\u9FFF') or (>= '\u3040' and <= '\u30FF');
+
+            // The em dash is left out: this guide spaces it, " —— ", as it does a word.
+            static bool IsChinesePunctuation(char c) =>
+                c is (>= '\u3000' and <= '\u303F') or (>= '\uFF00' and <= '\uFFEF') or '\u201C' or '\u201D' or '\u2018' or '\u2019' or '\u2026';
         }
 
         private static string Row(string document, string start)

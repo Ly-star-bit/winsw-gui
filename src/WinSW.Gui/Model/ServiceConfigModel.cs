@@ -513,7 +513,8 @@ namespace WinSW.Gui.Model
         /// to the earlier one by name and a download by where it is saved to: not by position,
         /// because an answer may add or reorder them and a password must not move to another
         /// server, and not by the source URL, whose credentials may be the very part that was
-        /// masked.
+        /// masked. The credentials of a URL, which the redaction takes out of every value, come
+        /// back to a URL anywhere in the same field that names the same host.
         /// </remarks>
         /// <returns>
         /// How many masked values were given back, and how many still read as the mask because
@@ -526,17 +527,19 @@ namespace WinSW.Gui.Model
 
             this.serviceAccountPassword = Keep(this.serviceAccountPassword, earlier.serviceAccountPassword, ConfigRedactor.Unmask);
             this.proxyAddress = Keep(this.proxyAddress, earlier.proxyAddress, ConfigRedactor.UnmaskUrl);
-            this.arguments = Keep(this.arguments, earlier.arguments, ConfigRedactor.UnmaskCommandLine);
-            this.startArguments = Keep(this.startArguments, earlier.startArguments, ConfigRedactor.UnmaskCommandLine);
-            this.stopArguments = Keep(this.stopArguments, earlier.stopArguments, ConfigRedactor.UnmaskCommandLine);
-            this.Prestart.Arguments = Keep(this.Prestart.Arguments, earlier.Prestart.Arguments, ConfigRedactor.UnmaskCommandLine);
-            this.Poststart.Arguments = Keep(this.Poststart.Arguments, earlier.Poststart.Arguments, ConfigRedactor.UnmaskCommandLine);
-            this.Prestop.Arguments = Keep(this.Prestop.Arguments, earlier.Prestop.Arguments, ConfigRedactor.UnmaskCommandLine);
-            this.Poststop.Arguments = Keep(this.Poststop.Arguments, earlier.Poststop.Arguments, ConfigRedactor.UnmaskCommandLine);
+            this.arguments = Keep(this.arguments, earlier.arguments, UnmaskCommandLine);
+            this.startArguments = Keep(this.startArguments, earlier.startArguments, UnmaskCommandLine);
+            this.stopArguments = Keep(this.stopArguments, earlier.stopArguments, UnmaskCommandLine);
+            this.Prestart.Arguments = Keep(this.Prestart.Arguments, earlier.Prestart.Arguments, UnmaskCommandLine);
+            this.Poststart.Arguments = Keep(this.Poststart.Arguments, earlier.Poststart.Arguments, UnmaskCommandLine);
+            this.Prestop.Arguments = Keep(this.Prestop.Arguments, earlier.Prestop.Arguments, UnmaskCommandLine);
+            this.Poststop.Arguments = Keep(this.Poststop.Arguments, earlier.Poststop.Arguments, UnmaskCommandLine);
 
             foreach (var (variable, twin) in Pair(this.EnvironmentVariables, earlier.EnvironmentVariables, v => v.Name.Trim()))
             {
-                variable.Value = Keep(variable.Value, twin?.Value, ConfigRedactor.Unmask);
+                // Masked whole when the name says secret, or only the credentials of a URL in
+                // it: DATABASE_URL says nothing of the password it carries.
+                variable.Value = Keep(variable.Value, twin?.Value, UnmaskValue);
             }
 
             foreach (var (download, twin) in Pair(this.Downloads, earlier.Downloads, d => ConfigRedactor.MaskUrl(d.To.Trim())))
@@ -548,10 +551,19 @@ namespace WinSW.Gui.Model
             }
 
             // The extensions are written back as the text they are, with no field to match a
-            // value to, so a mask in them can only be reported.
-            left += ConfigRedactor.CountMasks(this.extensionsXml);
+            // value to: a URL's credentials can still go back to the same host, and any other
+            // mask in them can only be reported.
+            this.extensionsXml = Keep(this.extensionsXml, earlier.extensionsXml, ConfigRedactor.UnmaskUrl);
 
             return (kept, left);
+
+            // A value masked whole, then the credentials of a URL in it.
+            static string? UnmaskValue(string? pasted, string? before) =>
+                ConfigRedactor.UnmaskUrl(ConfigRedactor.Unmask(pasted, before), before);
+
+            // An argument masked by name, then the credentials of a URL anywhere on the line.
+            static string? UnmaskCommandLine(string? pasted, string? before) =>
+                ConfigRedactor.UnmaskUrl(ConfigRedactor.UnmaskCommandLine(pasted, before), before);
 
             [return: NotNullIfNotNull(nameof(pasted))]
             string? Keep(string? pasted, string? before, Func<string?, string?, string?> unmask)
@@ -589,6 +601,54 @@ namespace WinSW.Gui.Model
                     yield return (item, byKey.TryGetValue(key(item), out var queue) && queue.Count > 0 ? queue.Dequeue() : null);
                 }
             }
+        }
+
+        /// <summary>
+        /// Where this configuration still holds <see cref="ConfigRedactor.Mask"/>, named as the
+        /// XML names them: the secrets <see cref="KeepMaskedValues"/> had nothing to give back for.
+        /// </summary>
+        /// <remarks>
+        /// The fields <see cref="ConfigRedactor"/> masks. XML names rather than the form's labels,
+        /// so that the list reads the same in every language and can be found in the preview.
+        /// </remarks>
+        internal IReadOnlyList<string> MaskedPlaces()
+        {
+            var places = new List<string>();
+            Check(this.serviceAccountPassword, "<serviceaccount><password>");
+            Check(this.proxyAddress, "<proxy>");
+            Check(this.arguments, "<arguments>");
+            Check(this.startArguments, "<startarguments>");
+            Check(this.stopArguments, "<stoparguments>");
+            Check(this.Prestart.Arguments, "<prestart><arguments>");
+            Check(this.Poststart.Arguments, "<poststart><arguments>");
+            Check(this.Prestop.Arguments, "<prestop><arguments>");
+            Check(this.Poststop.Arguments, "<poststop><arguments>");
+
+            foreach (var variable in this.EnvironmentVariables)
+            {
+                Check(variable.Value, $"<env name=\"{variable.Name.Trim()}\">");
+            }
+
+            foreach (var download in this.Downloads)
+            {
+                if (HasMask(download.Password) || HasMask(download.From) || HasMask(download.To) || HasMask(download.Proxy))
+                {
+                    places.Add($"<download to=\"{download.To.Trim()}\">");
+                }
+            }
+
+            Check(this.extensionsXml, "<extensions>");
+            return places;
+
+            void Check(string? value, string place)
+            {
+                if (HasMask(value))
+                {
+                    places.Add(place);
+                }
+            }
+
+            static bool HasMask(string? value) => value is not null && value.Contains(ConfigRedactor.Mask, StringComparison.Ordinal);
         }
 
         // Logging ------------------------------------------------------------
@@ -1524,41 +1584,57 @@ namespace WinSW.Gui.Model
         {
             var findings = new List<EnvironmentFinding>();
             string? basePath = this.FilePath;
+            string? configFolder = basePath is null ? null : WindowsPath.Parent(basePath);
 
-            string? Expand(string? value)
+            // A secret "Copy as AI prompt" masked, which the pasted answer kept and nothing gave
+            // back. The password box shows dots whatever it holds, so this is the one place the
+            // asterisks can be seen before a service is given them.
+            if (this.MaskedPlaces() is { Count: > 0 } masked)
             {
-                if (string.IsNullOrWhiteSpace(value))
-                {
-                    return null;
-                }
+                findings.Add(new EnvironmentFinding("M.Warn.MaskedValueLeft", string.Join(", ", masked)));
+            }
 
-                // Without a file location %BASE% is unknowable; skip rather than guess.
-                if (basePath is null && value!.Contains("%BASE%", StringComparison.OrdinalIgnoreCase))
+            // What the wrapper puts into its own environment before it expands a path: %BASE%
+            // and the service's id, then each <env> in order, expanded against those before it
+            // and the machine's, the PATH among them. <executable>%JAVA_HOME%\bin\java</executable>
+            // with JAVA_HOME set by an <env> is the usual way to name a JDK, and it runs. Of a
+            // name nobody here sets, the wrapper keeps the %NAME% as it is; so does this, and
+            // marks the value as one that cannot be told.
+            var variables = new Dictionary<string, (string Value, bool Known)>(StringComparer.OrdinalIgnoreCase);
+            string serviceId = this.id.Trim();
+            Define("BASE", configFolder);
+            Define("SERVICE_ID", serviceId);
+            Define("WINSW_SERVICE_ID", serviceId);
+            Define("WINSW_EXECUTABLE", wrapperPath);
+            variables["PATH"] = (machine.MachinePath, true);
+            foreach (var variable in this.EnvironmentVariables)
+            {
+                string name = variable.Name.Trim();
+                if (name.Length > 0)
                 {
-                    return null;
+                    variables[name] = WindowsEnvironment.Expand(variable.Value, Lookup);
                 }
-
-                return basePath is null
-                    ? Environment.ExpandEnvironmentVariables(value!)
-                    : Services.ConfigPaths.Expand(value!, basePath);
             }
 
             // The wrapper makes the working directory its current directory, and CreateProcess
             // looks there for a bare name and resolves a relative path against it. A relative
             // working directory is itself relative to system32 in a service, which the search
             // covers next in any case.
-            string? configFolder = basePath is null ? null : WindowsPath.Parent(basePath);
             string? wrapperFolder = string.IsNullOrWhiteSpace(wrapperPath) ? configFolder : WindowsPath.Parent(wrapperPath!);
             string? workDir = Expand(this.workingDirectory);
             string? currentFolder = string.IsNullOrWhiteSpace(this.workingDirectory)
                 ? configFolder
                 : workDir is not null && WindowsPath.IsRooted(workDir) ? workDir : null;
 
-            var search = new ProgramSearch(machine, wrapperFolder, currentFolder, ServicePath());
+            // The PATH the wrapper starts programs with: the machine's, as the configuration's own
+            // <env name="PATH"> leaves it. Where that names a variable nobody sets, a folder of it
+            // is unknown, and a name found nowhere else may yet be there.
+            var servicePath = variables["PATH"];
+            var search = new ProgramSearch(machine, wrapperFolder, currentFolder, servicePath.Value);
 
             // A file not saved yet has no folder, and a name that is nowhere else may be meant to
             // sit beside the wrapper there: "a service would not find it" cannot be said yet.
-            bool searchComplete = wrapperFolder is not null && (currentFolder is not null || workDir is not null);
+            bool searchComplete = wrapperFolder is not null && (currentFolder is not null || workDir is not null) && servicePath.Known;
 
             // The built-in accounts have nobody's profile, and nobody's PATH or pip --user.
             string account = this.serviceAccountUser?.Trim() ?? string.Empty;
@@ -1641,23 +1717,32 @@ namespace WinSW.Gui.Model
 
             return new EnvironmentCheck(findings, this.executable, fullExecutablePath);
 
-            // The PATH the wrapper starts programs with. The service gets the machine's; an
-            // <env name="PATH"> then replaces it in the wrapper's own process, where it is what
-            // CreateProcess searches, with %PATH% in it standing for the machine's.
-            string ServicePath()
+            // A value from the configuration as the wrapper expands it, or null when it is blank
+            // or names a variable nobody sets here: a path that cannot be told is not checked,
+            // since the only warning it could get is a made-up one. The service may well have
+            // the variable; if it has not, it is told so by a start that fails.
+            string? Expand(string? value)
             {
-                string path = machine.MachinePath;
-                foreach (var variable in this.EnvironmentVariables)
+                if (string.IsNullOrWhiteSpace(value))
                 {
-                    if (string.Equals(variable.Name.Trim(), "PATH", StringComparison.OrdinalIgnoreCase)
-                        && Expand(variable.Value.Replace("%PATH%", path, StringComparison.OrdinalIgnoreCase)) is { } value)
-                    {
-                        path = value;
-                    }
+                    return null;
                 }
 
-                return path;
+                var (expanded, known) = WindowsEnvironment.Expand(value!, Lookup);
+                return known ? expanded : null;
             }
+
+            // A variable as the wrapper would have it: one it sets or the configuration's <env>
+            // sets, or else the machine's. The service is started with the machine's PATH, and
+            // that is what a %PATH% in an <env> adds to.
+            (string Value, bool Known)? Lookup(string name) =>
+                variables.TryGetValue(name, out var value) ? value
+                : machine.Variable(name) is { } machineValue ? (machineValue, true)
+                : null;
+
+            // One the wrapper sets itself, where this cannot tell its value: never the machine's.
+            void Define(string name, string? value) =>
+                variables[name] = string.IsNullOrWhiteSpace(value) ? (string.Empty, false) : (value!, true);
 
             // Checks a program the wrapper starts, and returns the full path to offer in place of
             // a bare name, if there is one to offer.

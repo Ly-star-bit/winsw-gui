@@ -80,9 +80,10 @@ namespace WinSW.Gui.Services
         /// <remarks>
         /// The prompt is pasted into a third-party assistant, so the configuration goes through
         /// the same redaction as a diagnostics bundle: the service account's password, download
-        /// credentials, <c>user:password@</c> in a URL and secret-looking variables and
-        /// arguments are masked. Text that is not XML at all — the preview's "could not be
-        /// rendered" note — is left out rather than passed on unread.
+        /// credentials, secret-looking variables and arguments, and the <c>user:password@</c> of
+        /// a URL wherever one stands (<c>DATABASE_URL</c>, an argument) are masked. Text that is
+        /// not XML at all — the preview's "could not be rendered" note — is left out rather than
+        /// passed on unread.
         /// </remarks>
         internal static string? ConfigurationForPrompt(string? currentXml, out IReadOnlyList<string> masked)
         {

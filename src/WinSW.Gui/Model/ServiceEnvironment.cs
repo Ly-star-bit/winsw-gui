@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Security.Principal;
+using System.Text;
 using Microsoft.Win32;
 
 namespace WinSW.Gui.Model
@@ -102,6 +103,12 @@ namespace WinSW.Gui.Model
 
         /// <summary>Whether an account exists; null when that cannot be told, as with a domain out of reach.</summary>
         bool? AccountExists(string account);
+
+        /// <summary>
+        /// An environment variable's value, as the console has it, for a <c>%NAME%</c> the
+        /// configuration does not set itself; null when it is not set.
+        /// </summary>
+        string? Variable(string name);
     }
 
     /// <summary>Where <see cref="ProgramSearch"/> found a program given by name alone.</summary>
@@ -230,6 +237,60 @@ namespace WinSW.Gui.Model
         {
             string path = WindowsPath.Join(folder, file);
             return this.machine.FileExists(path) ? path : null;
+        }
+    }
+
+    /// <summary>
+    /// <c>%NAME%</c> expanded the way <c>ExpandEnvironmentStrings</c>, and so the wrapper, expands
+    /// it, with the variables looked up wherever the caller says.
+    /// </summary>
+    internal static class WindowsEnvironment
+    {
+        /// <summary>
+        /// Expands every <c>%NAME%</c> in <paramref name="value"/>. A name that is not set stays as
+        /// it is, <c>%</c> signs and all, and its closing <c>%</c> may open the next name; what a
+        /// name stands for is not expanded again.
+        /// </summary>
+        /// <param name="value">The text to expand.</param>
+        /// <param name="lookup">
+        /// A variable's value, and whether that is known for certain; null when it is not set.
+        /// </param>
+        /// <returns>
+        /// The expanded text, and whether every name in it was set and known: false when any stays
+        /// as <c>%NAME%</c>, or stands for a value that is not known itself.
+        /// </returns>
+        public static (string Text, bool Known) Expand(string value, Func<string, (string Value, bool Known)?> lookup)
+        {
+            var text = new StringBuilder(value.Length);
+            bool known = true;
+            int at = 0;
+            while (true)
+            {
+                int open = value.IndexOf('%', at);
+                int close = open < 0 ? -1 : value.IndexOf('%', open + 1);
+                if (close < 0)
+                {
+                    text.Append(value, at, value.Length - at);
+                    return (text.ToString(), known);
+                }
+
+                text.Append(value, at, open - at);
+                string name = value.Substring(open + 1, close - open - 1);
+                if (name.Length > 0 && lookup(name) is { } found)
+                {
+                    text.Append(found.Value);
+                    known &= found.Known;
+                    at = close + 1;
+                }
+                else
+                {
+                    // Kept as it is, and the closing % may open the next name. "%%" names
+                    // nothing, so it is two percent signs rather than a name not set.
+                    text.Append('%').Append(name);
+                    known &= name.Length == 0;
+                    at = close;
+                }
+            }
         }
     }
 
@@ -401,6 +462,8 @@ namespace WinSW.Gui.Model
                 return false;
             }
         }
+
+        public string? Variable(string name) => Environment.GetEnvironmentVariable(name);
 
         public bool? AccountExists(string account)
         {

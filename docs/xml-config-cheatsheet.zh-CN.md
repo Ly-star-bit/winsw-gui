@@ -2,9 +2,7 @@
 
 WinSW 3.x 配置文件的单页完整规范。
 
-这份文档是写给 **AI 助手** 看的：把整页复制给 AI，再补上你自己程序的描述，AI 就能一次
-生成正确的 `<service>` 文档。下面所有元素名、默认值和取值范围都直接取自 WinSW 的解析器
-源码，可以当作权威依据。
+这份文档是写给 **AI 助手** 看的：把整页复制给 AI，再补上你自己程序的描述，AI 就能一次生成正确的 `<service>` 文档。下面所有元素名、默认值和取值范围都直接取自 WinSW 的解析器源码，可以当作权威依据。
 
 ---
 
@@ -55,11 +53,7 @@ WinSW 3.x 配置文件的单页完整规范。
 
 必填的只有 `<id>` 和 `<executable>`，其余都有默认值。
 
-**文件放哪。** 传统做法是把配置文件和（通常已改名的）WinSW 可执行文件放在同一目录、主文件名
-相同：`myapp.exe` → `myapp.xml`。但 3.x 里这不是硬性要求 —— `winsw install <配置>` 会把两个路径
-都记进服务，所以一个 wrapper 可以服务于放在别处的多份配置。真正要记住的是：**一切都从配置文件
-推导，而不是从 wrapper 推导** —— `%BASE%` 是配置文件所在目录，日志文件名也取自配置文件
-（`myapp.xml` → `myapp.out.log`）。
+**文件放哪。** 传统做法是把配置文件和（通常已改名的）WinSW 可执行文件放在同一目录、主文件名相同：`myapp.exe` → `myapp.xml`。但 3.x 里这不是硬性要求 —— `winsw install <配置>` 会把两个路径都记进服务，所以一个 wrapper 可以服务于放在别处的多份配置。真正要记住的是：**一切都从配置文件推导，而不是从 wrapper 推导** —— `%BASE%` 是配置文件所在目录，日志文件名也取自配置文件（`myapp.xml` → `myapp.out.log`）。
 
 ---
 
@@ -187,11 +181,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `roll-by-size-time` | 按大小滚动 + 时间戳命名，还可以在固定时刻滚动并压缩旧文件。 | `sizeThreshold`（KB，默认 `10240`）、`pattern` **（必填）**、`autoRollAtTime`（`HH:mm:ss`）、`zipOlderThanNumDays`（整数）、`zipDateFormat`（默认 `yyyyMM`） |
 | `rotate` | `roll-by-size` 的废弃别名，直接用 `roll-by-size`。 | — |
 
-`pattern` 用 .NET `DateTime.ToString` 的格式串，例如 `yyyyMMdd`。格式化的结果会成为文件名的一部分，
-所以不能出现 `/`、`\`、`:` 这类文件名里不允许的字符：写 `yyyy-MM-dd`，不要写 `yyyy/MM/dd` 或 `HH:mm`。
-`roll-by-time` 还要求它至少每天变一次：`yyyyMM` 这种格式包装器要到服务运行时才拒绝，随后不再读取程序输出，
-程序卡住，而服务仍显示“运行中”。
-`zipOlderThanNumDays` 和 `zipDateFormat` 必须和 `autoRollAtTime` 一起用才有效。
+`pattern` 用 .NET `DateTime.ToString` 的格式串，例如 `yyyyMMdd`。格式化的结果会成为文件名的一部分，所以不能出现 `/`、`\`、`:` 这类文件名里不允许的字符：写 `yyyy-MM-dd`，不要写 `yyyy/MM/dd` 或 `HH:mm`。`roll-by-time` 还要求它至少每天变一次：`yyyyMM` 这种格式包装器要到服务运行时才拒绝，随后不再读取程序输出，程序卡住，而服务仍显示“运行中”。`zipOlderThanNumDays` 和 `zipDateFormat` 必须和 `autoRollAtTime` 一起用才有效。
 
 ```xml
 <logpath>%BASE%\logs</logpath>
@@ -212,8 +202,7 @@ WinSW 3.x 配置文件的单页完整规范。
 </extensions>
 ```
 
-WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedDirectoryMapping>` 元素。
-除非你用的是自己合并了扩展 DLL 的定制版本，否则不要写 `<extensions>`。
+WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedDirectoryMapping>` 元素。除非你用的是自己合并了扩展 DLL 的定制版本，否则不要写 `<extensions>`。
 
 ---
 
@@ -288,9 +277,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
   `<onfailure action="restart" delay="10 sec" />` 就等于“永远自动重启”。
 - `reboot` 会让 Windows 蓝屏重启，慎用。
 - `resetfailure` 是服务要连续正常运行多久，失败计数才归零。
-- 不写 `<onfailure>` 并不会清掉什么：`refresh`（控制台里的“保存并应用”）会保留服务现有的
-  恢复设置，不管它来自这个文件以前的版本还是 services.msc。要取消恢复动作，就写
-  `<onfailure action="none" />`；在控制台编辑器里删掉原有的最后一行时，它会自动这么写。
+- 不写 `<onfailure>` 并不会清掉什么：`refresh`（控制台里的“保存并应用”）会保留服务现有的恢复设置，不管它来自这个文件以前的版本还是 services.msc。要取消恢复动作，就写 `<onfailure action="none" />`；在控制台编辑器里删掉原有的最后一行时，它会自动这么写。
 
 注意：这些动作是在 *服务* 被判定为失败时触发的，对 WinSW 来说就是被包装的进程以非 0
 退出码结束。
@@ -336,14 +323,10 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 3. `<executable>` 是绝对路径（或基于 `%BASE%`），并且文件确实存在。
 4. 凡是位于配置文件所在目录里的路径，都写成 `%BASE%\…`；其它位置写绝对路径。
 5. `<arguments>` 里的 `&`、`<`、`>` 已经转义。
-6. 元素名和第 4 节**完全一致**，包括驼峰拼写
-   （`delayedAutoStart`、`preshutdownTimeout`、`securityDescriptor`、`autoRefresh`、
-   `endProcessesWithWrapper`、`sharedDirectoryMapping`、`stdoutPath`、`stderrPath`、
-   `sizeThreshold`、`keepFiles`、`autoRollAtTime`、`zipOlderThanNumDays`、`zipDateFormat`）。
+6. 元素名和第 4 节**完全一致**，包括驼峰拼写（`delayedAutoStart`、`preshutdownTimeout`、`securityDescriptor`、`autoRefresh`、`endProcessesWithWrapper`、`sharedDirectoryMapping`、`stdoutPath`、`stderrPath`、`sizeThreshold`、`keepFiles`、`autoRollAtTime`、`zipOlderThanNumDays`、`zipDateFormat`）。
 7. 布尔值是 `true`/`false`；时长是整数 + 小写单位。
 8. 写了 `<stoparguments>` 就要用 `<startarguments>` 而不是 `<arguments>`。
-9. 日志模式是 `roll-by-time` 或 `roll-by-size-time` 时，`<pattern>` 必须存在，格式化后是合法的文件名；
-   `roll-by-time` 的还要至少每天变一次（`yyyyMMdd`，不要 `yyyyMM`）。
+9. 日志模式是 `roll-by-time` 或 `roll-by-size-time` 时，`<pattern>` 必须存在，格式化后是合法的文件名；`roll-by-time` 的还要至少每天变一次（`yyyyMMdd`，不要 `yyyyMM`）。
 10. `<outfilepattern>` / `<errfilepattern>` 只在支持它们的模式下才写。
 11. `<depend>` 里写的是服务 id，不是显示名。
 12. 含明文密码的 `<serviceaccount>` 只用在已经限制了 NTFS 权限的文件上。

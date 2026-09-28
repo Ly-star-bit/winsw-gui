@@ -66,6 +66,80 @@ namespace WinSW.Gui.Tests
             Assert.Empty(removed);
         }
 
+        /// <summary>
+        /// DATABASE_URL and REDIS_URL are how a service is usually given its database password,
+        /// and an argument can be a URL too; none of those names says secret. The credentials go
+        /// wherever they stand, and the host, the part worth having in a bundle, stays.
+        /// </summary>
+        [Fact]
+        public void CredentialsInAUrlDoNotSurviveWhateverHoldsThem()
+        {
+            string xml = Redact(@"
+                <service>
+                  <arguments>app:main --db postgresql://app:S3cretArg@db:5432/app</arguments>
+                  <env name=""DATABASE_URL"" value=""postgresql://app:S3cretEnv@db:5432/app"" />
+                  <env name=""REDIS_URL"" value=""redis://:S3cretRedis@cache:6379/0"" />
+                </service>", out var removed);
+
+            Assert.DoesNotContain("S3cret", xml);
+            Assert.Contains("app:main --db postgresql://" + ConfigRedactor.Mask + "@db:5432/app", xml);
+            Assert.Contains("redis://" + ConfigRedactor.Mask + "@cache:6379/0", xml);
+            Assert.Equal(3, removed.Count);
+            Assert.Contains(removed, r => r.Contains("DATABASE_URL") && r.Contains("URL"));
+        }
+
+        /// <summary>
+        /// A secret passed by name and a URL on one command line are both found, and so are the
+        /// credentials in an element or attribute nobody thought would hold a URL.
+        /// </summary>
+        [Fact]
+        public void EveryTextAndAttributeIsSearchedForAUrlsCredentials()
+        {
+            string xml = Redact(@"
+                <service>
+                  <startarguments>--token=t0ken --broker amqp://guest:gu3st@mq:5672/</startarguments>
+                  <extensions><extension><settings endpoint=""https://svc:sv3c@api.example.com/v1"">mongodb://root:r00t@mongo:27017/admin</settings></extension></extensions>
+                </service>", out var removed);
+
+            foreach (string secret in new[] { "t0ken", "gu3st", "sv3c", "r00t" })
+            {
+                Assert.DoesNotContain(secret, xml);
+            }
+
+            Assert.Contains("@mq:5672/", xml);
+            Assert.Contains("@api.example.com/v1", xml);
+            Assert.Contains("@mongo:27017/admin", xml);
+            Assert.Equal(4, removed.Count);
+        }
+
+        /// <summary>
+        /// A password with an @ of its own is often written unescaped, and a token is often
+        /// passed as the user name alone: neither leaves any of itself behind.
+        /// </summary>
+        [Theory]
+        [InlineData("postgresql://app:p@ss@db:5432/app", "@db:5432/app", "ss@")]
+        [InlineData("https://ghp_T0ken@github.com/org/repo.git", "@github.com/org/repo.git", "ghp_")]
+        public void NoPartOfTheCredentialsSurvives(string url, string kept, string secretPart)
+        {
+            string xml = Redact($@"<service><env name=""REPO"" value=""{url}"" /></service>", out _);
+
+            Assert.DoesNotContain(secretPart, xml);
+            Assert.Contains(ConfigRedactor.Mask + kept, xml);
+        }
+
+        /// <summary>A URL without credentials, and an @ that is not in front of a host, are left alone.</summary>
+        [Theory]
+        [InlineData("https://registry.npmjs.org/@scope/pkg")]
+        [InlineData("http://host/path?email=ops@example.com")]
+        [InlineData("ops@example.com")]
+        public void AnAtThatIsNotCredentialsIsLeftAlone(string value)
+        {
+            string xml = Redact($@"<service><env name=""X"" value=""{value}"" /></service>", out var removed);
+
+            Assert.Contains(value, xml);
+            Assert.Empty(removed);
+        }
+
         [Theory]
         [InlineData("DB_PASSWORD")]
         [InlineData("api_key")]

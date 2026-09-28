@@ -457,6 +457,7 @@
     <sys:String x:Key="M.Editor.XmlInvalid">XML を適用できませんでした: {0}</sys:String>
     <sys:String x:Key="M.Editor.XmlAppliedMaskKept">XML をフォームに適用しました。******** のまま戻ってきた {0} 件は、フォームの元の値を残しています。保存すると書き込まれます。</sys:String>
     <sys:String x:Key="M.Editor.XmlAppliedMaskLeft">XML をフォームに適用しましたが、{0} 件の値が ******** のままで、フォームに残せる元の値がありません。XML プレビューで探し、保存する前にフォームか「XML を編集」で実際の値を入力してください。</sys:String>
+    <sys:String x:Key="M.Warn.MaskedValueLeft">{0} が ******** のままです。「AI プロンプトとしてコピー」で伏せた機密値で、貼り付けた回答には戻せる元の値がありませんでした。保存する前に実際の値を入力してください。そのままではサービスにこのアスタリスクが渡され、アカウントのパスワードならログオンに失敗して起動しません (エラー 1069)。</sys:String>
     <sys:String x:Key="M.History.Button">履歴</sys:String>
     <sys:String x:Key="M.History.Tip">このファイルの以前のバージョン。このコンソールから保存するたびにコピーを残し、直近 20 件を保持します。選ぶと現在のファイルとの違いを確認し、そこから復元できます。</sys:String>
     <sys:String x:Key="M.History.None">以前のバージョンはまだありません</sys:String>

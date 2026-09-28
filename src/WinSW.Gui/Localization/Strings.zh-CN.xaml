@@ -457,6 +457,7 @@
     <sys:String x:Key="M.Editor.XmlInvalid">XML 无法应用：{0}</sys:String>
     <sys:String x:Key="M.Editor.XmlAppliedMaskKept">XML 已应用到表单，其中 {0} 处 ******** 沿用了表单里原来的值。保存后写入文件。</sys:String>
     <sys:String x:Key="M.Editor.XmlAppliedMaskLeft">XML 已应用到表单，但还有 {0} 处值是 ********，表单里没有原值可以沿用。请在 XML 预览里找到它们，保存前在表单或“编辑 XML”里填上真实的值。</sys:String>
+    <sys:String x:Key="M.Warn.MaskedValueLeft">{0} 里还是 ********：这是“复制为 AI 提示词”时遮掉的敏感值，粘贴回来后没有原值可以填回。保存前请填上真实的值，否则服务拿到的就是这串星号；如果是账户密码，服务会登录失败（错误 1069），起不来。</sys:String>
     <sys:String x:Key="M.History.Button">历史版本</sys:String>
     <sys:String x:Key="M.History.Tip">这个文件的早期版本：每次从本控制台保存前自动留一份，保留最近 20 份。选一个可以先看它与当前文件的差别，再从那里恢复。</sys:String>
     <sys:String x:Key="M.History.None">还没有早期版本</sys:String>

@@ -256,6 +256,145 @@ namespace WinSW.Gui.Tests
             Assert.Equal(new[] { "M.Warn.NotFoundForService" }, Keys(model.CheckEnvironment(machine, null)));
         }
 
+        // Variables -----------------------------------------------------------
+
+        /// <summary>
+        /// The usual way to name a JDK: an &lt;env&gt; sets JAVA_HOME and the executable is
+        /// under it. The wrapper sets its &lt;env&gt; entries in its own process before it expands
+        /// the executable, so the program runs, and the check reads it the same way.
+        /// </summary>
+        [Fact]
+        public void AVariableTheConfigurationSetsIsExpandedAsTheWrapperExpandsIt()
+        {
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(@"C:\jdk17\bin\java.exe");
+            var model = Service(@"%JAVA_HOME%\bin\java");
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "JAVA_HOME", Value = @"C:\jdk17" });
+
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+
+            // And a program that is not there is named by the path the service would try.
+            model.EnvironmentVariables[0].Value = @"C:\jdk21";
+            var finding = Assert.Single(model.CheckEnvironment(machine, null).Findings);
+            Assert.Equal("M.Warn.ExecutableMissing", finding.Key);
+            Assert.Equal(new[] { @"C:\jdk21\bin\java.exe" }, finding.Values);
+        }
+
+        /// <summary>
+        /// A variable nobody here sets may be set where the service runs, or be a mistake; the
+        /// path cannot be told either way, and a warning about a path made up of the %NAME% itself
+        /// would be a false one.
+        /// </summary>
+        [Fact]
+        public void APathWithAVariableNobodySetsIsNotChecked()
+        {
+            var model = Service(@"%APP_HOME%\bin\app");
+            model.StopExecutable = @"%APP_HOME%\bin\stop.exe";
+            model.WorkingDirectory = @"%APP_HOME%";
+            model.LogPath = @"%APP_HOME%\logs";
+            model.Prestart.Executable = @"%APP_HOME%\hooks\prep.cmd";
+
+            Assert.Empty(model.CheckEnvironment(new FakeServiceMachine(), null).Findings);
+        }
+
+        /// <summary>
+        /// The configuration's own variables are what the wrapper sets, taking precedence over
+        /// the machine's; a variable the configuration does not set is the machine's.
+        /// </summary>
+        [Fact]
+        public void TheConfigurationsVariableWinsAndTheMachinesFillsIn()
+        {
+            var machine = new FakeServiceMachine();
+            machine.Variables["APP_HOME"] = @"C:\old";
+            machine.Variables["ProgramFiles"] = @"C:\Program Files";
+            machine.Files.Add(@"C:\new\app.exe");
+            machine.Files.Add(@"C:\Program Files\Tool\tool.exe");
+            var model = Service(@"%APP_HOME%\app.exe");
+            model.StopExecutable = @"%ProgramFiles%\Tool\tool.exe";
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "app_home", Value = @"C:\new" });
+
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+        }
+
+        /// <summary>
+        /// Each &lt;env&gt; is expanded against the ones before it, as the wrapper sets them one by
+        /// one; one that names a later entry gets nothing from it.
+        /// </summary>
+        [Fact]
+        public void AVariableSeesOnlyTheEntriesBeforeIt()
+        {
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(@"C:\apps\site\run.exe");
+            var model = Service(@"%SITE%\run.exe");
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "ROOT", Value = @"C:\apps" });
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "SITE", Value = @"%ROOT%\site" });
+
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+            machine.Files.Clear();
+            Assert.Equal(new[] { "M.Warn.ExecutableMissing" }, Keys(model.CheckEnvironment(machine, null)));
+
+            // In the other order SITE keeps %ROOT% as it is, and names nothing to look at.
+            model.EnvironmentVariables.Move(1, 0);
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+        }
+
+        /// <summary>%BASE% is the configuration's folder and %SERVICE_ID% its id, as the wrapper sets them.</summary>
+        [Fact]
+        public void TheWrappersOwnVariablesAreItsFolderAndId()
+        {
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(@"C:\svc\app\app.exe");
+            var model = Service(@"%BASE%\%SERVICE_ID%\%WINSW_SERVICE_ID%.exe");
+
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+
+            // Without a file there is no folder to name, and so nothing to check.
+            Assert.Empty(Service(@"%BASE%\missing.exe", filePath: null).CheckEnvironment(machine, null).Findings);
+        }
+
+        /// <summary>
+        /// A PATH the configuration builds from its own variable finds what is in that folder,
+        /// and one built from a variable nobody sets does not make a name missing.
+        /// </summary>
+        [Fact]
+        public void APathBuiltFromTheConfigurationsVariableIsSearched()
+        {
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(@"C:\jdk17\bin\java.exe");
+            var model = Service("java");
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "JAVA_HOME", Value = @"C:\jdk17" });
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "PATH", Value = @"%JAVA_HOME%\bin;%PATH%" });
+
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+
+            model.EnvironmentVariables.RemoveAt(0);
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+        }
+
+        [Theory]
+        [InlineData(@"%A%\x", @"C:\a\x", true)]
+        [InlineData(@"%a%\%B%", @"C:\a\b", true)]
+        [InlineData(@"%NOPE%\x", @"%NOPE%\x", false)]
+        [InlineData(@"%PARTIAL%\x", @"%NOPE%\y\x", false)]
+        [InlineData("100%", "100%", true)]
+        [InlineData("%%", "%%", true)]
+        [InlineData("50% %A%", @"50% C:\a", false)]
+        [InlineData("%NOPE%A%", "%NOPEC:\\a", false)]
+        [InlineData("plain", "plain", true)]
+        public void VariablesExpandAsWindowsExpandsThem(string value, string expanded, bool known)
+        {
+            var variables = new Dictionary<string, (string Value, bool Known)>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["A"] = (@"C:\a", true),
+                ["B"] = ("b", true),
+                ["PARTIAL"] = (@"%NOPE%\y", false),
+            };
+
+            var result = WindowsEnvironment.Expand(value, name => variables.TryGetValue(name, out var found) ? found : null);
+
+            Assert.Equal((expanded, known), result);
+        }
+
         // Paths ---------------------------------------------------------------
 
         [Theory]
@@ -558,6 +697,32 @@ namespace WinSW.Gui.Tests
             Assert.Empty(model.CheckEnvironment(machine, null).Findings);
         }
 
+        /// <summary>
+        /// A secret "Copy as AI prompt" masked, which the pasted answer kept and nothing could
+        /// give back, is named for as long as it is there: the password box shows dots whatever
+        /// it holds, and the status line that first said so is gone at the next save.
+        /// </summary>
+        [Fact]
+        public void AMaskLeftFromAPromptIsNamedUntilItIsReplaced()
+        {
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(@"C:\svc\app.exe");
+            var model = Service("app");
+            model.ServiceAccountUser = @"CORP\svc";
+            model.ServiceAccountPassword = WinSW.Gui.Services.ConfigRedactor.Mask;
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "DATABASE_URL", Value = "postgresql://" + WinSW.Gui.Services.ConfigRedactor.Mask + "@db:5432/app" });
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "JAVA_HOME", Value = @"C:\jdk" });
+
+            var finding = Assert.Single(model.CheckEnvironment(machine, null).Findings);
+            Assert.Equal("M.Warn.MaskedValueLeft", finding.Key);
+            Assert.Equal(new[] { "<serviceaccount><password>, <env name=\"DATABASE_URL\">" }, finding.Values);
+            Assert.Contains("<env name=\"DATABASE_URL\">", finding.Describe(Text("zh-CN")), StringComparison.Ordinal);
+
+            model.ServiceAccountPassword = "hunter2";
+            model.EnvironmentVariables[0].Value = "postgresql://app:pw@db:5432/app";
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+        }
+
         // Windows paths as strings --------------------------------------------------
 
         [Theory]
@@ -635,6 +800,7 @@ namespace WinSW.Gui.Tests
         [InlineData("M.Warn.AccountUnknown", 1)]
         [InlineData("M.Warn.DriverStartMode", 1)]
         [InlineData("M.Warn.ConsolePrompt", 0)]
+        [InlineData("M.Warn.MaskedValueLeft", 1)]
         public void EveryMessageShowsWhatItIsGiven(string key, int count)
         {
             string[] values = Enumerable.Range(0, count).Select(i => "«value" + i + "»").ToArray();
@@ -745,6 +911,9 @@ namespace WinSW.Gui.Tests
 
         public HashSet<string> UnknownAccounts { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>The console's own environment variables; none unless a test sets them.</summary>
+        public Dictionary<string, string> Variables { get; } = new(StringComparer.OrdinalIgnoreCase);
+
         /// <summary>What a fresh Windows Server has on its PATH.</summary>
         public string MachinePath { get; set; } =
             @"C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\";
@@ -766,5 +935,7 @@ namespace WinSW.Gui.Tests
         public bool IsNetworkDrive(char letter) => this.NetworkDrives.Contains(char.ToUpperInvariant(letter));
 
         public bool? AccountExists(string account) => !this.UnknownAccounts.Contains(account);
+
+        public string? Variable(string name) => this.Variables.TryGetValue(name, out string? value) ? value : null;
     }
 }

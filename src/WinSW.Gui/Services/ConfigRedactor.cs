@@ -25,9 +25,13 @@ namespace WinSW.Gui.Services
     /// </para>
     /// <para>
     /// Environment values are judged by name, because most of them are the reason the bundle
-    /// was collected (PATH, JAVA_HOME) and blanking them all would make it useless. Every
-    /// substitution is reported so the list can be shown beside the redacted file: a reader
-    /// who can see what was removed can tell whether anything was missed.
+    /// was collected (PATH, JAVA_HOME) and blanking them all would make it useless. The
+    /// credentials in front of a URL's host are the exception, removed from every value and
+    /// every text wherever they stand: <c>DATABASE_URL</c> and <c>REDIS_URL</c>, or a
+    /// <c>--db postgresql://app:pw@db/app</c> argument, are how a service is usually given its
+    /// database password, and none of those names says so. Every substitution is reported so
+    /// the list can be shown beside the redacted file: a reader who can see what was removed
+    /// can tell whether anything was missed.
     /// </para>
     /// </remarks>
     public static class ConfigRedactor
@@ -40,12 +44,6 @@ namespace WinSW.Gui.Services
 
         /// <summary>Attributes whose value is a secret outright.</summary>
         private static readonly string[] SecretAttributes = { "password" };
-
-        /// <summary>
-        /// Attributes and elements holding a URL, which may carry <c>user:password@</c> in
-        /// front of the host.
-        /// </summary>
-        private static readonly string[] UrlValued = { "from", "to", "proxy" };
 
         /// <summary>
         /// An environment variable whose name contains one of these is treated as a secret.
@@ -64,8 +62,24 @@ namespace WinSW.Gui.Services
         private static readonly string[] CommandLineValued = { "arguments", "startarguments", "stoparguments" };
 
         /// <summary>The <c>user:password@</c> of a URL's authority, if it has one.</summary>
+        /// <remarks>
+        /// Everything between the <c>//</c> and the last <c>@</c> before the path: a password
+        /// with an <c>@</c> of its own is often written unescaped, and the drivers take the last
+        /// one as the end of it. A user name alone counts too, since a token is often passed as
+        /// one (<c>https://ghp_…@github.com</c>).
+        /// </remarks>
         private static readonly Regex UserInfo = new(
-            @"(?<=//)[^/@\s]*:[^/@\s]*@", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+            @"(?<=//)[^/?#\s]+@", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        /// <summary>A URL with credentials in front of its host, taken apart.</summary>
+        private static readonly Regex UrlWithUserInfo = new(
+            @"(?<scheme>[A-Za-z][A-Za-z0-9+.\-]*:)?//(?<userinfo>[^/?#\s]+)@(?<host>[^/?#\s@""']*)",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        /// <summary>A URL whose credentials <see cref="Redact"/> masked, taken apart.</summary>
+        private static readonly Regex MaskedUrl = new(
+            @"(?<scheme>[A-Za-z][A-Za-z0-9+.\-]*:)?//" + Regex.Escape(Mask) + @"@(?<host>[^/?#\s@""']*)",
+            RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
         /// <summary>
         /// A secret passed as <c>name=value</c> on a command line: <c>-Dpassword=x</c>,
@@ -145,36 +159,49 @@ namespace WinSW.Gui.Services
                 : pasted;
 
         /// <summary>
-        /// <paramref name="pasted"/> with the <c>user:password@</c> of <paramref name="earlier"/>
-        /// back in place of the mask, when both name the same scheme, host and port.
+        /// <paramref name="pasted"/> with the <c>user:password@</c> of each URL in
+        /// <paramref name="earlier"/> back in place of the mask, in front of every URL that names
+        /// the same scheme, host and port.
         /// </summary>
         /// <remarks>
         /// Only in front of the same host: credentials go back to the server they were for, never
-        /// to another address the answer put in the same place. The path may differ.
+        /// to another address the answer put in the same place. The path may differ, and so may
+        /// everything around the URL, which is what lets this work on a whole command line or an
+        /// environment value as well as on a URL alone. Two URLs to the same host get their
+        /// credentials back in the order they had them.
         /// </remarks>
         [return: NotNullIfNotNull(nameof(pasted))]
         public static string? UnmaskUrl(string? pasted, string? earlier)
         {
-            if (pasted is null || earlier is null)
+            if (pasted is null || earlier is null || !pasted.Contains("//" + Mask + "@", StringComparison.Ordinal))
             {
                 return pasted;
             }
 
-            string masked = "//" + Mask + "@";
-            int at = pasted.IndexOf(masked, StringComparison.Ordinal);
-            var credentials = UserInfo.Match(earlier);
-            if (at < 0 || !credentials.Success || credentials.Value.Contains(Mask, StringComparison.Ordinal))
+            var credentials = new Dictionary<string, Queue<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (Match url in UrlWithUserInfo.Matches(earlier))
             {
-                return pasted;
+                string userInfo = url.Groups["userinfo"].Value;
+                if (userInfo.Contains(Mask, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                string key = HostKey(url);
+                if (!credentials.TryGetValue(key, out var queue))
+                {
+                    credentials[key] = queue = new Queue<string>();
+                }
+
+                queue.Enqueue(userInfo);
             }
 
-            string earlierMasked = StripUserInfo(earlier) ?? earlier;
-            if (!string.Equals(Authority(pasted), Authority(earlierMasked), StringComparison.OrdinalIgnoreCase))
-            {
-                return pasted;
-            }
+            return MaskedUrl.Replace(pasted, url =>
+                credentials.TryGetValue(HostKey(url), out var queue) && queue.Count > 0
+                    ? url.Groups["scheme"].Value + "//" + queue.Dequeue() + "@" + url.Groups["host"].Value
+                    : url.Value);
 
-            return pasted.Substring(0, at + 2) + credentials.Value + pasted.Substring(at + masked.Length);
+            static string HostKey(Match url) => url.Groups["scheme"].Value + "//" + url.Groups["host"].Value;
         }
 
         /// <summary>
@@ -278,20 +305,27 @@ namespace WinSW.Gui.Services
                 element.InnerText = Mask;
                 report.Add(Path(element));
             }
-            else if (Matches(element.LocalName, UrlValued) && HasText(element))
+            else if (HasText(element))
             {
-                if (StripUserInfo(element.InnerText) is { } stripped)
+                // A command line is searched for a secret passed by name first; then any text at
+                // all, a command line included, loses the credentials in front of a URL's host.
+                string text = element.InnerText;
+                string redacted = text;
+                if (Matches(element.LocalName, CommandLineValued) && MaskCommandLineSecrets(redacted) is { } masked)
                 {
-                    element.InnerText = stripped;
+                    redacted = masked;
+                    report.Add(Path(element) + " (a secret passed as an argument)");
+                }
+
+                if (StripUserInfo(redacted) is { } stripped)
+                {
+                    redacted = stripped;
                     report.Add(Path(element) + " (credentials in the URL)");
                 }
-            }
-            else if (Matches(element.LocalName, CommandLineValued) && HasText(element))
-            {
-                if (MaskCommandLineSecrets(element.InnerText) is { } masked)
+
+                if (!ReferenceEquals(redacted, text))
                 {
-                    element.InnerText = masked;
-                    report.Add(Path(element) + " (a secret passed as an argument)");
+                    element.InnerText = redacted;
                 }
             }
 
@@ -325,7 +359,7 @@ namespace WinSW.Gui.Services
                     item.Value = Mask;
                     report.Add(Describe(element, item));
                 }
-                else if (Matches(item.LocalName, UrlValued) && StripUserInfo(item.Value) is { } stripped)
+                else if (StripUserInfo(item.Value) is { } stripped)
                 {
                     item.Value = stripped;
                     report.Add(Describe(element, item) + " (credentials in the URL)");
@@ -371,26 +405,19 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// A URL up to the end of its host and port, <c>http://host:8080</c>, or the whole of
-        /// it when it has no <c>//</c>.
+        /// Masks the <c>user:password@</c> of every URL in <paramref name="value"/>, or null if
+        /// there is none still to mask.
         /// </summary>
-        private static string Authority(string url)
-        {
-            int start = url.IndexOf("//", StringComparison.Ordinal);
-            if (start < 0)
-            {
-                return url;
-            }
-
-            int end = url.IndexOfAny(new[] { '/', '?', '#' }, start + 2);
-            return end < 0 ? url : url.Substring(0, end);
-        }
-
-        /// <summary>Removes <c>user:password@</c> from a URL, or null if there is none.</summary>
         private static string? StripUserInfo(string value)
         {
-            var match = UserInfo.Match(value);
-            return match.Success ? UserInfo.Replace(value, Mask + "@") : null;
+            bool stripped = false;
+            string result = UserInfo.Replace(value, match =>
+            {
+                stripped |= match.Value != Mask + "@";
+                return Mask + "@";
+            });
+
+            return stripped ? result : null;
         }
 
         /// <summary>True when the element has text of its own rather than child elements.</summary>
