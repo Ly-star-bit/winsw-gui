@@ -257,6 +257,19 @@ namespace WinSW.Gui.Services
         public static string? MaskUrl(string? value) =>
             value is null ? null : StripUserInfo(value) ?? value;
 
+        /// <summary>
+        /// <paramref name="text"/> with what a line of free text can be seen to give away masked,
+        /// by the rules <see cref="Redact"/> applies to a command line: a secret passed by name
+        /// (<c>password=…</c>, <c>--token …</c>) and the credentials in front of a URL's host.
+        /// For a line from a program's log that leaves the machine — the cause a chat alert
+        /// quotes — where a connection string in an exception is the usual way a password gets out.
+        /// </summary>
+        public static string RedactText(string text)
+        {
+            string redacted = MaskCommandLineSecrets(text) ?? text;
+            return StripUserInfo(redacted) ?? redacted;
+        }
+
         /// <summary>How many times the mask appears in <paramref name="value"/>.</summary>
         public static int CountMasks(string? value)
         {

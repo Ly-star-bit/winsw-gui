@@ -325,6 +325,7 @@
     <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}: サービス '{1}' が停止しました（終了コード 0）。</sys:String>
     <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}: サービス '{1}' は再び実行中で、その後は停止していません。</sys:String>
     <!-- A desktop task's stop notices, as a service's above: tray title and body ({0} task, {1} exit code or count), then the webhook text ({0} machine, {1} task, {2} exit code, {3} count); the task's own alerts checkbox. M.Alert.Cause is the line under a crash's chat alert ({0} the err.log file, {1} its last line). M.Dash.UpgradeFrameworkTooOld replaces the upgrade question's .NET Framework note on a machine known to be too old ({0} the installed version, {1} the offline installer). M.LastStop.Environment heads what the environment check found after a failed start. -->
+    <sys:String x:Key="M.Alert.Cause">{0} の最後の行: {1}</sys:String>
     <sys:String x:Key="M.Task.StopTitle">デスクトップタスクが予期せず停止しました</sys:String>
     <sys:String x:Key="M.Task.StopBody">'{0}' は実行されていません（終了コード {1}）。</sys:String>
     <sys:String x:Key="M.Task.StopLoopTitle">デスクトップタスクが停止を繰り返しています</sys:String>
@@ -383,7 +384,6 @@
     <sys:String x:Key="M.Alert.TestFailed">送信できませんでした: {0}</sys:String>
     <sys:String x:Key="M.Alert.BadUrl">'{0}' は http または https のアドレスではありません。</sys:String>
     <sys:String x:Key="M.Alert.Stopped">[WinSW] {0}: サービス '{1}' が予期せず停止しました（終了コード {2}）。</sys:String>
-    <sys:String x:Key="M.Alert.StoppedRepeated">[WinSW] {0}: サービス '{1}' がこの数分間に {3} 回予期せず停止しました（最後の終了コード {2}）。</sys:String>
     <sys:String x:Key="M.Alert.Test">[WinSW] {0}: WinSW コンソールからのテスト メッセージです。</sys:String>
     <sys:String x:Key="M.Alert.Last">最後のアラート: {0}、サービス '{1}' — {2}</sys:String>
     <sys:String x:Key="M.Alert.LastSent">送信済み。</sys:String>

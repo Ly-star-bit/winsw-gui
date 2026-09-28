@@ -325,6 +325,7 @@
     <sys:String x:Key="M.Alert.CleanStop">[WinSW] {0}：服务“{1}”已停止（退出码 0）。</sys:String>
     <sys:String x:Key="M.Alert.Recovered">[WinSW] {0}：服务“{1}”已恢复运行，之后没有再停止。</sys:String>
     <!-- A desktop task's stop notices, as a service's above: tray title and body ({0} task, {1} exit code or count), then the webhook text ({0} machine, {1} task, {2} exit code, {3} count); the task's own alerts checkbox. M.Alert.Cause is the line under a crash's chat alert ({0} the err.log file, {1} its last line). M.Dash.UpgradeFrameworkTooOld replaces the upgrade question's .NET Framework note on a machine known to be too old ({0} the installed version, {1} the offline installer). M.LastStop.Environment heads what the environment check found after a failed start. -->
+    <sys:String x:Key="M.Alert.Cause">{0} 最后一行：{1}</sys:String>
     <sys:String x:Key="M.Task.StopTitle">桌面任务意外停止</sys:String>
     <sys:String x:Key="M.Task.StopBody">“{0}”已停止运行（退出码 {1}）。</sys:String>
     <sys:String x:Key="M.Task.StopLoopTitle">桌面任务反复意外停止</sys:String>
@@ -383,7 +384,6 @@
     <sys:String x:Key="M.Alert.TestFailed">发送失败：{0}</sys:String>
     <sys:String x:Key="M.Alert.BadUrl">“{0}”不是 http 或 https 地址。</sys:String>
     <sys:String x:Key="M.Alert.Stopped">[WinSW] {0}：服务“{1}”意外停止（退出码 {2}）。</sys:String>
-    <sys:String x:Key="M.Alert.StoppedRepeated">[WinSW] {0}：服务“{1}”最近几分钟内意外停止了 {3} 次（最后一次退出码 {2}）。</sys:String>
     <sys:String x:Key="M.Alert.Test">[WinSW] {0}：来自 WinSW 控制台的测试消息。</sys:String>
     <sys:String x:Key="M.Alert.Last">最近一次告警：{0}，服务“{1}”——{2}</sys:String>
     <sys:String x:Key="M.Alert.LastSent">已发送。</sys:String>

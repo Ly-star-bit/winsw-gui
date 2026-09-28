@@ -206,9 +206,14 @@ namespace WinSW.Gui.ViewModels
             // A saved configuration is one the running service has not read yet.
             this.Editor.Saved += path => this.Dashboard.NoteConfigurationWritten(path);
 
-            // Where the tray notification goes, the group chat's goes too. The dashboard has
-            // already held a crash-looping service to one announcement per five minutes.
-            this.Dashboard.UnexpectedStop += entry => ErrorLog.Observe(this.PostStopAsync(entry), "alert webhook");
+            // Where the tray notification goes, the group chat's goes too: the first crash, and
+            // after it the loop's count, a clean stop, a recovery. The dashboard has already held a
+            // crash-looping service to one count per five minutes; see CrashAnnouncer. A desktop
+            // task's are told by the same rule, from the task page's own reading.
+            this.Dashboard.UnexpectedStop += entry => ErrorLog.Observe(
+                this.PostStopAsync(new StopNotice(entry.ServiceName, StopNoticeKind.UnexpectedStop, entry.CrashCount, entry.LastExitCode ?? 0), CauseOf(entry)),
+                "alert webhook");
+            this.Dashboard.StopNoticed += notice => ErrorLog.Observe(this.PostStopAsync(notice, this.CauseFor(notice)), "alert webhook");
             this.SendTestAlertCommand = new AsyncRelayCommand(this.SendTestAlertAsync, () => !string.IsNullOrWhiteSpace(this.alertUrl));
             this.ApplyUnattendedAlertCommand = new AsyncRelayCommand(() => this.SetUnattendedAlertAsync(true), () => !this.unattendedAlertBusy);
             this.Dashboard.CreateServiceRequested += () =>
@@ -1033,13 +1038,40 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
+        /// Where the lines saying why a service stopped are read from, taken from its entry here,
+        /// on the UI thread, which the entry and the dictionaries belong to.
+        /// </summary>
+        private static StopCauseSource CauseOf(ServiceEntry entry) => new(
+            entry.ConfigPath,
+            AppSettings.Current.LogEncoding,
+            StartedAt: null,
+            LastSeenStart: entry.RunStartedAt,
+            Stray: entry.StrayProcess?.Describe(entry.ServiceName, Localizer.Format).Banner);
+
+        /// <summary>
+        /// The same for a notice, from the service or the desktop task it names as the list has it
+        /// now; null when it has no cause to give (a clean stop, a recovery) or is no longer listed.
+        /// </summary>
+        private StopCauseSource? CauseFor(StopNotice notice)
+        {
+            if (!StopCause.Explains(notice.Kind))
+            {
+                return null;
+            }
+
+            return this.Dashboard.Services.FirstOrDefault(s => string.Equals(s.ServiceName, notice.ServiceName, StringComparison.OrdinalIgnoreCase)) is { } entry
+                ? CauseOf(entry)
+                : null;
+        }
+
+        /// <summary>
         /// Posts the group chat's copy of a tray notification, and keeps how it went for the
         /// settings page. Written here, on the UI thread, which is the thread that changes the
         /// settings everywhere else.
         /// </summary>
-        private async Task PostStopAsync(ServiceEntry entry)
+        private async Task PostStopAsync(StopNotice notice, StopCauseSource? cause)
         {
-            var outcome = await AlertWebhook.NotifyStopAsync(entry).ConfigureAwait(true);
+            var outcome = await AlertWebhook.NotifyStopAsync(notice, cause).ConfigureAwait(true);
             if (outcome is null)
             {
                 return;

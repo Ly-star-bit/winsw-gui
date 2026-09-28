@@ -7,7 +7,6 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WinSW.Gui.Localization;
-using WinSW.Gui.Model;
 
 namespace WinSW.Gui.Services
 {
@@ -108,26 +107,32 @@ namespace WinSW.Gui.Services
             };
         }
 
-        /// <summary>Announces an unexpected stop, if an address is set. Never throws.</summary>
+        /// <summary>
+        /// Announces a service's or a desktop task's stop, the loop count after it, or its
+        /// recovery, if an address is set; see <see cref="StopNotice"/>. Never throws.
+        /// </summary>
+        /// <param name="notice">What is told.</param>
+        /// <param name="cause">
+        /// Where the lines saying why are read from, for a crash or a loop's count; null for none.
+        /// See <see cref="StopCause"/>: they are added when they can be read in time, and the
+        /// message goes without them otherwise.
+        /// </param>
         /// <returns>
-        /// How it went; null when nothing was sent for it — no address is set, or the stop is
+        /// How it went; null when nothing was sent for it — no address is set, or the notice is
         /// the unattended alert's to post.
         /// </returns>
-        public static async Task<AlertOutcome?> NotifyStopAsync(ServiceEntry entry)
+        public static async Task<AlertOutcome?> NotifyStopAsync(StopNotice notice, StopCauseSource? cause)
         {
             if (!IsConfigured)
             {
                 return null;
             }
 
-            // Everything read from the entry and the settings is read here, on the caller's
+            // Everything read from the settings and the dictionaries is read here, on the caller's
             // thread, before the first wait.
-            string service = entry.ServiceName;
-            int? lastExitCode = entry.LastExitCode;
-            string exitCode = entry.LastExitCodeText;
-            string text = entry.CrashCount > 1
-                ? Localizer.Format("M.Alert.StoppedRepeated", Environment.MachineName, service, exitCode, entry.CrashCount)
-                : Localizer.Format("M.Alert.Stopped", Environment.MachineName, service, exitCode);
+            string service = notice.ServiceName;
+            string text = StopNoticeText.Message(notice, Environment.MachineName, Localizer.Format);
+            string causeFormat = Localizer.Get("M.Alert.Cause");
             string url = Url;
             string secret = Secret;
 
@@ -135,11 +140,16 @@ namespace WinSW.Gui.Services
             // whether or not this console is running; posting here as well would say it twice.
             // Only when it posts to this same webhook, though: one set up with another robot
             // — since deleted, or another administrator's — is no reason to stay silent here.
-            // A program that ended with 0 is no failure to Windows, and still posted from here.
-            if (UnattendedAlert.CoversStop(lastExitCode) && await Task.Run(() => UnattendedAlert.PostsTo(url, secret)).ConfigureAwait(false))
+            // Which notices it posts is decided kind by kind: see UnattendedAlert.Covers.
+            if (UnattendedAlert.Covers(notice) && await Task.Run(() => UnattendedAlert.PostsTo(url, secret)).ConfigureAwait(false))
             {
                 ActionLog.Record("alert", service, "left to the unattended alert");
                 return null;
+            }
+
+            if (cause != null && StopCause.Explains(notice.Kind))
+            {
+                text = StopCause.Append(text, await StopCause.ReadAsync(cause).ConfigureAwait(false), causeFormat, cause.Stray);
             }
 
             string? error = await SendAsync(url, secret, text).ConfigureAwait(false);

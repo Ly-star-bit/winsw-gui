@@ -335,6 +335,47 @@ namespace WinSW.Gui.Services
         public static bool CoversStop(int? lastExitCode) => lastExitCode is int code && code != 0;
 
         /// <summary>
+        /// Whether the task posts what <paramref name="notice"/> tells, so that a console whose
+        /// webhook it posts to (<see cref="PostsTo"/>) leaves the notice to it. Decided kind by
+        /// kind, from what the task can know: each of its runs is started by one failure the
+        /// service control manager recorded, and knows nothing else but its throttle's state.
+        /// </summary>
+        /// <remarks>
+        /// <list type="bullet">
+        /// <item><description>
+        /// A crash told at once (<see cref="StopNoticeKind.UnexpectedStop"/>) is the task's:
+        /// Windows records it, as 7031 or 7034, and the task posts that record.
+        /// </description></item>
+        /// <item><description>
+        /// The count at the end of a restart loop's window (<see cref="StopNoticeKind.RepeatedStops"/>)
+        /// is the task's too, when the loop's last stop was a failure. No one record is a count,
+        /// but the task keeps one: its throttle (<see cref="AlertThrottle"/>) holds back every
+        /// failure after the first for five minutes and says how many it held in its next
+        /// message, and each 7031 carries Windows' own count besides. The console's count on top
+        /// of that would tell the same loop twice, minutes apart. What is given up is the count of
+        /// a loop that ends inside the window, which the task says only at the next failure; the
+        /// console's recovered notice still says the service is running again.
+        /// </description></item>
+        /// <item><description>
+        /// A stop with exit code 0 (<see cref="StopNoticeKind.CleanStop"/>) is the console's:
+        /// Windows records no failure for it, and the task never runs.
+        /// </description></item>
+        /// <item><description>
+        /// Running again after a crash (<see cref="StopNoticeKind.Recovered"/>) is the console's:
+        /// the task sees failures only, never a service that is running.
+        /// </description></item>
+        /// <item><description>
+        /// Nothing about a desktop task is the task's: a desktop task is run by the task scheduler,
+        /// not by the service control manager, and puts nothing in the System log.
+        /// </description></item>
+        /// </list>
+        /// </remarks>
+        public static bool Covers(StopNotice notice) =>
+            !notice.DesktopTask
+            && (notice.Kind is StopNoticeKind.UnexpectedStop or StopNoticeKind.RepeatedStops)
+            && CoversStop(notice.ExitCode);
+
+        /// <summary>
         /// A short digest of the address and secret, recorded when the alert is turned on so the
         /// console can tell when its own have changed since. Not the values: the manifest it is
         /// kept in is readable by every signed-in account.
