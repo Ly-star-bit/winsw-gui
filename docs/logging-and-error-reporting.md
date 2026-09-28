@@ -34,7 +34,7 @@ Throw away stdout and stderr, and do not produce any log files at all.
 
 ## Roll mode
 
-Works like the append mode, but in addition, if the log file gets bigger than a set size, it gets rolled to *myapp.1.out.log*, *myapp.2.out.log* and so on. The nested `<sizeThreshold>` element specifies the rotation threshold in KB (defaults to 10MB), and the nested `<keepFiles>` element specifies the number of rolled files to keep (defaults to 8.)
+Works like the append mode, but in addition, if the log file gets bigger than a set size, it gets rolled to *myapp.0.out.log*, the one before that to *myapp.1.out.log*, and so on, up to `keepFiles` rolled files. The nested `<sizeThreshold>` element specifies the rotation threshold in KB (defaults to 10MB), and the nested `<keepFiles>` element specifies the number of rolled files to keep (defaults to 8.)
 
 ```xml
 <log mode="roll-by-size">

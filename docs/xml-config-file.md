@@ -577,11 +577,15 @@ This feature is intended primarily to launch a process in a lower priority so as
 <autoRefresh>true</autoRefresh>
 ```
 
-Automatically refreshes the service properties when the service starts or the following commands are executed:
+Automatically refreshes the service properties, the way the [refresh](cli-commands.md#refresh-command) command does, when the configuration file has been saved since the service's settings last changed and one of the following commands is run from the command line:
 
 - [start](cli-commands.md#start-command)
 - [stop](cli-commands.md#stop-command)
 - [restart](cli-commands.md#restart-command)
+
+The [console](gui.md)'s Services page starts, stops and restarts services through these commands, so its buttons refresh too.
+When Windows starts the service itself, at boot, from the Services console, with `sc start` or from the console's Remote page, nothing is refreshed: the service control manager cannot change a service while it is starting it, so the wrapper only writes a warning to the wrapper log and the Windows event log.
+Run the [refresh](cli-commands.md#refresh-command) command to apply the file then.
 
 The default value is `true`.
 
