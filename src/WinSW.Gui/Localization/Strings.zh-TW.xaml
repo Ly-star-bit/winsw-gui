@@ -685,6 +685,10 @@
     <sys:String x:Key="M.Editor.LogonRightGranted">安裝時會自動授予此帳戶「以服務方式登入」權限，內建帳戶不需要。包裝器不讀取 &lt;allowservicelogon&gt;，所以這裡沒有需要勾選的。</sys:String>
     <sys:String x:Key="M.Warn.DriverStartMode">啟動類型「{0}」只適用於驅動程式，安裝和「儲存並套用」時 Windows 都會拒絕（錯誤 87）。請改成 Automatic、Manual 或 Disabled。</sys:String>
 
+    <!-- The process tab: everything the service started ends with the wrapper, a wrapper that crashed included. -->
+    <sys:String x:Key="M.Editor.EndProcessesWithWrapper">包裝器結束時終止服務的所有處理程序</sys:String>
+    <sys:String x:Key="M.Editor.EndProcessesWithWrapperHint">包裝器一結束，即使是當機或在工作管理員中被結束，Windows 都會結束這個服務啟動的所有處理程序，不會留下處理程序繼續佔用連接埠。下次啟動服務時生效。需要本程式內建的包裝器（在「服務」頁按「升級」），舊版包裝器會忽略這個選項。</sys:String>
+
     <!-- Date patterns the wrapper cannot name its log files with, and the console prompt an install from here can never answer. -->
     <sys:String x:Key="M.Val.PatternNotAFormat">日期格式「{0}」不是包裝器能用的 .NET 日期格式。</sys:String>
     <sys:String x:Key="M.Val.PatternNotAFileName">日期格式「{0}」產生的記錄檔名類似「{1}」，但檔名不能包含 / \ : * ? " &lt; &gt; |。各部分之間請用 - 或 _ 分隔，例如 yyyy-MM-dd。</sys:String>

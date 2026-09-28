@@ -300,6 +300,12 @@
                                             <ComboBox HorizontalAlignment="Stretch" ItemsSource="{x:Static model:ServiceConfigModel.Priorities}" SelectedItem="{Binding Priority}" />
                                         </StackPanel>
                                     </Grid>
+                                    <!-- <endProcessesWithWrapper>: a wrapper that crashes or is ended leaves the program running and holding its port. Only a wrapper that knows the element reads it, hence the hint. -->
+                                    <StackPanel Orientation="Horizontal">
+                                        <CheckBox Content="{DynamicResource M.Editor.EndProcessesWithWrapper}" IsChecked="{Binding EndProcessesWithWrapper}" />
+                                        <Button Style="{StaticResource HelpButton}" Padding="4,0" Command="{Binding DataContext.OpenHelpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="endprocesseswithwrapper" />
+                                    </StackPanel>
+                                    <TextBlock Margin="0,4,0,14" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Editor.EndProcessesWithWrapperHint}" />
                                     <CheckBox Margin="0,0,0,10" Content="{DynamicResource S.HideTheConsoleWindowOfThe}" IsChecked="{Binding HideWindow}" />
                                     <CheckBox Margin="0,0,0,10" Content="{DynamicResource S.BeepOnShutdown}" IsChecked="{Binding BeepOnShutdown}" />
 

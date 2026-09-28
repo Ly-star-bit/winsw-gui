@@ -685,6 +685,10 @@
     <sys:String x:Key="M.Editor.LogonRightGranted">インストール時に、アカウントへ「サービスとしてログオン」権限が自動で付与されます (組み込みアカウントには不要)。ラッパーは &lt;allowservicelogon&gt; を読まないため、ここにチェック項目はありません。</sys:String>
     <sys:String x:Key="M.Warn.DriverStartMode">スタートアップの種類 '{0}' はドライバー専用です。このサービスではインストール時にも「保存して適用」時にも Windows に拒否されます (エラー 87)。Automatic、Manual、Disabled のいずれかを選んでください。</sys:String>
 
+    <!-- The process tab: everything the service started ends with the wrapper, a wrapper that crashed included. -->
+    <sys:String x:Key="M.Editor.EndProcessesWithWrapper">ラッパーの終了時にサービスのプロセスをすべて終了する</sys:String>
+    <sys:String x:Key="M.Editor.EndProcessesWithWrapperHint">ラッパーが終了すると、クラッシュやタスク マネージャーでの終了であっても、このサービスが起動したすべてのプロセスを Windows が終了します。ポートを使い続けるプロセスは残りません。次回サービスを開始したときから有効です。このアプリに同梱のラッパーが必要です (「サービス」ページの「アップグレード」)。古いラッパーはこの設定を無視します。</sys:String>
+
     <!-- Date patterns the wrapper cannot name its log files with, and the console prompt an install from here can never answer. -->
     <sys:String x:Key="M.Val.PatternNotAFormat">日付パターン '{0}' は、ラッパーが使える .NET の日付書式ではありません。</sys:String>
     <sys:String x:Key="M.Val.PatternNotAFileName">日付パターン '{0}' ではログ ファイル名が '{1}' のようになりますが、ファイル名には / \ : * ? " &lt; &gt; | を使えません。yyyy-MM-dd のように - か _ で区切ってください。</sys:String>

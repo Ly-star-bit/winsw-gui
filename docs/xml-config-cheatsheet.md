@@ -149,6 +149,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `stoptimeout` | ? | duration | `15 sec` | Grace period after Ctrl+C / WM_CLOSE before the process is killed. |
 | `stopexecutable` | ? | path | value of `executable` | Only used when `stoparguments` is present. |
 | `stoparguments` | ? | string | — | Switches shutdown from "signal the process" to "run a stop command and wait". Requires `startarguments` instead of `arguments`. |
+| `endProcessesWithWrapper` | ? | bool | `false` | When `true`, the wrapper puts itself in a kill-on-close job object before it starts anything, so every process the service starts — the executable, whatever that starts in turn, the hooks — ends when the wrapper's process ends, a crash or *End task* included. Nothing is left behind holding the port or the files for the next start to fail against. Applies only when the wrapper runs as a service (not the `console` command), from the next start of the service. A process started with `CREATE_BREAKAWAY_FROM_JOB` stays out of the job, as `restart!` does. If the wrapper cannot join the job, it logs a warning and runs without it. A wrapper older than the one the console bundles ignores the element. Worth setting for any program that starts processes of its own: a Python launcher, uvicorn, a `.cmd` script. |
 
 ### Lifecycle hooks
 
@@ -354,8 +355,8 @@ transfer on `304 Not Modified`.
 5. `&`, `<`, `>` inside `<arguments>` are escaped.
 6. Element names match section 4 **exactly**, including camelCase
    (`delayedAutoStart`, `preshutdownTimeout`, `securityDescriptor`, `autoRefresh`,
-   `sharedDirectoryMapping`, `stdoutPath`, `stderrPath`, `sizeThreshold`, `keepFiles`,
-   `autoRollAtTime`, `zipOlderThanNumDays`, `zipDateFormat`).
+   `endProcessesWithWrapper`, `sharedDirectoryMapping`, `stdoutPath`, `stderrPath`,
+   `sizeThreshold`, `keepFiles`, `autoRollAtTime`, `zipOlderThanNumDays`, `zipDateFormat`).
 7. Booleans are `true`/`false`; durations are integer + a lowercase unit.
 8. If `<stoparguments>` is present, `<startarguments>` is used instead of `<arguments>`.
 9. If the log mode is `roll-by-time` or `roll-by-size-time`, `<pattern>` is present and formats to a valid
@@ -431,6 +432,7 @@ transfer on `304 Not Modified`.
   <arguments>-u service.py --config %BASE%\conf\prod.ini</arguments>
   <hidewindow>true</hidewindow>
   <priority>BelowNormal</priority>
+  <endProcessesWithWrapper>true</endProcessesWithWrapper>
 
   <prestart>
     <executable>%BASE%\hooks\wait-for-db.cmd</executable>

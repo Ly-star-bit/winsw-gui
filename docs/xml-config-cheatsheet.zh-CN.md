@@ -136,6 +136,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `stoptimeout` | ? | 时长 | `15 sec` | 发出 Ctrl+C / WM_CLOSE 之后，强杀前给进程的宽限时间。 |
 | `stopexecutable` | ? | 路径 | `executable` 的值 | 只有存在 `stoparguments` 时才使用。 |
 | `stoparguments` | ? | 字符串 | — | 把停止方式从“给进程发信号”换成“执行一条停止命令并等待”。此时要用 `startarguments` 而不是 `arguments`。 |
+| `endProcessesWithWrapper` | ? | 布尔 | `false` | 为 `true` 时，包装器在启动任何东西之前，先把自己放进一个“关闭即结束”（kill-on-close）的作业对象，所以服务启动的所有进程 —— 主程序、主程序再启动的进程、各个钩子 —— 都会随包装器进程一起结束，包装器崩溃或在任务管理器里被结束也一样。不会留下进程继续占着端口和文件，害得下次启动失败。只在包装器以服务方式运行时有效（`console` 命令不受影响），从服务下次启动起生效。用 `CREATE_BREAKAWAY_FROM_JOB` 启动的进程不在作业里，`restart!` 就是这样做的。包装器加入不了作业时，会写一条警告，然后照常运行。比控制台自带版本旧的包装器会忽略这个元素。程序自己还会再启动进程的（Python 启动器、uvicorn、`.cmd` 脚本），建议打开。 |
 
 ### 生命周期钩子
 
@@ -337,8 +338,8 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 5. `<arguments>` 里的 `&`、`<`、`>` 已经转义。
 6. 元素名和第 4 节**完全一致**，包括驼峰拼写
    （`delayedAutoStart`、`preshutdownTimeout`、`securityDescriptor`、`autoRefresh`、
-   `sharedDirectoryMapping`、`stdoutPath`、`stderrPath`、`sizeThreshold`、`keepFiles`、
-   `autoRollAtTime`、`zipOlderThanNumDays`、`zipDateFormat`）。
+   `endProcessesWithWrapper`、`sharedDirectoryMapping`、`stdoutPath`、`stderrPath`、
+   `sizeThreshold`、`keepFiles`、`autoRollAtTime`、`zipOlderThanNumDays`、`zipDateFormat`）。
 7. 布尔值是 `true`/`false`；时长是整数 + 小写单位。
 8. 写了 `<stoparguments>` 就要用 `<startarguments>` 而不是 `<arguments>`。
 9. 日志模式是 `roll-by-time` 或 `roll-by-size-time` 时，`<pattern>` 必须存在，格式化后是合法的文件名；
@@ -412,6 +413,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
   <arguments>-u service.py --config %BASE%\conf\prod.ini</arguments>
   <hidewindow>true</hidewindow>
   <priority>BelowNormal</priority>
+  <endProcessesWithWrapper>true</endProcessesWithWrapper>
 
   <prestart>
     <executable>%BASE%\hooks\wait-for-db.cmd</executable>

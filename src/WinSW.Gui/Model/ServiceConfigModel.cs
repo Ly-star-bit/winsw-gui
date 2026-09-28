@@ -131,6 +131,7 @@ namespace WinSW.Gui.Model
         private string? workingDirectory;
         private string priority = "Normal";
         private string? stopTimeout;
+        private bool endProcessesWithWrapper;
         private bool hideWindow;
         private string startMode = "Automatic";
         private string[] startModeChoices = StartModes;
@@ -253,6 +254,24 @@ namespace WinSW.Gui.Model
         {
             get => this.stopTimeout;
             set => this.Set(ref this.stopTimeout, value);
+        }
+
+        /// <summary>
+        /// <c>&lt;endProcessesWithWrapper&gt;</c>: the wrapper puts itself in a kill-on-close job
+        /// before it starts anything, so Windows ends every process the service started when the
+        /// wrapper's process ends, a crash or End task included.
+        /// </summary>
+        /// <remarks>
+        /// Without it, a wrapper that dies leaves the program running with nothing supervising
+        /// it, still holding its port, and the next start of the service fails against it. Only a
+        /// wrapper that knows the element reads it: an older one skips it as it skips any unknown
+        /// element, and behaves as if it said <c>false</c>. It is written only when on, the
+        /// wrapper's default being off.
+        /// </remarks>
+        public bool EndProcessesWithWrapper
+        {
+            get => this.endProcessesWithWrapper;
+            set => this.Set(ref this.endProcessesWithWrapper, value);
         }
 
         public bool HideWindow
@@ -811,6 +830,7 @@ namespace WinSW.Gui.Model
             this.workingDirectory = Text(root, "workingdirectory");
             this.priority = MatchChoice(Priorities, Text(root, "priority") ?? "Normal");
             this.stopTimeout = Text(root, "stoptimeout");
+            this.endProcessesWithWrapper = Bool(root, "endProcessesWithWrapper");
             this.hideWindow = Bool(root, "hidewindow");
             this.startMode = MatchChoice(StartModes, Text(root, "startmode") ?? "Automatic");
             if (Array.IndexOf(StartModes, this.startMode) < 0)
@@ -1022,6 +1042,7 @@ namespace WinSW.Gui.Model
             SetText(root, "workingdirectory", this.workingDirectory);
             SetChoice(root, "priority", string.Equals(this.priority, "Normal", StringComparison.OrdinalIgnoreCase) ? null : this.priority);
             SetText(root, "stoptimeout", this.stopTimeout);
+            SetBool(root, "endProcessesWithWrapper", this.endProcessesWithWrapper, false);
             SetBool(root, "hidewindow", this.hideWindow, false);
             SetChoice(root, "startmode", string.Equals(this.startMode, "Automatic", StringComparison.OrdinalIgnoreCase) ? null : this.startMode);
 

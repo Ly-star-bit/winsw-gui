@@ -696,6 +696,10 @@
     <sys:String x:Key="M.Editor.LogonRightGranted">Install grants the account the 'Log on as a service' right by itself; the built-in accounts need none. The wrapper does not read &lt;allowservicelogon&gt;, so there is nothing to tick.</sys:String>
     <sys:String x:Key="M.Warn.DriverStartMode">Start mode '{0}' is for drivers. Windows refuses it for this service with error 87, at install and at Save &amp; apply: choose Automatic, Manual or Disabled.</sys:String>
 
+    <!-- The process tab: everything the service started ends with the wrapper, a wrapper that crashed included. -->
+    <sys:String x:Key="M.Editor.EndProcessesWithWrapper">End the service's processes when the wrapper exits</sys:String>
+    <sys:String x:Key="M.Editor.EndProcessesWithWrapperHint">Windows ends every process the service started as soon as the wrapper exits, even when the wrapper crashes or is ended in Task Manager, so nothing is left behind holding the port. Takes effect the next time the service starts. Needs the wrapper bundled with this console (Upgrade on the Services page); an older wrapper ignores it.</sys:String>
+
     <!-- Date patterns the wrapper cannot name its log files with, and the console prompt an install from here can never answer. -->
     <sys:String x:Key="M.Val.PatternNotAFormat">Date pattern '{0}' is not a .NET date format the wrapper can apply.</sys:String>
     <sys:String x:Key="M.Val.PatternNotAFileName">Date pattern '{0}' makes log file names such as '{1}', and a file name cannot contain / \ : * ? " &lt; &gt; |. Separate the parts with - or _, as in yyyy-MM-dd.</sys:String>
