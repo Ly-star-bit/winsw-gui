@@ -171,6 +171,10 @@ namespace WinSW.Gui.ViewModels
             this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.HasStrayProcess == true && this.IsIdle(this.selectedService, null));
             this.EndStrayParentCommand = new RelayCommand(this.AskEndStrayParent, () => this.selectedService?.CanEndStrayParent == true && this.IsIdle(this.selectedService, null));
 
+            // Neither needs the configuration: the start type is changed through sc.exe, by name.
+            this.StopRestartingCommand = new RelayCommand(this.AskStopRestarting, () => this.selectedService?.CanStopRestarting == true && this.IsIdle(this.selectedService, null));
+            this.RestoreStartTypeCommand = new AsyncRelayCommand(this.RestoreStartTypeAsync, () => this.CanRestoreStartType && this.IsIdle(this.selectedService, null));
+
             this.KillCommand = new RelayCommand(this.AskKill, () => this.IsIdle(this.selectedService, "dev kill"));
             this.UninstallCommand = new RelayCommand(this.AskUninstall, () => this.IsIdle(this.selectedService, "uninstall"));
 
@@ -257,6 +261,7 @@ namespace WinSW.Gui.ViewModels
 
                 this.RaiseWrapperUpdate();
                 this.Raise(nameof(this.SelectedCountText));
+                this.Raise(nameof(this.RestoreStartTypeText));
 
                 foreach (var choice in this.RestartChoices)
                 {
@@ -511,6 +516,7 @@ namespace WinSW.Gui.ViewModels
                     // process tree, and the states on screen are at most one tick old.
                     _ = this.RefreshProcessTreeAsync();
                     this.RaiseWrapperUpdate();
+                    this.RaiseStartTypeRestore();
                     _ = this.LoadRestartScheduleAsync();
                 }
             }
@@ -683,6 +689,156 @@ namespace WinSW.Gui.ViewModels
             }
 
             await this.RefreshStatusesAsync().ConfigureAwait(true);
+        }
+
+        // Windows restarting a failed service -----------------------------------
+
+        /// <summary>
+        /// Sets the selected service to Disabled, after asking, so that Windows' recovery stops
+        /// starting it again; see <see cref="ServiceEntry.CanStopRestarting"/>. The start type it had
+        /// is remembered, and <see cref="RestoreStartTypeCommand"/> puts it back.
+        /// </summary>
+        public RelayCommand StopRestartingCommand { get; }
+
+        /// <summary>Puts back the start type "Stop restarting" replaced, while the service is still disabled.</summary>
+        public AsyncRelayCommand RestoreStartTypeCommand { get; }
+
+        /// <summary>The selected service is disabled, and this console remembers what it was before it disabled it.</summary>
+        public bool CanRestoreStartType => RememberedStartTypeOf(this.selectedService) != null;
+
+        /// <summary>"Restore start type (Automatic)", naming what it goes back to.</summary>
+        public string RestoreStartTypeText =>
+            RememberedStartTypeOf(this.selectedService) is { } token && RememberedStartTypes.StartTypeOf(token) is { } type
+                ? Localizer.Format("M.Dash.RestoreStartType", ServiceDiscovery.DescribeStartMode(type.StartType, type.Delayed))
+                : string.Empty;
+
+        /// <summary>
+        /// The start type remembered for <paramref name="entry"/>, while it is still disabled. Once it
+        /// is anything else, somebody has already chosen what it is to be, and the memory is not
+        /// offered over their choice.
+        /// </summary>
+        private static string? RememberedStartTypeOf(ServiceEntry? entry) =>
+            entry is { StartType: ServiceStartMode.Disabled } ? RememberedStartTypes.Current.For(entry.ServiceName) : null;
+
+        /// <summary>
+        /// The restore depends on the start type, which only a rescan reads, and on the selection:
+        /// raised when either may have moved, rather than on every poll.
+        /// </summary>
+        private void RaiseStartTypeRestore()
+        {
+            this.Raise(nameof(this.CanRestoreStartType));
+            this.Raise(nameof(this.RestoreStartTypeText));
+            this.RestoreStartTypeCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>Asks before disabling the selected service, and disables that one whatever is selected by the answer.</summary>
+        private void AskStopRestarting()
+        {
+            if (this.selectedService is not { CanStopRestarting: true } entry)
+            {
+                return;
+            }
+
+            this.Ask(
+                Localizer.Get("M.Dash.StopRestartingTitle"),
+                Localizer.Format("M.Dash.StopRestartingBody", entry.ServiceName, entry.StartMode),
+                Localizer.Get("M.Dash.StopRestarting"),
+                () => this.StopRestartingAsync(entry));
+        }
+
+        /// <summary>
+        /// Disables the service, stopping it first if it is halfway through a start, and remembers
+        /// the start type it had. Disabled rather than any gentler setting because it is the one
+        /// Windows' recovery cannot get past: a restart it has already scheduled fails, and so does
+        /// every one after it, whatever the failure actions say.
+        /// </summary>
+        private async Task StopRestartingAsync(ServiceEntry entry)
+        {
+            // Read when the answer was given, not when the question was asked: in a restart loop
+            // the service may be starting now, and a start under way is not undone by the start
+            // type — only the next one is refused. Running, it is left to run; it is the next
+            // failure that will not be answered.
+            bool stopFirst = entry.Status is ServiceControllerStatus.StartPending or ServiceControllerStatus.ContinuePending;
+            string? previous = RememberedStartTypes.TokenFor(entry.StartType, entry.DelayedAutoStart);
+
+            // Held like any command on the service until the states are read back, so that a stop
+            // it causes is not taken for a crash, and nothing else is started on it meanwhile.
+            var held = this.inFlight.Begin(stopFirst ? OperationsInFlight.NamesFor("stop", entry, this.Services) : new[] { entry.ServiceName });
+            this.BeginBusy();
+            try
+            {
+                var result = await WinSwCli.SetStartTypeAsync(entry.ServiceName, "disabled", stopFirst).ConfigureAwait(true);
+                ActionLog.Record(stopFirst ? "stop restarting (stop, start= disabled)" : "stop restarting (start= disabled)", entry.ServiceName, result);
+
+                // Only what it was before this console disabled it. Already disabled, it has nothing
+                // of its own to go back to, and what was remembered the first time is kept.
+                if (result.Succeeded && previous != null)
+                {
+                    RememberedStartTypes.Current.Remember(entry.ServiceName, previous);
+                }
+
+                this.StatusMessage = result switch
+                {
+                    { Cancelled: true } => Localizer.Get("M.Common.ElevationDeclined"),
+                    { Succeeded: true } => Localizer.Format("M.Dash.RestartingStopped", entry.ServiceName),
+                    { ExitCode: > 0 } => Localizer.Format("M.Dash.StartTypeFailed", result.ExitCode),
+                    _ => result.Error ?? Localizer.Format("M.Dash.StartTypeFailed", result.ExitCode),
+                };
+                this.Toast?.Invoke(this.StatusMessage, !result.Succeeded && !result.Cancelled);
+
+                // The start type is the rescan's to read, and it is what ends the restarting state
+                // and offers the restore.
+                if (result.Succeeded)
+                {
+                    await this.ReloadAsync(quiet: true).ConfigureAwait(true);
+                }
+            }
+            finally
+            {
+                held.Dispose();
+                this.EndBusy();
+                this.BurstPolling();
+            }
+        }
+
+        /// <summary>Sets the selected service back to the start type "Stop restarting" replaced. Starts nothing.</summary>
+        private async Task RestoreStartTypeAsync()
+        {
+            if (this.selectedService is not { } entry || RememberedStartTypeOf(entry) is not { } token)
+            {
+                return;
+            }
+
+            var held = this.inFlight.Begin(new[] { entry.ServiceName });
+            this.BeginBusy();
+            try
+            {
+                var result = await WinSwCli.SetStartTypeAsync(entry.ServiceName, token, stopFirst: false).ConfigureAwait(true);
+                ActionLog.Record("restore start type (start= " + token + ")", entry.ServiceName, result);
+
+                string restored = RememberedStartTypes.StartTypeOf(token) is { } type
+                    ? ServiceDiscovery.DescribeStartMode(type.StartType, type.Delayed)
+                    : token;
+                this.StatusMessage = result switch
+                {
+                    { Cancelled: true } => Localizer.Get("M.Common.ElevationDeclined"),
+                    { Succeeded: true } => Localizer.Format("M.Dash.StartTypeRestored", entry.ServiceName, restored),
+                    { ExitCode: > 0 } => Localizer.Format("M.Dash.StartTypeFailed", result.ExitCode),
+                    _ => result.Error ?? Localizer.Format("M.Dash.StartTypeFailed", result.ExitCode),
+                };
+                this.Toast?.Invoke(this.StatusMessage, !result.Succeeded && !result.Cancelled);
+
+                if (result.Succeeded)
+                {
+                    RememberedStartTypes.Current.Forget(entry.ServiceName);
+                    await this.ReloadAsync(quiet: true).ConfigureAwait(true);
+                }
+            }
+            finally
+            {
+                held.Dispose();
+                this.EndBusy();
+            }
         }
 
         // Scheduled restart ----------------------------------------------------
@@ -1025,6 +1181,9 @@ namespace WinSW.Gui.ViewModels
                     this.SelectedService = this.Services.FirstOrDefault();
                 }
 
+                // The rescan is what reads start types.
+                this.RaiseStartTypeRestore();
+
                 if (!quiet)
                 {
                     this.StatusMessage = this.Services.Count == 0
@@ -1366,10 +1525,12 @@ namespace WinSW.Gui.ViewModels
         /// </para>
         /// <para>
         /// Every reading is handed over whether notifications are on or off, so that the last
-        /// state and the count are right the moment they are turned on; only the raising
-        /// depends on the setting. The state is read from the status rather than from
-        /// <see cref="ServiceEntry.Health"/>, which says Broken for a service whose configuration
-        /// cannot be read however it is running, and would hide its crashes.
+        /// state and the count are right the moment they are turned on, and so that each entry can
+        /// take the reading and the count into whether Windows is about to restart it; see
+        /// <see cref="ServiceEntry.NoteRecovery"/>. Only the raising depends on the setting. The
+        /// state is read from the status rather than from <see cref="ServiceEntry.Health"/>, which
+        /// says Broken for a service whose configuration cannot be read however it is running, and
+        /// would hide its crashes — and says Pending for one Windows is about to restart.
         /// </para>
         /// </remarks>
         private void AnnounceUnexpectedStops(IReadOnlyList<ServiceEntry> entries)
@@ -1386,6 +1547,9 @@ namespace WinSW.Gui.ViewModels
                     held: this.inFlight.Contains(entry.ServiceName),
                     now);
                 entry.CrashCount = this.announcer.CountFor(entry.ServiceName);
+
+                // After the count, which tells how far into its failure actions the service is.
+                entry.NoteRecovery(now);
 
                 if (!notify)
                 {
@@ -1643,6 +1807,8 @@ namespace WinSW.Gui.ViewModels
             this.ApplyRestartScheduleCommand.RaiseCanExecuteChanged();
             this.TerminateStrayCommand.RaiseCanExecuteChanged();
             this.EndStrayParentCommand.RaiseCanExecuteChanged();
+            this.StopRestartingCommand.RaiseCanExecuteChanged();
+            this.RestoreStartTypeCommand.RaiseCanExecuteChanged();
         }
 
         /// <summary>

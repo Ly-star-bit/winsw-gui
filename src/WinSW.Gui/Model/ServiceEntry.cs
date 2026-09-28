@@ -62,6 +62,13 @@ namespace WinSW.Gui.Model
         private Services.StrayFinding? strayProcess;
         private Services.StrayFinding? strayCandidate;
         private DateTime strayCandidateSince;
+        private ServiceStartMode? startType;
+        private bool delayedAutoStart;
+        private Services.RecoverySettings? recovery;
+        private Services.RecoverySettings? declaredRecovery;
+        private ServiceControllerStatus? recoverySeen;
+        private DateTime? stoppedAt;
+        private bool restartingByRecovery;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -97,6 +104,30 @@ namespace WinSW.Gui.Model
         {
             get => this.startMode;
             set => this.Set(ref this.startMode, value);
+        }
+
+        /// <summary>
+        /// The start type <see cref="StartMode"/> describes, for what depends on it rather than for
+        /// showing it: a disabled service is not started by its recovery, and a start type is what
+        /// "Stop restarting" changes and remembers. Null when the registry did not say.
+        /// </summary>
+        public ServiceStartMode? StartType
+        {
+            get => this.startType;
+            set
+            {
+                if (this.Set(ref this.startType, value))
+                {
+                    this.Raise(nameof(this.CanStopRestarting));
+                }
+            }
+        }
+
+        /// <summary>An automatic start waits until the rest of the system has started; as the service control manager holds it.</summary>
+        public bool DelayedAutoStart
+        {
+            get => this.delayedAutoStart;
+            set => this.Set(ref this.delayedAutoStart, value);
         }
 
         public string Account
@@ -210,6 +241,10 @@ namespace WinSW.Gui.Model
         {
             this.Description = other.Description;
             this.StartMode = other.StartMode;
+            this.StartType = other.StartType;
+            this.DelayedAutoStart = other.DelayedAutoStart;
+            this.Recovery = other.Recovery;
+            this.DeclaredRecovery = other.DeclaredRecovery;
             this.Account = other.Account;
             this.WrapperVersion = other.WrapperVersion;
             this.ConfigWrittenAt = other.ConfigWrittenAt;
@@ -217,6 +252,123 @@ namespace WinSW.Gui.Model
             this.DependsOn = other.DependsOn;
             this.DependedBy = other.DependedBy;
             this.Problem = other.Problem;
+        }
+
+        // Recovery -------------------------------------------------------------
+
+        /// <summary>
+        /// What Windows does when the service fails: the Recovery tab of services.msc, as the service
+        /// control manager holds it. Null when it could not be read. Brought forward by each rescan.
+        /// </summary>
+        public Services.RecoverySettings? Recovery
+        {
+            get => this.recovery;
+            set
+            {
+                if (this.Set(ref this.recovery, value))
+                {
+                    this.Raise(nameof(this.RecoveryText));
+                    this.Raise(nameof(this.RecoveryDiffers));
+                    this.Raise(nameof(this.RecoveryDifferenceText));
+                    this.Raise(nameof(this.CanStopRestarting));
+                }
+            }
+        }
+
+        /// <summary>
+        /// What the configuration file's <c>&lt;onfailure&gt;</c> and <c>&lt;resetfailure&gt;</c> would
+        /// have the wrapper set. Null when the file declares no failure actions: the wrapper then
+        /// leaves the service's own as they are, so they cannot be said to differ from the file.
+        /// </summary>
+        public Services.RecoverySettings? DeclaredRecovery
+        {
+            get => this.declaredRecovery;
+            set
+            {
+                if (this.Set(ref this.declaredRecovery, value))
+                {
+                    this.Raise(nameof(this.RecoveryDiffers));
+                    this.Raise(nameof(this.RecoveryDifferenceText));
+                }
+            }
+        }
+
+        public string RecoveryText => this.recovery is { } held
+            ? held.Describe(Localizer.Format)
+            : Localizer.Get("M.Dash.Recovery.Unknown");
+
+        /// <summary>
+        /// Windows does something else on a failure than the file says: changed by hand since the
+        /// file was last applied, or a file edited and not applied yet.
+        /// </summary>
+        public bool RecoveryDiffers =>
+            this.recovery is { } held && this.declaredRecovery is { } declared && !held.SameEffectAs(declared);
+
+        public string RecoveryDifferenceText => this.RecoveryDiffers
+            ? Localizer.Format("M.Dash.RecoveryDiffers", this.declaredRecovery!.Describe(Localizer.Format))
+            : string.Empty;
+
+        /// <summary>
+        /// A failure would have Windows start the service again, and nothing stops it doing so yet:
+        /// "Stop restarting" has something to stop.
+        /// </summary>
+        public bool CanStopRestarting => this.recovery?.Restarts == true && this.startType != ServiceStartMode.Disabled;
+
+        /// <summary>
+        /// Stopped by a failure Windows answers with a restart, and the restart is not overdue yet:
+        /// the service is between two runs of a restart loop, or one restart away from running again,
+        /// and Stopped would be the wrong thing to call it. See <see cref="NoteRecovery"/>.
+        /// </summary>
+        public bool IsRestartingByRecovery
+        {
+            get => this.restartingByRecovery;
+            private set
+            {
+                if (this.Set(ref this.restartingByRecovery, value))
+                {
+                    this.Raise(nameof(this.Health));
+                    this.Raise(nameof(this.SortRank));
+                    this.Raise(nameof(this.StatusText));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Takes one reading into <see cref="IsRestartingByRecovery"/>. Called after every reading,
+        /// full or of states alone, once <see cref="CrashCount"/> has been brought up to date by it.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The time of a stop is the time it was first seen: a service found stopped, at the first
+        /// reading or after one that could not be made, stopped when nobody was looking, and is not
+        /// given a wait it may have finished long ago. A stop seen late, by a reading taken after a
+        /// pause, is waited out from when it was seen, which errs towards saying "restarting" a
+        /// little too long rather than "stopped" too soon.
+        /// </para>
+        /// <para>
+        /// Re-evaluated at every reading rather than when something changes, because the wait runs
+        /// out on its own: nothing about a service still stopped changes when its restart is overdue.
+        /// </para>
+        /// </remarks>
+        public void NoteRecovery(DateTime now)
+        {
+            if (this.status != ServiceControllerStatus.Stopped)
+            {
+                this.stoppedAt = null;
+            }
+            else if (this.recoverySeen is { } seen && seen != ServiceControllerStatus.Stopped)
+            {
+                this.stoppedAt = now;
+            }
+
+            this.recoverySeen = this.status;
+
+            // A disabled service cannot be started, by its recovery or anyone else.
+            this.IsRestartingByRecovery =
+                this.stoppedAt is { } since
+                && this.startType != ServiceStartMode.Disabled
+                && this.recovery?.RestartDueBy(this.lastExitCode ?? 0, since, this.crashCount) is { } due
+                && now < due;
         }
 
         // Live metrics --------------------------------------------------------
@@ -614,7 +766,11 @@ namespace WinSW.Gui.Model
             _ => 4,
         };
 
-        public ServiceHealth Health => this.problem != null ? ServiceHealth.Broken : this.status switch
+        /// <remarks>
+        /// A service Windows is about to start again is Pending, not Stopped: it is on its way to a
+        /// state, as a service starting is, and the colour and the stopped count say so.
+        /// </remarks>
+        public ServiceHealth Health => this.problem != null ? ServiceHealth.Broken : this.restartingByRecovery ? ServiceHealth.Pending : this.status switch
         {
             ServiceControllerStatus.Running => ServiceHealth.Running,
             ServiceControllerStatus.Stopped => ServiceHealth.Stopped,
@@ -622,7 +778,7 @@ namespace WinSW.Gui.Model
             _ => ServiceHealth.Pending,
         };
 
-        public string StatusText => Localizer.Get(this.status switch
+        public string StatusText => this.restartingByRecovery ? Localizer.Get("M.Status.Restarting") : Localizer.Get(this.status switch
         {
             ServiceControllerStatus.Running => "M.Status.Running",
             ServiceControllerStatus.Stopped => "M.Status.Stopped",
@@ -642,6 +798,8 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.StrayProcessText));
             this.Raise(nameof(this.StrayParentText));
             this.Raise(nameof(this.StrayParentActionText));
+            this.Raise(nameof(this.RecoveryText));
+            this.Raise(nameof(this.RecoveryDifferenceText));
         }
 
         public bool CanStart => this.status == ServiceControllerStatus.Stopped;

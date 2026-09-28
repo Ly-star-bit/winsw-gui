@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace WinSW.Gui.Services
@@ -101,6 +103,151 @@ namespace WinSW.Gui.Services
 
         /// <summary>ERROR_SERVICE_SPECIFIC_ERROR: the real code is in ServiceSpecificExitCode.</summary>
         internal const int ERROR_SERVICE_SPECIFIC_ERROR = 1066;
+
+        // Service configuration ----------------------------------------------
+        //
+        // What services.msc shows on the Recovery tab, and the delayed flag of an automatic
+        // start. Querying a service's configuration is a right a standard user holds over every
+        // service, as reading its state is; changing it is not, and goes through sc.exe elevated.
+
+        internal const int SERVICE_QUERY_CONFIG = 0x0001;
+
+        /// <summary>SERVICE_CONFIG_FAILURE_ACTIONS: a SERVICE_FAILURE_ACTIONSW, with its actions after it in the same buffer.</summary>
+        internal const int SERVICE_CONFIG_FAILURE_ACTIONS = 2;
+
+        /// <summary>SERVICE_CONFIG_DELAYED_AUTO_START_INFO: one BOOL.</summary>
+        internal const int SERVICE_CONFIG_DELAYED_AUTO_START_INFO = 3;
+
+        /// <summary>SERVICE_CONFIG_FAILURE_ACTIONS_FLAG: one BOOL, "enable actions for stops with errors".</summary>
+        internal const int SERVICE_CONFIG_FAILURE_ACTIONS_FLAG = 4;
+
+        /// <summary>
+        /// SERVICE_FAILURE_ACTIONSW. The strings and the actions are pointers into the buffer the
+        /// structure was read from, and are read before that buffer is freed.
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SERVICE_FAILURE_ACTIONS
+        {
+            /// <summary>In seconds; INFINITE when the count never resets.</summary>
+            public uint ResetPeriod;
+
+            public IntPtr RebootMessage;
+            public IntPtr Command;
+            public int ActionCount;
+            public IntPtr Actions;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct SC_ACTION
+        {
+            public int Type;
+
+            /// <summary>In milliseconds.</summary>
+            public uint Delay;
+        }
+
+        [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool QueryServiceConfig2W(IntPtr service, int infoLevel, IntPtr buffer, int bufferSize, out int bytesNeeded);
+
+        /// <summary>
+        /// Reads a service's failure actions and whether its automatic start is delayed, over a
+        /// connection from <see cref="OpenServiceManager"/>. What could not be read is null: an
+        /// unanswered question is not an answer of "none".
+        /// </summary>
+        internal static void QueryRecovery(IntPtr manager, string serviceName, out RecoverySettings? recovery, out bool? delayedAutoStart)
+        {
+            recovery = null;
+            delayedAutoStart = null;
+
+            if (manager == IntPtr.Zero)
+            {
+                return;
+            }
+
+            IntPtr service = OpenServiceW(manager, serviceName, SERVICE_QUERY_CONFIG);
+            if (service == IntPtr.Zero)
+            {
+                return;
+            }
+
+            try
+            {
+                if (TryQueryConfig2(service, SERVICE_CONFIG_DELAYED_AUTO_START_INFO, static buffer => Marshal.ReadInt32(buffer) != 0, out bool delayed))
+                {
+                    delayedAutoStart = delayed;
+                }
+
+                // Not knowing is taken as the default, off: the actions then answer crashes alone.
+                TryQueryConfig2(service, SERVICE_CONFIG_FAILURE_ACTIONS_FLAG, static buffer => Marshal.ReadInt32(buffer) != 0, out bool onNonCrashFailures);
+
+                if (TryQueryConfig2(service, SERVICE_CONFIG_FAILURE_ACTIONS, buffer =>
+                {
+                    var head = Marshal.PtrToStructure<SERVICE_FAILURE_ACTIONS>(buffer);
+                    var actions = new List<(int, uint)>();
+                    if (head.Actions != IntPtr.Zero)
+                    {
+                        int size = Marshal.SizeOf<SC_ACTION>();
+                        for (int i = 0; i < Math.Min(head.ActionCount, 64); i++)
+                        {
+                            var action = Marshal.PtrToStructure<SC_ACTION>(head.Actions + (i * size));
+                            actions.Add((action.Type, action.Delay));
+                        }
+                    }
+
+                    return RecoverySettings.FromScm(head.ResetPeriod, actions, onNonCrashFailures);
+                }, out var read))
+                {
+                    recovery = read;
+                }
+            }
+            finally
+            {
+                CloseServiceHandle(service);
+            }
+        }
+
+        /// <summary>
+        /// One QueryServiceConfig2W level, handed to <paramref name="read"/> before the buffer it
+        /// was read into is freed. False when the level could not be read.
+        /// </summary>
+        /// <remarks>
+        /// A buffer of a fixed size first, and a second call only when the service control manager
+        /// says it wants a larger one: the flags are four bytes, and the failure actions a few dozen
+        /// unless someone has set a long reboot message or command. The rescan asks this three
+        /// times per service, and asking for the size first would double that for nothing.
+        /// </remarks>
+        private static bool TryQueryConfig2<T>(IntPtr service, int level, Func<IntPtr, T> read, [MaybeNullWhen(false)] out T value)
+        {
+            value = default;
+            int size = 256;
+
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                IntPtr buffer = Marshal.AllocHGlobal(size);
+                try
+                {
+                    if (QueryServiceConfig2W(service, level, buffer, size, out int needed))
+                    {
+                        value = read(buffer);
+                        return true;
+                    }
+
+                    if (Marshal.GetLastWin32Error() != ERROR_INSUFFICIENT_BUFFER || needed <= size)
+                    {
+                        return false;
+                    }
+
+                    size = needed;
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(buffer);
+                }
+            }
+
+            return false;
+        }
 
         // Process snapshot ------------------------------------------------------
         //

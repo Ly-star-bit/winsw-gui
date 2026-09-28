@@ -95,6 +95,10 @@ namespace WinSW.Gui.Services
                 controllers[controller.ServiceName] = controller;
             }
 
+            // One connection for the sweep, for the recovery settings: the registry holds them
+            // too, but as an undocumented binary value, and the documented question is as cheap.
+            IntPtr manager = NativeMethods.OpenServiceManager();
+
             try
             {
                 foreach (string name in servicesKey.GetSubKeyNames())
@@ -116,15 +120,27 @@ namespace WinSW.Gui.Services
                         continue;
                     }
 
+                    // Read once for both of the things taken from it: the program it runs and the
+                    // failure actions it declares.
+                    var model = LoadConfiguration(configPath);
+
+                    var startType = StartTypeOf(key);
+                    NativeMethods.QueryRecovery(manager, name, out var recovery, out bool? delayedByManager);
+                    bool delayed = delayedByManager ?? (key.GetValue("DelayedAutostart") is int flag && flag != 0);
+
                     var entry = new ServiceEntry(name, SafeDisplayName(controller, name), wrapperPath, configPath)
                     {
                         Description = key.GetValue("Description") as string ?? string.Empty,
-                        StartMode = DescribeStartMode(key),
+                        StartMode = DescribeStartMode(startType, delayed),
+                        StartType = startType,
+                        DelayedAutoStart = delayed,
+                        Recovery = recovery,
+                        DeclaredRecovery = model is null ? null : RecoverySettings.FromConfig(model),
                         Account = key.GetValue("ObjectName") as string ?? "LocalSystem",
                         Problem = problem,
                         WrapperVersion = VersionOf(versions, wrapperPath),
                         ConfigWrittenAt = WrittenAt(configPath),
-                        ExecutablePath = ExecutableOf(configPath),
+                        ExecutablePath = ExecutableOf(model, configPath),
                         DependsOn = Names(() => controller.ServicesDependedOn),
                         DependedBy = Names(() => controller.DependentServices),
                     };
@@ -137,6 +153,11 @@ namespace WinSW.Gui.Services
                 foreach (var controller in controllers.Values)
                 {
                     controller.Dispose();
+                }
+
+                if (manager != IntPtr.Zero)
+                {
+                    NativeMethods.CloseServiceHandle(manager);
                 }
             }
 
@@ -244,14 +265,8 @@ namespace WinSW.Gui.Services
         /// </summary>
         public static void RefreshWrapperVersion(ServiceEntry entry) => entry.WrapperVersion = ReadVersion(entry.WrapperPath);
 
-        /// <summary>The wrapper's file version, read once per distinct path per sweep.</summary>
-        /// <summary>
-        /// The program the configuration runs, as a full path, for finding it running outside the
-        /// service once the service has stopped. Null when it is named bare — <c>java</c>, found
-        /// on the PATH — because a bare name matches every copy on the machine, and when the
-        /// configuration cannot be read.
-        /// </summary>
-        private static string? ExecutableOf(string? configPath)
+        /// <summary>The configuration file read into a model, or null when there is none or it cannot be read.</summary>
+        private static ServiceConfigModel? LoadConfiguration(string? configPath)
         {
             if (configPath is null)
             {
@@ -260,12 +275,29 @@ namespace WinSW.Gui.Services
 
             try
             {
-                var model = ServiceConfigModel.Load(configPath);
-                if (string.IsNullOrWhiteSpace(model.Executable))
-                {
-                    return null;
-                }
+                return ServiceConfigModel.Load(configPath);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException)
+            {
+                return null;
+            }
+        }
 
+        /// <summary>
+        /// The program the configuration runs, as a full path, for finding it running outside the
+        /// service once the service has stopped. Null when it is named bare — <c>java</c>, found
+        /// on the PATH — because a bare name matches every copy on the machine, and when the
+        /// configuration cannot be read.
+        /// </summary>
+        private static string? ExecutableOf(ServiceConfigModel? model, string? configPath)
+        {
+            if (model is null || configPath is null || string.IsNullOrWhiteSpace(model.Executable))
+            {
+                return null;
+            }
+
+            try
+            {
                 string expanded = ConfigPaths.Expand(model.Executable!, configPath);
                 if (!Path.IsPathRooted(expanded))
                 {
@@ -275,7 +307,7 @@ namespace WinSW.Gui.Services
                 string full = Path.GetFullPath(expanded);
                 return Path.HasExtension(full) ? full : full + ".exe";
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException or NotSupportedException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
                 return null;
             }
@@ -303,6 +335,7 @@ namespace WinSW.Gui.Services
             }
         }
 
+        /// <summary>The wrapper's file version, read once per distinct path per sweep.</summary>
         private static string VersionOf(Dictionary<string, string> cache, string path)
         {
             if (!cache.TryGetValue(path, out string? version))
@@ -461,26 +494,22 @@ namespace WinSW.Gui.Services
             }
         }
 
-        private static string DescribeStartMode(RegistryKey key)
+        /// <summary>The registry's Start value, which is ServiceStartMode's numbering; null when it is missing or out of range.</summary>
+        private static ServiceStartMode? StartTypeOf(RegistryKey key) =>
+            key.GetValue("Start") is int value && value is >= (int)ServiceStartMode.Boot and <= (int)ServiceStartMode.Disabled
+                ? (ServiceStartMode)value
+                : null;
+
+        /// <summary>The start type as the detail panel shows it.</summary>
+        internal static string DescribeStartMode(ServiceStartMode? startType, bool delayed) => startType switch
         {
-            int start = key.GetValue("Start") is int value ? value : -1;
-            string mode = start switch
-            {
-                0 => "Boot",
-                1 => "System",
-                2 => "Automatic",
-                3 => "Manual",
-                4 => "Disabled",
-                _ => "Unknown",
-            };
-
-            if (start == 2 && key.GetValue("DelayedAutostart") is int delayed && delayed != 0)
-            {
-                mode = "Automatic (delayed)";
-            }
-
-            return mode;
-        }
+            ServiceStartMode.Boot => "Boot",
+            ServiceStartMode.System => "System",
+            ServiceStartMode.Automatic => delayed ? "Automatic (delayed)" : "Automatic",
+            ServiceStartMode.Manual => "Manual",
+            ServiceStartMode.Disabled => "Disabled",
+            _ => "Unknown",
+        };
 
         /// <summary>
         /// Splits a registry image path the way the service control manager does: quoted

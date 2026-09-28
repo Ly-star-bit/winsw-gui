@@ -465,6 +465,37 @@
                                         </Grid>
                                     </Border>
 
+                                    <!-- Stopped by a failure, and Windows' recovery is about to start it again -->
+                                    <Border
+                                        Margin="0,0,0,14"
+                                        Padding="12,8"
+                                        Background="{DynamicResource AccentSoftBrush}"
+                                        BorderBrush="{DynamicResource HealthPendingBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Visibility="{Binding IsRestartingByRecovery, Converter={StaticResource BoolToVisibility}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthPendingBrush}" Style="{StaticResource Icon}" Text="&#xF13D;" />
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{DynamicResource M.Dash.RecoveryRestarting}" TextWrapping="Wrap" />
+                                                <TextBlock Style="{StaticResource FieldHint}" Text="{Binding RecoveryText}" />
+                                            </StackPanel>
+                                            <Button
+                                                Grid.Column="2"
+                                                Margin="10,0,0,0"
+                                                Padding="10,4"
+                                                VerticalAlignment="Center"
+                                                Command="{Binding DataContext.StopRestartingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Content="{DynamicResource M.Dash.StopRestarting}"
+                                                ToolTip="{DynamicResource M.Dash.StopRestartingTip}" />
+                                        </Grid>
+                                    </Border>
+
                                     <!-- The file has moved on since the process started -->
                                     <Border
                                         Margin="0,0,0,14"
@@ -510,6 +541,7 @@
                                         <RowDefinition />
                                         <RowDefinition />
                                         <RowDefinition />
+                                        <RowDefinition />
                                     </Grid.RowDefinitions>
                                     <Grid.Resources>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
@@ -529,17 +561,44 @@
                                     <TextBlock Grid.Row="3" Grid.Column="0" Text="{DynamicResource S.StartMode}" />
                                     <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding StartMode}" />
 
-                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource S.Account}" />
-                                    <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Account}" />
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{DynamicResource M.Dash.OnFailure}" />
+                                    <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,0,0,6">
+                                        <TextBlock Margin="0" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding RecoveryText}" TextWrapping="Wrap" />
+                                        <!-- Only when the file declares failure actions: without any, the wrapper leaves these alone. -->
+                                        <TextBlock
+                                            Foreground="{DynamicResource HealthPendingBrush}"
+                                            Style="{StaticResource FieldHint}"
+                                            Text="{Binding RecoveryDifferenceText}"
+                                            Visibility="{Binding RecoveryDiffers, Converter={StaticResource BoolToVisibility}}" />
+                                        <WrapPanel>
+                                            <Button
+                                                Margin="0,6,8,0"
+                                                Padding="8,2"
+                                                Command="{Binding DataContext.StopRestartingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Content="{DynamicResource M.Dash.StopRestarting}"
+                                                ToolTip="{DynamicResource M.Dash.StopRestartingTip}"
+                                                Visibility="{Binding CanStopRestarting, Converter={StaticResource BoolToVisibility}}" />
+                                            <Button
+                                                Margin="0,6,8,0"
+                                                Padding="8,2"
+                                                Command="{Binding DataContext.RestoreStartTypeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Content="{Binding DataContext.RestoreStartTypeText, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                ToolTip="{DynamicResource M.Dash.RestoreStartTypeTip}"
+                                                Visibility="{Binding DataContext.CanRestoreStartType, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
+                                        </WrapPanel>
+                                    </StackPanel>
 
-                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource M.Dash.DependsOn}" />
-                                    <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding DependsOnText}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{DynamicResource S.Account}" />
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding Account}" />
 
-                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{DynamicResource M.Dash.DependedBy}" />
-                                    <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding DependedByText}" TextWrapping="Wrap" />
+                                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{DynamicResource M.Dash.DependsOn}" />
+                                    <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding DependsOnText}" TextWrapping="Wrap" />
 
-                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{DynamicResource M.Dash.WrapperVersion}" />
-                                    <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal">
+                                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{DynamicResource M.Dash.DependedBy}" />
+                                    <TextBlock Grid.Row="7" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding DependedByText}" TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{DynamicResource M.Dash.WrapperVersion}" />
+                                    <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal">
                                         <TextBlock Style="{StaticResource Mono}" Text="{Binding WrapperVersion}" />
                                         <TextBlock Margin="10,0,0,0" Style="{StaticResource FieldHint}" Text="{Binding DataContext.WrapperUpdateText, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                         <Button
@@ -550,8 +609,8 @@
                                             Visibility="{Binding DataContext.WrapperUpdateAvailable, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
 
-                                    <TextBlock Grid.Row="8" Grid.Column="0" VerticalAlignment="Center" Text="{DynamicResource M.Sched.Label}" ToolTip="{DynamicResource M.Sched.Hint}" />
-                                    <StackPanel Grid.Row="8" Grid.Column="1" Margin="0,0,0,6" Orientation="Horizontal" ToolTip="{DynamicResource M.Sched.Hint}">
+                                    <TextBlock Grid.Row="9" Grid.Column="0" VerticalAlignment="Center" Text="{DynamicResource M.Sched.Label}" ToolTip="{DynamicResource M.Sched.Hint}" />
+                                    <StackPanel Grid.Row="9" Grid.Column="1" Margin="0,0,0,6" Orientation="Horizontal" ToolTip="{DynamicResource M.Sched.Hint}">
                                         <ComboBox
                                             MinWidth="130"
                                             AutomationProperties.Name="{DynamicResource M.Sched.Label}"
@@ -577,9 +636,9 @@
                                             TextWrapping="Wrap" />
                                     </StackPanel>
 
-                                    <TextBlock Grid.Row="9" Grid.Column="0" VerticalAlignment="Center" Text="{DynamicResource M.Group.Label}" ToolTip="{DynamicResource M.Group.Hint}" />
+                                    <TextBlock Grid.Row="10" Grid.Column="0" VerticalAlignment="Center" Text="{DynamicResource M.Group.Label}" ToolTip="{DynamicResource M.Group.Hint}" />
                                     <ComboBox
-                                        Grid.Row="9"
+                                        Grid.Row="10"
                                         Grid.Column="1"
                                         MinWidth="200"
                                         Margin="0,0,0,6"

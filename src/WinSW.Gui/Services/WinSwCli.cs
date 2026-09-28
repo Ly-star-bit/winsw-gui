@@ -289,6 +289,59 @@ namespace WinSW.Gui.Services
             RunElevatedAsync("schtasks.exe", $"/Delete /TN {Quote(taskPath)} /F", null, QuickTimeout, "schtasks");
 
         /// <summary>
+        /// Sets a service's start type with sc.exe, with administrator rights, and first asks it to
+        /// stop when <paramref name="stopFirst"/> is set. The wrapper has no command for a start type
+        /// on its own: <c>refresh</c> sets every setting from the file, which is not what is wanted
+        /// when the point is to keep the service from being started again.
+        /// </summary>
+        /// <param name="serviceName">The service, by the name the service control manager knows it by.</param>
+        /// <param name="startType">
+        /// The word sc.exe takes: <c>disabled</c>, <c>auto</c>, <c>delayed-auto</c> or <c>demand</c>.
+        /// </param>
+        /// <param name="stopFirst">
+        /// Stop it first, for a service caught halfway through a start. Whether the stop is accepted
+        /// is not what is reported: a service still starting may refuse it, and the start type is
+        /// what keeps Windows from starting it again after that. The exit code is sc.exe's for the
+        /// start type.
+        /// </param>
+        public static Task<CommandResult> SetStartTypeAsync(string serviceName, string startType, bool stopFirst)
+        {
+            if (StartTypeSteps(serviceName, startType, stopFirst) is not { } steps)
+            {
+                return Task.FromResult(CommandResult.Failed(Localizer.Format("M.Cli.NameNotUsable", serviceName)));
+            }
+
+            return RunElevatedScriptAsync(steps, null, QuickTimeout, "sc config");
+        }
+
+        /// <summary>
+        /// The steps <see cref="SetStartTypeAsync"/> chains, or null when it refuses them: a start
+        /// type other than the four, or a name cmd would read something into. Quoting keeps
+        /// <c>&amp;</c> and the like inert, but not <c>%</c> or a quote of its own, and a service name
+        /// has no need of either.
+        /// </summary>
+        internal static IReadOnlyList<string>? StartTypeSteps(string serviceName, string startType, bool stopFirst)
+        {
+            if (startType is not ("disabled" or "auto" or "delayed-auto" or "demand")
+                || string.IsNullOrWhiteSpace(serviceName)
+                || serviceName.IndexOfAny(new[] { '"', '%', '\r', '\n' }) >= 0)
+            {
+                return null;
+            }
+
+            var steps = new List<string>(2);
+            if (stopFirst)
+            {
+                steps.Add($"sc.exe stop {Quote(serviceName)} >nul 2>&1");
+            }
+
+            // Last, so that its exit code is the script's. The space after "start=" is sc.exe's
+            // syntax, not a slip: without it the option is not recognised.
+            steps.Add($"sc.exe config {Quote(serviceName)} start= {startType}");
+            return steps;
+        }
+
+        /// <summary>
         /// The most a chained script may be, in characters. cmd refuses a command line longer
         /// than 8191 and does not say so usefully; the margin covers <c>cmd.exe /d /c ""</c>
         /// and leaves room for one more step than fits exactly.
