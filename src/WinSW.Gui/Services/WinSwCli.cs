@@ -72,6 +72,27 @@ namespace WinSW.Gui.Services
 
         private static readonly TimeSpan QuickTimeout = TimeSpan.FromMinutes(1);
 
+        /// <summary>ERROR_SERVICE_REQUEST_TIMEOUT: the service did not answer the service control manager in time.</summary>
+        private const int ServiceRequestTimeout = 1053;
+
+        /// <summary>ERROR_SERVICE_DISABLED: the start type is Disabled, and Windows starts it for nobody.</summary>
+        private const int ServiceDisabled = 1058;
+
+        /// <summary>ERROR_SERVICE_LOGON_FAILED: Windows could not sign in as the service's account.</summary>
+        private const int ServiceLogonFailed = 1069;
+
+        /// <summary>
+        /// The labels of the commands that run the wrapper, whose exit code is a Windows error code
+        /// or its own -1; see <see cref="DescribeExitCode(string, int, Func{string, object[], string}, Func{int, string})"/>.
+        /// A batch runs under its command's own label. The upgrade is left out: its exit code is
+        /// whichever of a copy and the restarts after it ran last, and it is judged by the file's
+        /// version instead.
+        /// </summary>
+        private static readonly HashSet<string> WrapperCommands = new(StringComparer.Ordinal)
+        {
+            "install", "uninstall", "start", "stop", "restart", "refresh", "dev kill", "install + start", "customize",
+        };
+
         public static Task<CommandResult> InstallAsync(string wrapper, string configPath) =>
             RunAsync(wrapper, "install", Line("install", configPath), QuickTimeout);
 
@@ -541,15 +562,69 @@ namespace WinSW.Gui.Services
             }
         }
 
-        private static string DescribeExitCode(string command, int exitCode) => exitCode switch
+        private static string DescribeExitCode(string command, int exitCode) =>
+            DescribeExitCode(command, exitCode, Localizer.Format, SystemText);
+
+        /// <summary>
+        /// What a command's nonzero exit code is reported as. The wrapper exits with the Windows
+        /// error code of whatever failed, or -1 for a failure of its own, and ShellExecute leaves
+        /// the code as the only thing that comes back: its own message stays in the wrapper log.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The codes an operator meets most get a line of their own that says what to do. Any
+        /// other code a wrapper command exits with is followed by Windows' own text for it, so
+        /// that "exit code 2" at least says a file was not found.
+        /// </para>
+        /// <para>
+        /// Only the wrapper's codes are Windows error codes. The copy, del, taskkill and schtasks
+        /// steps run through the same path return 1 for most failures, which Windows would call
+        /// "Incorrect function", and -1 is the wrapper's own. Neither is given a system text.
+        /// </para>
+        /// </remarks>
+        /// <param name="command">The label the command ran under: <c>start</c>, <c>install + start</c>, <c>taskkill</c>…</param>
+        /// <param name="exitCode">The exit code, not 0.</param>
+        /// <param name="format">Formats a dictionary key with its arguments: <see cref="Localizer.Format"/> outside tests.</param>
+        /// <param name="systemText">Windows' own text for an error code.</param>
+        internal static string DescribeExitCode(string command, int exitCode, Func<string, object?[], string> format, Func<int, string> systemText)
         {
-            CommandResult.DependentServicesRunning => Localizer.Get("M.Cli.HasDependents"),
-            1056 => Localizer.Get("M.Cli.AlreadyRunning"),
-            1060 => Localizer.Get("M.Cli.NotInstalled"),
-            1062 => Localizer.Get("M.Cli.NotRunning"),
-            1073 => Localizer.Get("M.Cli.AlreadyExists"),
-            _ => Localizer.Format("M.Cli.Failed", command, exitCode),
-        };
+            bool wrapper = WrapperCommands.Contains(command);
+
+            // 1053 and -1 mean what their lines say only after a start: that the service never came
+            // up. After a stop, a restart or a refresh they are a control not answered in time, or
+            // an error of the wrapper's — dependents still running, among others — and Windows'
+            // text or the wrapper log says which. A restart's -1 can be from either half.
+            bool starts = command is "start" or "install + start";
+
+            string? key = exitCode switch
+            {
+                CommandResult.DependentServicesRunning => "M.Cli.HasDependents",
+                1056 => "M.Cli.AlreadyRunning",
+                1060 => "M.Cli.NotInstalled",
+                1062 => "M.Cli.NotRunning",
+                1073 => "M.Cli.AlreadyExists",
+                _ when !wrapper => null,
+                ServiceDisabled => "M.Cli.ServiceDisabled",
+                ServiceLogonFailed => "M.Cli.LogonFailed",
+                ServiceRequestTimeout when starts => "M.Cli.StartTimedOut",
+
+                // Customize touches no service, so there is no service's log to point at; what it
+                // wrote to its error output is reported instead, and this only when there was none.
+                -1 when command != "customize" => starts ? "M.Cli.StartFailedEarly" : "M.Cli.WrapperError",
+                _ => null,
+            };
+
+            if (key != null)
+            {
+                return format(key, new object?[] { command });
+            }
+
+            string failed = format("M.Cli.Failed", new object?[] { command, exitCode });
+            return wrapper && exitCode != -1 ? failed + " " + systemText(exitCode).Trim() : failed;
+        }
+
+        /// <summary>Windows' own text for an error code, in the language Windows is displayed in.</summary>
+        private static string SystemText(int code) => new Win32Exception(code).Message;
 
         private static string Quote(string value) => $"\"{value}\"";
     }

@@ -158,9 +158,12 @@ namespace WinSW.Gui.ViewModels
             this.StopCommand = new AsyncRelayCommand(
                 () => this.StopAsync(this.selectedService, force: false),
                 () => this.selectedService?.CanStop == true && this.IsIdle(this.selectedService, "stop"));
+
+            // Not for a disabled service, which Windows would stop and then refuse to start again.
             this.RestartCommand = new AsyncRelayCommand(
                 () => this.RestartAsync(this.selectedService, force: false),
-                () => this.IsIdle(this.selectedService, "restart"));
+                () => this.selectedService?.IsStartable == true && this.IsIdle(this.selectedService, "restart"));
+
             this.RefreshConfigCommand = new AsyncRelayCommand(
                 () => this.RunAsync(this.selectedService, "refresh", (w, c) => WinSwCli.RefreshAsync(w, c)),
                 () => this.IsIdle(this.selectedService, "refresh"));

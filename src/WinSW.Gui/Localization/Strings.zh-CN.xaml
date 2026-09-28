@@ -289,6 +289,20 @@
     <sys:String x:Key="M.Cli.TimedOut">winsw {0} 在 {1} 秒内未完成，服务可能已卡住。</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">有其它服务依赖此服务。</sys:String>
     <sys:String x:Key="M.Cli.PathNotUsable">无法使用“{0}”：路径中的 %NAME% 会先被命令解释器替换掉，包装器拿到的已不是该路径。请把文件移到不含百分号的位置。</sys:String>
+    <!-- Why a start failed: {0} is the command (start, install + start…). The wrapper's own message stays in its log, so these say where to look. Then the tooltip on Start and Restart for a disabled service, and the start types as services.msc names them. -->
+    <sys:String x:Key="M.Cli.ServiceDisabled">“winsw {0}”失败（1058）：服务已禁用，Windows 不会启动被禁用的服务。“应用配置”会按配置文件设置启动类型，也可以在 services.msc 里修改。</sys:String>
+    <sys:String x:Key="M.Cli.LogonFailed">“winsw {0}”失败（1069）：Windows 无法用服务的账户登录。如果该账户的密码改过，请在 services.msc 中该服务的“登录”选项卡里填入新密码。该账户还需要有“作为服务登录”权限。</sys:String>
+    <sys:String x:Key="M.Cli.StartTimedOut">“winsw {0}”失败（1053）：服务没有在 Windows 允许的时间内报告已启动。常见原因是包装器根本没能运行（例如缺少它需要的 .NET Framework），或者程序启动前的步骤太慢。请查看“上次停止”卡片和包装器日志。</sys:String>
+    <sys:String x:Key="M.Cli.StartFailedEarly">“winsw {0}”失败（退出码 -1）：服务还没启动起来，包装器就放弃了，通常是程序运行不起来：路径不对、虚拟环境损坏，或者 prestart 步骤失败。原因记在 err.log 和包装器日志里，请查看“上次停止”卡片。</sys:String>
+    <sys:String x:Key="M.Cli.WrapperError">“winsw {0}”失败（退出码 -1）：包装器自身出错退出，原因已写入该服务的包装器日志。</sys:String>
+    <sys:String x:Key="M.Dash.StartDisabledTip">该服务已禁用，Windows 不会启动它。请先修改启动类型：“应用配置”会按配置文件设置，“恢复启动类型”可以撤销“停止自动重启”。</sys:String>
+    <sys:String x:Key="M.StartMode.Automatic">自动</sys:String>
+    <sys:String x:Key="M.StartMode.AutomaticDelayed">自动（延迟启动）</sys:String>
+    <sys:String x:Key="M.StartMode.Manual">手动</sys:String>
+    <sys:String x:Key="M.StartMode.Disabled">禁用</sys:String>
+    <sys:String x:Key="M.StartMode.Boot">引导</sys:String>
+    <sys:String x:Key="M.StartMode.System">系统</sys:String>
+    <sys:String x:Key="M.StartMode.Unknown">未知</sys:String>
     <sys:String x:Key="M.Tray.Open">打开 WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">退出</sys:String>
     <sys:String x:Key="M.Tray.Tip">WinSW — Windows 服务包装器控制台</sys:String>

@@ -289,6 +289,20 @@
     <sys:String x:Key="M.Cli.TimedOut">winsw {0} 在 {1} 秒內未完成，服務可能已卡住。</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">有其他服務相依於此服務。</sys:String>
     <sys:String x:Key="M.Cli.PathNotUsable">無法使用「{0}」：路徑中的 %NAME% 會先被命令直譯器取代，包裝程式拿到的已不是該路徑。請把檔案移到不含百分比符號的位置。</sys:String>
+    <!-- Why a start failed: {0} is the command (start, install + start…). The wrapper's own message stays in its log, so these say where to look. Then the tooltip on Start and Restart for a disabled service, and the start types as services.msc names them. -->
+    <sys:String x:Key="M.Cli.ServiceDisabled">「winsw {0}」失敗（1058）：服務已停用，Windows 不會啟動已停用的服務。「套用設定」會依設定檔設定啟動類型，也可以在 services.msc 中變更。</sys:String>
+    <sys:String x:Key="M.Cli.LogonFailed">「winsw {0}」失敗（1069）：Windows 無法以服務的帳戶登入。如果該帳戶的密碼已變更，請在 services.msc 中該服務的「登入」索引標籤輸入新密碼。該帳戶也需要「以服務方式登入」權限。</sys:String>
+    <sys:String x:Key="M.Cli.StartTimedOut">「winsw {0}」失敗（1053）：服務沒有在 Windows 允許的時間內回報已啟動。常見原因是包裝器根本無法執行（例如缺少所需的 .NET Framework），或程式啟動前的步驟太慢。請查看「上次停止」卡片和包裝器記錄檔。</sys:String>
+    <sys:String x:Key="M.Cli.StartFailedEarly">「winsw {0}」失敗（結束碼 -1）：服務還沒啟動，包裝器就放棄了，通常是程式無法執行：路徑錯誤、虛擬環境損壞，或 prestart 步驟失敗。原因記錄在 err.log 和包裝器記錄檔中，請查看「上次停止」卡片。</sys:String>
+    <sys:String x:Key="M.Cli.WrapperError">「winsw {0}」失敗（結束碼 -1）：包裝器本身發生錯誤而結束，原因已寫入該服務的包裝器記錄檔。</sys:String>
+    <sys:String x:Key="M.Dash.StartDisabledTip">此服務已停用，Windows 不會啟動它。請先變更啟動類型：「套用設定」會依設定檔設定，「還原啟動類型」可復原「停止自動重新啟動」。</sys:String>
+    <sys:String x:Key="M.StartMode.Automatic">自動</sys:String>
+    <sys:String x:Key="M.StartMode.AutomaticDelayed">自動（延遲啟動）</sys:String>
+    <sys:String x:Key="M.StartMode.Manual">手動</sys:String>
+    <sys:String x:Key="M.StartMode.Disabled">已停用</sys:String>
+    <sys:String x:Key="M.StartMode.Boot">開機</sys:String>
+    <sys:String x:Key="M.StartMode.System">系統</sys:String>
+    <sys:String x:Key="M.StartMode.Unknown">未知</sys:String>
     <sys:String x:Key="M.Tray.Open">開啟 WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">結束</sys:String>
     <sys:String x:Key="M.Tray.Tip">WinSW — Windows 服務包裝器主控台</sys:String>
@@ -316,9 +330,9 @@
     <sys:String x:Key="M.Dash.RecoveryDiffers">與設定檔不一致，檔案中是：{0}。執行「套用設定」即依檔案設定。</sys:String>
     <sys:String x:Key="M.Dash.RecoveryRestarting">它因錯誤而停止，Windows 服務復原即將再次啟動它。只要一直失敗，就會一直被重新啟動。</sys:String>
     <sys:String x:Key="M.Dash.StopRestarting">停止自動重新啟動</sys:String>
-    <sys:String x:Key="M.Dash.StopRestartingTip">將啟動類型改為「停用」，Windows 服務復原就無法再啟動它</sys:String>
+    <sys:String x:Key="M.Dash.StopRestartingTip">將啟動類型改為「已停用」，Windows 服務復原就無法再啟動它</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTitle">不再讓 Windows 自動重新啟動這個服務？</sys:String>
-    <sys:String x:Key="M.Dash.StopRestartingBody">「{0}」的啟動類型將改為「停用」。如此 Windows 服務復原就無法再啟動它，包括已在等待的那次重新啟動；正在進行的啟動會被停止。目前的啟動類型是 {1}，之後可用「還原啟動類型」改回來。「套用設定」也會依設定檔重新設定啟動類型。</sys:String>
+    <sys:String x:Key="M.Dash.StopRestartingBody">「{0}」的啟動類型將改為「已停用」。如此 Windows 服務復原就無法再啟動它，包括已在等待的那次重新啟動；正在進行的啟動會被停止。目前的啟動類型是 {1}，之後可用「還原啟動類型」改回來。「套用設定」也會依設定檔重新設定啟動類型。</sys:String>
     <sys:String x:Key="M.Dash.RestartingStopped">「{0}」已停用，Windows 服務復原不會再啟動它。</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartType">還原啟動類型（{0}）</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartTypeTip">將啟動類型改回「停止自動重新啟動」之前的設定，不會啟動服務。</sys:String>

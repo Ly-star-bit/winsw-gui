@@ -500,15 +500,27 @@ namespace WinSW.Gui.Services
                 ? (ServiceStartMode)value
                 : null;
 
-        /// <summary>The start type as the detail panel shows it.</summary>
-        internal static string DescribeStartMode(ServiceStartMode? startType, bool delayed) => startType switch
+        /// <summary>
+        /// The start type as the detail panel shows it, in the interface's language: the words
+        /// services.msc uses for it. Called on the worker a rescan runs on as well, as the problem
+        /// text is; <see cref="ServiceEntry.RefreshLocalized"/> says it again after a language change.
+        /// </summary>
+        internal static string DescribeStartMode(ServiceStartMode? startType, bool delayed) =>
+            Localizer.Get(StartModeKey(startType, delayed));
+
+        /// <summary>
+        /// The dictionary key for a start type. Boot and System belong to drivers and are not
+        /// a type a service can be given, but the registry can hold anything, and whatever it
+        /// holds is shown in words rather than as the enumeration's own name.
+        /// </summary>
+        internal static string StartModeKey(ServiceStartMode? startType, bool delayed) => startType switch
         {
-            ServiceStartMode.Boot => "Boot",
-            ServiceStartMode.System => "System",
-            ServiceStartMode.Automatic => delayed ? "Automatic (delayed)" : "Automatic",
-            ServiceStartMode.Manual => "Manual",
-            ServiceStartMode.Disabled => "Disabled",
-            _ => "Unknown",
+            ServiceStartMode.Boot => "M.StartMode.Boot",
+            ServiceStartMode.System => "M.StartMode.System",
+            ServiceStartMode.Automatic => delayed ? "M.StartMode.AutomaticDelayed" : "M.StartMode.Automatic",
+            ServiceStartMode.Manual => "M.StartMode.Manual",
+            ServiceStartMode.Disabled => "M.StartMode.Disabled",
+            _ => "M.StartMode.Unknown",
         };
 
         /// <summary>

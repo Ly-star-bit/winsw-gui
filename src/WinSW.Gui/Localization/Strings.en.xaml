@@ -300,6 +300,20 @@
     <sys:String x:Key="M.Cli.TimedOut">'winsw {0}' did not finish within {1} seconds. The service may be stuck.</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">Other services depend on this one.</sys:String>
     <sys:String x:Key="M.Cli.PathNotUsable">'{0}' cannot be used: a %NAME% in a path is replaced by the command interpreter before the wrapper sees it. Move the file somewhere without a percent sign.</sys:String>
+    <!-- Why a start failed: {0} is the command (start, install + start…). The wrapper's own message stays in its log, so these say where to look. Then the tooltip on Start and Restart for a disabled service, and the start types as services.msc names them. -->
+    <sys:String x:Key="M.Cli.ServiceDisabled">'winsw {0}' failed (1058): the service is disabled, and Windows does not start a disabled service. Apply config sets the start type the configuration file names, or change it in services.msc.</sys:String>
+    <sys:String x:Key="M.Cli.LogonFailed">'winsw {0}' failed (1069): Windows could not sign in as the service's account. If the account's password has changed, enter the new one on the service's Log On tab in services.msc. The account also needs the 'Log on as a service' right.</sys:String>
+    <sys:String x:Key="M.Cli.StartTimedOut">'winsw {0}' failed (1053): the service did not report that it had started within the time Windows allows. Often the wrapper could not run at all, for example because the .NET Framework it needs is missing, or a step before the program took too long. See the Last stop card and the wrapper log.</sys:String>
+    <sys:String x:Key="M.Cli.StartFailedEarly">'winsw {0}' failed (exit code -1): the wrapper gave up before the service had started, usually because the program could not be run: a wrong path, a broken virtual environment, a prestart step that failed. The reason is in err.log and the wrapper log; see the Last stop card.</sys:String>
+    <sys:String x:Key="M.Cli.WrapperError">'winsw {0}' failed (exit code -1): the wrapper stopped on an error of its own and wrote the reason to the service's wrapper log.</sys:String>
+    <sys:String x:Key="M.Dash.StartDisabledTip">The service is disabled, so Windows will not start it. Change its start type first: Apply config sets the one in the configuration file, and Restore start type undoes Stop restarting.</sys:String>
+    <sys:String x:Key="M.StartMode.Automatic">Automatic</sys:String>
+    <sys:String x:Key="M.StartMode.AutomaticDelayed">Automatic (delayed)</sys:String>
+    <sys:String x:Key="M.StartMode.Manual">Manual</sys:String>
+    <sys:String x:Key="M.StartMode.Disabled">Disabled</sys:String>
+    <sys:String x:Key="M.StartMode.Boot">Boot</sys:String>
+    <sys:String x:Key="M.StartMode.System">System</sys:String>
+    <sys:String x:Key="M.StartMode.Unknown">Unknown</sys:String>
     <sys:String x:Key="M.Tray.Open">Open WinSW</sys:String>
     <sys:String x:Key="M.Tray.Exit">Exit</sys:String>
     <sys:String x:Key="M.Tray.Tip">WinSW — Windows Service Wrapper Console</sys:String>

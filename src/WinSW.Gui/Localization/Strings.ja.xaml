@@ -289,6 +289,20 @@
     <sys:String x:Key="M.Cli.TimedOut">'winsw {0}' は {1} 秒以内に完了しませんでした。サービスが停止している可能性があります。</sys:String>
     <sys:String x:Key="M.Cli.HasDependents">このサービスに依存する他のサービスがあります。</sys:String>
     <sys:String x:Key="M.Cli.PathNotUsable">「{0}」は使用できません: パス内の %NAME% はコマンド インタープリターによって先に置換され、ラッパーには別のパスが渡ります。パーセント記号を含まない場所にファイルを移動してください。</sys:String>
+    <!-- Why a start failed: {0} is the command (start, install + start…). The wrapper's own message stays in its log, so these say where to look. Then the tooltip on Start and Restart for a disabled service, and the start types as services.msc names them. -->
+    <sys:String x:Key="M.Cli.ServiceDisabled">'winsw {0}' が失敗しました (1058)。サービスが無効になっているため、Windows は開始しません。「構成を適用」で構成ファイルのスタートアップの種類に戻すか、services.msc で変更してください。</sys:String>
+    <sys:String x:Key="M.Cli.LogonFailed">'winsw {0}' が失敗しました (1069)。Windows がサービスのアカウントでログオンできませんでした。アカウントのパスワードを変更した場合は、services.msc でこのサービスの [ログオン] タブに新しいパスワードを入力してください。このアカウントには「サービスとしてログオン」権限も必要です。</sys:String>
+    <sys:String x:Key="M.Cli.StartTimedOut">'winsw {0}' が失敗しました (1053)。サービスが Windows の待機時間内に開始を報告しませんでした。多くの場合、ラッパー自体を実行できていない (必要な .NET Framework がないなど) か、プログラムの前の処理に時間がかかりすぎています。「前回の停止」カードとラッパー ログを確認してください。</sys:String>
+    <sys:String x:Key="M.Cli.StartFailedEarly">'winsw {0}' が失敗しました (終了コード -1)。サービスが開始する前にラッパーが処理を中止しました。多くの場合、プログラムを実行できていません (パスの誤り、壊れた仮想環境、prestart の失敗など)。原因は err.log とラッパー ログにあります。「前回の停止」カードを確認してください。</sys:String>
+    <sys:String x:Key="M.Cli.WrapperError">'winsw {0}' が失敗しました (終了コード -1)。ラッパー自身のエラーで終了しました。原因はサービスのラッパー ログに書き込まれています。</sys:String>
+    <sys:String x:Key="M.Dash.StartDisabledTip">このサービスは無効になっているため、Windows は開始しません。先にスタートアップの種類を変更してください。「構成を適用」は構成ファイルのとおりに設定し、「スタートアップの種類を戻す」は「自動再起動を止める」を取り消します。</sys:String>
+    <sys:String x:Key="M.StartMode.Automatic">自動</sys:String>
+    <sys:String x:Key="M.StartMode.AutomaticDelayed">自動（遅延開始）</sys:String>
+    <sys:String x:Key="M.StartMode.Manual">手動</sys:String>
+    <sys:String x:Key="M.StartMode.Disabled">無効</sys:String>
+    <sys:String x:Key="M.StartMode.Boot">ブート</sys:String>
+    <sys:String x:Key="M.StartMode.System">システム</sys:String>
+    <sys:String x:Key="M.StartMode.Unknown">不明</sys:String>
     <sys:String x:Key="M.Tray.Open">WinSW を開く</sys:String>
     <sys:String x:Key="M.Tray.Exit">終了</sys:String>
     <sys:String x:Key="M.Tray.Tip">WinSW — Windows サービス ラッパー コンソール</sys:String>

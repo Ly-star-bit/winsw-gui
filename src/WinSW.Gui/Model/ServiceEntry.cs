@@ -108,8 +108,8 @@ namespace WinSW.Gui.Model
 
         /// <summary>
         /// The start type <see cref="StartMode"/> describes, for what depends on it rather than for
-        /// showing it: a disabled service is not started by its recovery, and a start type is what
-        /// "Stop restarting" changes and remembers. Null when the registry did not say.
+        /// showing it: a disabled service is not started by its recovery or by Start, and a start
+        /// type is what "Stop restarting" changes and remembers. Null when the registry did not say.
         /// </summary>
         public ServiceStartMode? StartType
         {
@@ -119,6 +119,9 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.startType, value))
                 {
                     this.Raise(nameof(this.CanStopRestarting));
+                    this.Raise(nameof(this.IsStartable));
+                    this.Raise(nameof(this.CanStart));
+                    this.Raise(nameof(this.StartUnavailableTip));
                 }
             }
         }
@@ -800,9 +803,27 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.StrayParentActionText));
             this.Raise(nameof(this.RecoveryText));
             this.Raise(nameof(this.RecoveryDifferenceText));
+            this.Raise(nameof(this.StartUnavailableTip));
+
+            // Stored as text, because a rescan brings it forward as text; said again from the
+            // start type it was made from, as the rescan would, rather than waiting for one.
+            this.StartMode = Services.ServiceDiscovery.DescribeStartMode(this.startType, this.delayedAutoStart);
         }
 
-        public bool CanStart => this.status == ServiceControllerStatus.Stopped;
+        /// <summary>
+        /// Windows will start the service when asked. A disabled one it refuses with error 1058,
+        /// whoever asks, so neither Start nor Restart is offered for it: a restart would stop a
+        /// running service and then fail to start it again.
+        /// </summary>
+        public bool IsStartable => this.startType != ServiceStartMode.Disabled;
+
+        public bool CanStart => this.status == ServiceControllerStatus.Stopped && this.IsStartable;
+
+        /// <summary>
+        /// Why Start and Restart are not offered, for their tooltips; null, and so no tooltip,
+        /// while nothing about the service itself stands in their way.
+        /// </summary>
+        public string? StartUnavailableTip => this.IsStartable ? null : Localizer.Get("M.Dash.StartDisabledTip");
 
         public bool CanStop => this.status == ServiceControllerStatus.Running
             || this.status == ServiceControllerStatus.Paused;

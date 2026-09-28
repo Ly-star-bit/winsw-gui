@@ -358,7 +358,12 @@
 
                         <!-- Actions: three primaries; everything else, destructive ones last, behind "More". Wrapped, so a narrow panel moves them down a line rather than cutting them off. -->
                         <WrapPanel Grid.Row="1" Margin="0,0,0,8">
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <!-- A disabled service is not started or restarted; the tooltip says why, also while the button is greyed. -->
+                            <Button
+                                Style="{StaticResource ActionButton}"
+                                Command="{Binding DataContext.StartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                ToolTip="{Binding StartUnavailableTip}"
+                                ToolTipService.ShowOnDisabled="True">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Foreground="{DynamicResource HealthRunningBrush}" Style="{StaticResource Icon}" Text="&#xF605;" />
                                     <TextBlock Text="{DynamicResource S.Start}" />
@@ -370,7 +375,11 @@
                                     <TextBlock Text="{DynamicResource S.Stop}" />
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource ActionButton}" Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <Button
+                                Style="{StaticResource ActionButton}"
+                                Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                ToolTip="{Binding StartUnavailableTip}"
+                                ToolTipService.ShowOnDisabled="True">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF13D;" />
                                     <TextBlock Text="{DynamicResource S.Restart}" />
@@ -519,7 +528,9 @@
                                                 Padding="10,4"
                                                 VerticalAlignment="Center"
                                                 Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                Content="{DynamicResource M.Dash.RestartNow}" />
+                                                Content="{DynamicResource M.Dash.RestartNow}"
+                                                ToolTip="{Binding StartUnavailableTip}"
+                                                ToolTipService.ShowOnDisabled="True" />
                                         </Grid>
                                     </Border>
                                 </StackPanel>
