@@ -591,6 +591,12 @@
     <sys:String x:Key="M.Wiz.InstallDir">インストール先:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">この ID のサービスは既にインストールされています。</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">サービス ID '{0}' はこのマシンで既に使用されています。</sys:String>
+    <sys:String x:Key="M.Wiz.NameTakenHint">このマシンのサービス {0} が既にこの名前を使っています。</sys:String>
+    <sys:String x:Key="M.Wiz.IdTaken">サービス ID '{0}' はサービス {1} が既に使っています。Windows はインストールを拒否します (エラー 1073)。ステップ 2 で別の ID を指定してください。</sys:String>
+    <sys:String x:Key="M.Wiz.IdIsDisplayName">サービス ID '{0}' はサービス {1} の表示名です。このため Windows がインストールを拒否する場合があります (エラー 1078)。別の ID にすればこの心配はありません。</sys:String>
+    <sys:String x:Key="M.Wiz.DisplayNameTaken">表示名 '{0}' はサービス {1} が既に使っています。Windows ではサービスの表示名が重複できず、インストールは拒否されます (エラー 1078)。ステップ 2 で別の表示名を指定してください。</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxTooOld">このマシンの .NET Framework は {0} です。このアプリに同梱の WinSW には 4.6.2 以降が必要で、ここではインストール時か初回起動時に失敗するため、既定では選択していません。「ダウンロード」で .NET Framework が不要な自己完結型ビルドを取得してください。または先に .NET Framework 4.8 (オフライン インストーラー {1}、入手先 {2}) をインストールしてサーバーを再起動すれば、同梱のものを使えます。</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxWrapper">ラッパーは .NET Framework 版で .NET Framework 4.6.2 以降が必要ですが、このマシンは {0} です。サービスはインストール時か初回起動時に失敗します。ステップ 1 に戻って自己完結型ビルドをダウンロードするか、先に .NET Framework 4.8 (オフライン インストーラー {1}) をインストールしてサーバーを再起動してください。</sys:String>
     <sys:String x:Key="M.Dlg.WrapperFolder">WinSW.exe の配置先を選択</sys:String>
     <sys:String x:Key="M.Wiz.FetchingRelease">最新の WinSW リリースを確認中…</sys:String>
     <sys:String x:Key="M.Wiz.ReleaseUnavailable">WinSW のリリース一覧を取得できませんでした。ネットワークを確認するか、手元の WinSW.exe を選択してください。</sys:String>

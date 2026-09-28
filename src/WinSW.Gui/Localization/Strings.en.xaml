@@ -602,6 +602,12 @@
     <sys:String x:Key="M.Wiz.InstallDir">Install folder:</sys:String>
     <sys:String x:Key="M.Wiz.IdInUseHint">A service with this ID is already installed.</sys:String>
     <sys:String x:Key="M.Wiz.IdInUse">Service ID '{0}' is already in use on this machine.</sys:String>
+    <sys:String x:Key="M.Wiz.NameTakenHint">Already used on this machine by the service {0}.</sys:String>
+    <sys:String x:Key="M.Wiz.IdTaken">Service ID '{0}' already belongs to the service {1}. Windows would refuse the install (error 1073): choose another ID on step 2.</sys:String>
+    <sys:String x:Key="M.Wiz.IdIsDisplayName">Service ID '{0}' is the display name of the service {1}. Windows may refuse the install because of it (error 1078); another ID avoids the question.</sys:String>
+    <sys:String x:Key="M.Wiz.DisplayNameTaken">Display name '{0}' is already used by the service {1}. Windows needs every service's display name to be unique and would refuse the install (error 1078): choose another on step 2.</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxTooOld">This machine has .NET Framework {0}. The WinSW built into this application needs 4.6.2 or later and would fail at install or at the first start here, so it is not selected: use Download for the self-contained build, which needs no .NET Framework. Or install .NET Framework 4.8 first (offline installer {1}, from {2}), restart the server, and then use the built-in one.</sys:String>
+    <sys:String x:Key="M.Wiz.NetFxWrapper">The wrapper is the .NET Framework build, which needs .NET Framework 4.6.2 or later, and this machine has {0}: the service will fail at install or at its first start. Go back to step 1 and download the self-contained build, or install .NET Framework 4.8 first (offline installer {1}) and restart the server.</sys:String>
     <sys:String x:Key="M.Dlg.WrapperFolder">Choose where to put WinSW.exe</sys:String>
     <sys:String x:Key="M.Wiz.FetchingRelease">Looking up the latest WinSW release…</sys:String>
     <sys:String x:Key="M.Wiz.ReleaseUnavailable">The WinSW release list could not be fetched. Check the network connection, or pick a WinSW.exe you already have.</sys:String>

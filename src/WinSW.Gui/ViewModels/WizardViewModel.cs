@@ -65,7 +65,9 @@ namespace WinSW.Gui.ViewModels
         private bool isBusy;
         private string configPreview = string.Empty;
         private bool brandWrapper;
-        private bool useBundledWrapper = BundledWrapper.IsAvailable;
+
+        /// <summary>Set in the constructor, which knows whether this machine can run it; see <see cref="PrefersBundledWrapper"/>.</summary>
+        private bool useBundledWrapper;
         private string manufacturer = string.Empty;
         private ServiceEntry? cloneSource;
 
@@ -100,8 +102,41 @@ namespace WinSW.Gui.ViewModels
         /// <summary>The rows filled in that way, taken back out if the program stops being Python before they are edited.</summary>
         private readonly List<EnvironmentVariable> offeredVariables = new();
 
+        /// <summary>This machine's .NET Framework, which decides whether the bundled wrapper can run here at all.</summary>
+        private readonly NetFrameworkInfo framework;
+
+        /// <summary>Reads every service on the machine; called off the UI thread. See <see cref="CheckMachineAsync"/>.</summary>
+        private readonly Func<ServiceNames> readServices;
+
+        /// <summary>
+        /// Every service on the machine by both its names, as last read: when step 2 or the
+        /// review step opened, and again right before installing. Replaced whole, never changed.
+        /// </summary>
+        private ServiceNames machineServices = ServiceNames.None;
+
+        /// <summary>Counts the machine checks started, so that one overtaken by a later one drops its results.</summary>
+        private int machineCheckGeneration;
+
+        /// <summary>The review step's name clashes as they were added to <see cref="Problems"/>, to be swapped when a newer read differs.</summary>
+        private string[] shownNameClashes = Array.Empty<string>();
+        private IReadOnlyList<string> environmentWarnings = Array.Empty<string>();
+
         public WizardViewModel()
+            : this(NetFramework.Installed, ServiceNames.Read)
         {
+        }
+
+        /// <summary>
+        /// With what the machine has handed in rather than read, so that a test can say what
+        /// framework and which services it has.
+        /// </summary>
+        internal WizardViewModel(NetFrameworkInfo framework, Func<ServiceNames> readServices)
+        {
+            this.framework = framework;
+            this.readServices = readServices;
+            this.useBundledWrapper = PrefersBundledWrapper(BundledWrapper.IsAvailable, framework);
+            this.Warnings.CollectionChanged += (_, _) => this.Raise(nameof(this.HasWarnings));
+
             this.NextCommand = new RelayCommand(() => this.Step++, () => !this.isBusy && this.step < LastStep && this.CanLeaveCurrentStep());
             this.BackCommand = new RelayCommand(() => this.Step--, () => !this.isBusy && this.step > 1);
             this.DownloadWrapperCommand = new AsyncRelayCommand(this.DownloadWrapperAsync, () => !this.isBusy);
@@ -158,9 +193,14 @@ namespace WinSW.Gui.ViewModels
                 this.Raise(nameof(this.PythonHint));
                 this.Raise(nameof(this.RecoveryHint));
                 this.Raise(nameof(this.RollPatternHint));
+                this.Raise(nameof(this.FrameworkHint));
+                this.Raise(nameof(this.IdInUseHint));
+                this.Raise(nameof(this.DisplayNameInUseHint));
                 if (this.step == LastStep)
                 {
+                    // The machine's findings are worded as they are read; read them again.
                     this.RefreshPreview();
+                    this.CheckMachine(environment: true);
                 }
             };
         }
@@ -194,7 +234,7 @@ namespace WinSW.Gui.ViewModels
                     this.Raise(nameof(this.SharedWrapperPath));
                     this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
-                    this.Raise(nameof(this.IdInUse));
+                    this.RaiseNameChecks();
                     this.Raise(nameof(this.InstallLabel));
                     this.RefreshCommands();
                 }
@@ -281,6 +321,17 @@ namespace WinSW.Gui.ViewModels
         public string BundledWrapperHint => Localizer.Format("M.Wiz.BundledHint", BundledWrapper.Version ?? "3.x");
 
         /// <summary>
+        /// This machine's .NET Framework is older than the 4.6.2 the bundled wrapper needs, so
+        /// the self-contained download is the default instead; see <see cref="NetFramework"/>.
+        /// </summary>
+        public bool FrameworkTooOld => this.framework.TooOldForWrapper;
+
+        /// <summary>What <see cref="FrameworkTooOld"/> means, and the two ways out of it.</summary>
+        public string FrameworkHint => this.FrameworkTooOld
+            ? Localizer.Format("M.Wiz.NetFxTooOld", this.framework.Version, NetFramework.OfflineInstaller, NetFramework.OfflineInstallerLink)
+            : string.Empty;
+
+        /// <summary>
         /// The root holding one folder per service; configurable in the settings. A desktop
         /// task uses the per-user root instead: it runs as one account with no elevation, and
         /// everything under the folder — the configuration and, more to the point, the logs —
@@ -319,8 +370,35 @@ namespace WinSW.Gui.ViewModels
         /// <summary>The single wrapper every service under the install root runs from.</summary>
         public string SharedWrapperPath => Path.Combine(this.InstallRoot, "bin", "WinSW.exe");
 
-        /// <summary>True when the chosen ID already belongs to an installed service or a registered task.</summary>
+        /// <summary>
+        /// True when the chosen ID already belongs to a registered task or, for a service, is
+        /// the name of any service on the machine, WinSW's or not; see <see cref="ServiceNames"/>.
+        /// </summary>
         public bool IdInUse => !string.IsNullOrWhiteSpace(this.serviceId) && this.InUse(this.serviceId.Trim());
+
+        /// <summary>
+        /// True when another service on the machine already goes by the chosen display name,
+        /// which Windows refuses at install with 1078. A desktop task has no display name to clash.
+        /// </summary>
+        public bool DisplayNameInUse => this.DisplayNameClash != null;
+
+        /// <summary>Under the ID on step 2: which service already has it.</summary>
+        public string IdInUseHint
+        {
+            get
+            {
+                if (this.desktopTask)
+                {
+                    return this.IdInUse ? Localizer.Get("M.Wiz.IdInUseHint") : string.Empty;
+                }
+
+                return this.IdClash is { } service ? Localizer.Format("M.Wiz.NameTakenHint", service.Label) : string.Empty;
+            }
+        }
+
+        /// <summary>Under the display name on step 2: which service already shows it.</summary>
+        public string DisplayNameInUseHint =>
+            this.DisplayNameClash is { } service ? Localizer.Format("M.Wiz.NameTakenHint", service.Label) : string.Empty;
 
         public ObservableCollection<string> Problems { get; } = new();
 
@@ -329,6 +407,34 @@ namespace WinSW.Gui.ViewModels
         /// a path may be right on the machine the service is really meant for.
         /// </summary>
         public ObservableCollection<string> Warnings { get; } = new();
+
+        /// <summary>
+        /// What checking the configuration against this machine found on the review step — see
+        /// <see cref="ServiceConfigModel.ValidateEnvironment"/> — shown with <see cref="Warnings"/>.
+        /// </summary>
+        /// <remarks>
+        /// Read off the UI thread and arriving a moment after the step opens, so it is kept
+        /// apart from the lists filled in as the step opens, and replaced whole rather than
+        /// changed: nothing that reads those lists can see them change under it.
+        /// </remarks>
+        public IReadOnlyList<string> EnvironmentWarnings
+        {
+            get => this.environmentWarnings;
+            private set
+            {
+                if (this.Set(ref this.environmentWarnings, value))
+                {
+                    this.Raise(nameof(this.HasWarnings));
+                }
+            }
+        }
+
+        public bool HasWarnings => this.Warnings.Count > 0 || this.environmentWarnings.Count > 0;
+
+        /// <summary>
+        /// The machine check last started, for a test to wait on; see <see cref="CheckMachineAsync"/>.
+        /// </summary>
+        internal Task MachineCheck { get; private set; } = Task.CompletedTask;
 
         public RelayCommand NextCommand { get; }
 
@@ -447,7 +553,18 @@ namespace WinSW.Gui.ViewModels
                 {
                     if (value == LastStep)
                     {
+                        // Whatever the machine said was about the configuration as it was last
+                        // time; it may have changed on the way back here.
+                        this.EnvironmentWarnings = Array.Empty<string>();
                         this.RefreshPreview();
+                    }
+
+                    // The names are read where they are asked for, the ID and display name on
+                    // step 2, and read again for the review: a service installed in the
+                    // meantime, by anyone, takes its names with it.
+                    if (value == 2 || value == LastStep)
+                    {
+                        this.CheckMachine(environment: value == LastStep);
                     }
 
                     this.Raise(nameof(this.StepTitle));
@@ -567,7 +684,7 @@ namespace WinSW.Gui.ViewModels
                     this.Raise(nameof(this.InstallDirectory));
                     this.Raise(nameof(this.ConfigPath));
                     this.Raise(nameof(this.EffectiveWrapperPath));
-                    this.Raise(nameof(this.IdInUse));
+                    this.RaiseNameChecks();
                     this.RefreshCommands();
                 }
             }
@@ -576,7 +693,14 @@ namespace WinSW.Gui.ViewModels
         public string DisplayName
         {
             get => this.displayName;
-            set => this.Set(ref this.displayName, value);
+            set
+            {
+                if (this.Set(ref this.displayName, value))
+                {
+                    this.RaiseNameChecks();
+                    this.RefreshCommands();
+                }
+            }
         }
 
         public string Description
@@ -974,17 +1098,254 @@ namespace WinSW.Gui.ViewModels
             return (id + "-" + number.ToString(CultureInfo.InvariantCulture), number);
         }
 
-        /// <summary>True when <paramref name="id"/> belongs to an installed service or, for a desktop task, a registered task.</summary>
+        /// <summary>
+        /// True when <paramref name="id"/> is taken: for a desktop task by a registered task, for
+        /// a service by any service on the machine with that name.
+        /// </summary>
         private bool InUse(string id) => this.desktopTask
             ? this.TaskSources.Any(t => string.Equals(t.Name, id, StringComparison.OrdinalIgnoreCase))
-            : this.Sources.Any(s => string.Equals(s.ServiceName, id, StringComparison.OrdinalIgnoreCase));
+            : this.KnownServices.ClashWithId(id) != null;
+
+        /// <summary>
+        /// Every service known to be on the machine: all of them once read, and the ones the
+        /// dashboard lists, which are there before the first read comes back.
+        /// </summary>
+        private ServiceNames KnownServices =>
+            this.machineServices.With(this.Sources.Select(s => new InstalledService(s.ServiceName, s.DisplayName)));
+
+        /// <summary>The service already going by the chosen ID; null for a desktop task, which is no service.</summary>
+        private InstalledService? IdClash =>
+            this.desktopTask || string.IsNullOrWhiteSpace(this.serviceId) ? null : this.KnownServices.ClashWithId(this.serviceId);
+
+        /// <summary>The service already going by the chosen display name; see <see cref="ServiceNames.ClashWithDisplayName"/>.</summary>
+        private InstalledService? DisplayNameClash =>
+            this.desktopTask ? null : this.KnownServices.ClashWithDisplayName(this.displayName, this.serviceId);
+
+        /// <summary>
+        /// A service showing the chosen ID as its display name, which the review step warns of;
+        /// see <see cref="ServiceNames.ShownAs"/>. Null when the display name is the ID as well,
+        /// where the same service is a display-name clash and a problem already.
+        /// </summary>
+        private InstalledService? IdShownAs =>
+            this.desktopTask
+            || string.IsNullOrWhiteSpace(this.serviceId)
+            || string.Equals(this.displayName.Trim(), this.serviceId.Trim(), StringComparison.OrdinalIgnoreCase)
+                ? null
+                : this.KnownServices.ShownAs(this.serviceId);
 
         private bool CanLeaveCurrentStep() => this.step switch
         {
             1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || this.wrapperExists),
-            2 => !string.IsNullOrWhiteSpace(this.serviceId) && !this.IdInUse,
+            2 => !string.IsNullOrWhiteSpace(this.serviceId) && !this.IdInUse && !this.DisplayNameInUse,
             _ => true,
         };
+
+        private void RaiseNameChecks()
+        {
+            this.Raise(nameof(this.IdInUse));
+            this.Raise(nameof(this.IdInUseHint));
+            this.Raise(nameof(this.DisplayNameInUse));
+            this.Raise(nameof(this.DisplayNameInUseHint));
+        }
+
+        /// <summary>
+        /// Why the chosen names cannot be installed, for the review step: each clash names the
+        /// service in the way and the error Windows would refuse the install with.
+        /// </summary>
+        private IEnumerable<string> NameClashes()
+        {
+            string id = this.serviceId.Trim();
+            if (this.desktopTask)
+            {
+                if (this.IdInUse)
+                {
+                    yield return Localizer.Format("M.Wiz.IdInUse", id);
+                }
+
+                yield break;
+            }
+
+            if (this.IdClash is { } withId)
+            {
+                yield return Localizer.Format("M.Wiz.IdTaken", id, withId.Label);
+            }
+
+            if (this.DisplayNameClash is { } withName)
+            {
+                yield return Localizer.Format("M.Wiz.DisplayNameTaken", this.displayName.Trim(), withName.Label);
+            }
+        }
+
+        /// <summary>
+        /// Takes a newer reading of the machine's services, and on the review step swaps the
+        /// name clashes it shows for the ones this reading gives — only when they differ.
+        /// </summary>
+        private void ApplyServiceNames(ServiceNames names)
+        {
+            this.machineServices = names;
+            this.RaiseNameChecks();
+            this.RefreshCommands();
+
+            if (this.step != LastStep)
+            {
+                return;
+            }
+
+            string[] clashes = this.NameClashes().ToArray();
+            if (clashes.SequenceEqual(this.shownNameClashes))
+            {
+                return;
+            }
+
+            foreach (string clash in this.shownNameClashes)
+            {
+                this.Problems.Remove(clash);
+            }
+
+            foreach (string clash in clashes)
+            {
+                this.Problems.Add(clash);
+            }
+
+            this.shownNameClashes = clashes;
+        }
+
+        /// <summary>
+        /// Starts checking the wizard against this machine, off the UI thread: every service's
+        /// names always, and on the review step what the configuration will meet when it runs
+        /// and whether another service shows the ID as its display name.
+        /// A check started later makes this one's results stale.
+        /// </summary>
+        private void CheckMachine(bool environment)
+        {
+            int generation = ++this.machineCheckGeneration;
+            this.MachineCheck = this.CheckMachineAsync(generation, environment ? this.EnvironmentProbe() : null);
+        }
+
+        /// <summary>
+        /// Reads the machine's services and runs <see cref="ServiceConfigModel.ValidateEnvironment"/>
+        /// on a worker — the service control manager, the file system and, for an account, the
+        /// domain controller are all slow when they are slow — and shows what they said back on
+        /// the thread that asked.
+        /// </summary>
+        private async Task CheckMachineAsync(int generation, ServiceConfigModel? probe)
+        {
+            var read = this.readServices;
+
+            // Which wrapper is written is settled before the worker starts; whether a picked
+            // one is the .NET Framework build is a question for its file, so its path goes along.
+            bool askFramework = probe != null && this.framework.TooOldForWrapper;
+            bool bundled = this.useBundledWrapper;
+            string pickedWrapper = this.wrapperPath;
+
+            var (names, findings, frameworkBuild) = await Task
+                .Run(() => Examine(read, probe, askFramework, bundled, pickedWrapper))
+                .ConfigureAwait(true);
+
+            if (generation != this.machineCheckGeneration)
+            {
+                return;
+            }
+
+            this.ApplyServiceNames(names);
+            if (probe is null)
+            {
+                return;
+            }
+
+            // Read from the names just taken, so it goes with the machine's findings.
+            var warnings = new List<string>();
+            if (this.IdShownAs is { } shown)
+            {
+                warnings.Add(Localizer.Format("M.Wiz.IdIsDisplayName", this.serviceId.Trim(), shown.Label));
+            }
+
+            if (frameworkBuild)
+            {
+                warnings.Add(Localizer.Format("M.Wiz.NetFxWrapper", this.framework.Version, NetFramework.OfflineInstaller));
+            }
+
+            warnings.AddRange(findings);
+            this.EnvironmentWarnings = warnings.ToArray();
+        }
+
+        /// <summary>
+        /// The configuration as <see cref="ServiceConfigModel.ValidateEnvironment"/> should see
+        /// it: at the path it will be written to, so that <c>%BASE%</c> is the new service's
+        /// folder; and without a log directory inside that folder, which cannot exist before
+        /// the install and which the wrapper creates on its first start in any case. Left as
+        /// it is, every new service would be told its log directory is missing.
+        /// </summary>
+        private ServiceConfigModel EnvironmentProbe()
+        {
+            var probe = this.BuildModel();
+            string configPath = this.ConfigPath;
+            if (configPath.Length == 0)
+            {
+                return probe;
+            }
+
+            probe.FilePath = configPath;
+            try
+            {
+                string folder = Path.GetFullPath(Path.GetDirectoryName(configPath)!);
+                string logs = Path.GetFullPath(ConfigPaths.ResolveLogDirectory(probe, configPath));
+                if (string.Equals(logs, folder, StringComparison.OrdinalIgnoreCase)
+                    || logs.StartsWith(Path.TrimEndingDirectorySeparator(folder) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                {
+                    probe.LogPath = null;
+                }
+            }
+            catch (Exception e) when (e is ArgumentException or IOException or NotSupportedException)
+            {
+                // A log path that does not resolve is left for the check to report as it is.
+            }
+
+            return probe;
+        }
+
+        /// <summary>
+        /// The worker's half of <see cref="CheckMachineAsync"/>: the services, what the probe's
+        /// check finds, and — only when <paramref name="askFramework"/> — whether the wrapper to
+        /// be installed is the .NET Framework build this machine cannot run.
+        /// </summary>
+        private static (ServiceNames Names, IReadOnlyList<string> Findings, bool FrameworkBuild) Examine(
+            Func<ServiceNames> read,
+            ServiceConfigModel? probe,
+            bool askFramework,
+            bool bundled,
+            string pickedWrapper)
+        {
+            var names = read();
+            if (probe is null)
+            {
+                return (names, Array.Empty<string>(), false);
+            }
+
+            IReadOnlyList<string> findings;
+            try
+            {
+                findings = probe.ValidateEnvironment();
+            }
+            catch (Exception)
+            {
+                // A check that cannot finish has nothing to say, which is what the editor, where
+                // it comes from, makes of it too; the names still stand.
+                findings = Array.Empty<string>();
+            }
+
+            bool frameworkBuild = askFramework
+                && (bundled || (pickedWrapper.Length > 0 && WrapperKind.ReleaseAssetFor(pickedWrapper) == "WinSW-net461.exe"));
+            return (names, findings, frameworkBuild);
+        }
+
+        /// <summary>
+        /// Whether the wizard starts on the bundled wrapper: when this build carries one and the
+        /// machine can run it. Otherwise it starts on the self-contained download, which brings
+        /// its own runtime; a machine whose framework could not be read keeps the bundled one.
+        /// </summary>
+        internal static bool PrefersBundledWrapper(bool bundledAvailable, NetFrameworkInfo framework) =>
+            bundledAvailable && !framework.TooOldForWrapper;
 
         /// <summary>
         /// Fetches the wrapper build matching this machine from the latest WinSW release,
@@ -1015,8 +1376,10 @@ namespace WinSW.Gui.ViewModels
 
                 if (latest is null || !latest.Assets.TryGetValue(asset, out string? url))
                 {
-                    // Older releases only ship x64/x86; fall back to the framework build.
-                    if (latest != null && latest.Assets.TryGetValue("WinSW-net461.exe", out url))
+                    // Older releases only ship x64/x86; fall back to the framework build — but
+                    // not on a machine whose framework is too old to run it, where the download
+                    // is the way round the bundled wrapper in the first place.
+                    if (latest != null && !this.framework.TooOldForWrapper && latest.Assets.TryGetValue("WinSW-net461.exe", out url))
                     {
                         asset = "WinSW-net461.exe";
                     }
@@ -1191,9 +1554,12 @@ namespace WinSW.Gui.ViewModels
                 this.Problems.Add(Localizer.Format("M.Wiz.WouldOverwrite", destination));
             }
 
-            if (this.IdInUse)
+            // Against every service on the machine as last read, and the dashboard's before that;
+            // a newer reading swaps these, see ApplyServiceNames.
+            this.shownNameClashes = this.NameClashes().ToArray();
+            foreach (string clash in this.shownNameClashes)
             {
-                this.Problems.Add(Localizer.Format("M.Wiz.IdInUse", this.serviceId.Trim()));
+                this.Problems.Add(clash);
             }
 
             this.Warnings.Clear();
@@ -1304,18 +1670,29 @@ namespace WinSW.Gui.ViewModels
 
         private async Task InstallAsync()
         {
-            this.RefreshPreview();
-
-            var model = this.BuildModel();
-            if (model.Validate().Count > 0)
-            {
-                this.StatusMessage = Localizer.Get("M.Wiz.FixProblems");
-                return;
-            }
-
+            // Busy from the start: the names are read again below, off the UI thread, and Back
+            // must not be clickable while an install that has not been refused yet waits on it.
             this.IsBusy = true;
             try
             {
+                // The names were read when the review step opened. A service installed since
+                // then, by anyone, would still be refused — after the UAC prompt, with the
+                // files written.
+                if (!this.desktopTask)
+                {
+                    var read = this.readServices;
+                    this.ApplyServiceNames(await Task.Run(read).ConfigureAwait(true));
+                }
+
+                this.RefreshPreview();
+
+                var model = this.BuildModel();
+                if (model.Validate().Count > 0 || this.IdInUse || this.DisplayNameInUse)
+                {
+                    this.StatusMessage = Localizer.Get("M.Wiz.FixProblems");
+                    return;
+                }
+
                 string configPath = this.ConfigPath;
                 string wrapper = this.EffectiveWrapperPath;
 
@@ -1615,7 +1992,7 @@ namespace WinSW.Gui.ViewModels
             this.CloneSource = null;
             this.clone = null;
             this.cloneRestartDelay = null;
-            this.UseBundledWrapper = BundledWrapper.IsAvailable;
+            this.UseBundledWrapper = PrefersBundledWrapper(BundledWrapper.IsAvailable, this.framework);
             this.PlaceNextToProgram = false;
             this.suggestedWorkingDirectory = string.Empty;
             this.suggestedServiceId = string.Empty;
@@ -1653,6 +2030,11 @@ namespace WinSW.Gui.ViewModels
             this.ConfigPreview = string.Empty;
             this.Problems.Clear();
             this.Warnings.Clear();
+
+            // A check still out is about the service being dropped; its findings go with it.
+            this.machineCheckGeneration++;
+            this.shownNameClashes = Array.Empty<string>();
+            this.EnvironmentWarnings = Array.Empty<string>();
 
             // Emptying the program above took back only the offered rows nobody had edited.
             this.EnvironmentVariables.Clear();

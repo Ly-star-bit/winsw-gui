@@ -158,6 +158,8 @@
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.WinSWExecutable}" />
+                            <!-- A .NET Framework too old for the bundled wrapper: why the download is the default, and how to get past it. -->
+                            <TextBlock Margin="0,0,0,8" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthBrokenBrush}" TextWrapping="Wrap" Text="{Binding FrameworkHint}" Visibility="{Binding FrameworkTooOld, Converter={StaticResource BoolToVisibility}}" />
                             <CheckBox Margin="0,0,0,4" Content="{DynamicResource M.Wiz.UseBundled}" IsChecked="{Binding UseBundledWrapper}" Visibility="{Binding HasBundledWrapper, Converter={StaticResource BoolToVisibility}}" />
                             <TextBlock Style="{StaticResource FieldHint}" Text="{Binding BundledWrapperHint}" Visibility="{Binding UseBundledWrapper, Converter={StaticResource BoolToVisibility}}" />
                             <StackPanel Visibility="{Binding UseBundledWrapper, Converter={StaticResource InverseBoolToVisibility}}">
@@ -255,12 +257,14 @@
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.ServiceID}" />
                             <ui:TextBox PlaceholderText="{DynamicResource M.Ph.ServiceId}" Text="{Binding ServiceId, UpdateSourceTrigger=PropertyChanged}" />
-                            <TextBlock Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthBrokenBrush}" Text="{DynamicResource M.Wiz.IdInUseHint}" Visibility="{Binding IdInUse, Converter={StaticResource BoolToVisibility}}" />
+                            <!-- Checked against every service on the machine, not only WinSW's: which one already has it. -->
+                            <TextBlock Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthBrokenBrush}" Text="{Binding IdInUseHint}" Visibility="{Binding IdInUse, Converter={StaticResource BoolToVisibility}}" />
                             <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.NoSpacesAlsoBecomesTheConfiguration}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.DisplayName}" />
                             <ui:TextBox PlaceholderText="{DynamicResource M.Ph.DisplayName}" Text="{Binding DisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthBrokenBrush}" Text="{Binding DisplayNameInUseHint}" Visibility="{Binding DisplayNameInUse, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Description}" />
@@ -407,15 +411,27 @@
                             </ItemsControl>
                         </Border>
 
-                        <!-- Warnings, in amber: likely to go wrong, but they do not stop the install. -->
-                        <Border Margin="0,0,0,14" Padding="12,10" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource HealthPendingBrush}" BorderThickness="1" CornerRadius="8" Visibility="{Binding Warnings.Count, Converter={StaticResource CountToVisibility}}">
-                            <ItemsControl ItemsSource="{Binding Warnings}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                        <!--
+                            Warnings, in amber: likely to go wrong, but they do not stop the install. What checking
+                            against this machine found arrives a moment later, from a worker, and is listed after them.
+                        -->
+                        <Border Margin="0,0,0,14" Padding="12,10" Background="{DynamicResource InputBrush}" BorderBrush="{DynamicResource HealthPendingBrush}" BorderThickness="1" CornerRadius="8" Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding Warnings}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <ItemsControl ItemsSource="{Binding EnvironmentWarnings}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
                         </Border>
 
                         <Border Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
