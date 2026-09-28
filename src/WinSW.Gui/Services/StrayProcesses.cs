@@ -20,7 +20,59 @@ namespace WinSW.Gui.Services
     /// A process left running, and the process that started it when that is still alive: what
     /// keeps bringing back a program that has been ended, if something does.
     /// </summary>
-    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent);
+    /// <param name="Process">The process found.</param>
+    /// <param name="Parent">What started it, while that still runs.</param>
+    /// <param name="Port">
+    /// The port the service last listened on that the process now holds, when that is how it was
+    /// found; 0 when it was found as the service's own program. See <see cref="StrayProcesses.FindPortHolder"/>.
+    /// </param>
+    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent, int Port = 0)
+    {
+        /// <summary>Found holding the service's port rather than as its program.</summary>
+        public bool HoldsPort => this.Port != 0;
+
+        /// <summary>
+        /// The finding in words, for the banner: what was found, who started it, and what to make
+        /// of it.
+        /// </summary>
+        /// <param name="serviceName">The service the finding is about.</param>
+        /// <param name="format">Looks a phrase up by key and fills it in: <c>Localizer.Format</c>.</param>
+        public StrayText Describe(string serviceName, Func<string, object?[], string> format)
+        {
+            var process = this.Process;
+            if (!this.HoldsPort)
+            {
+                return new StrayText(
+                    format("M.Dash.StrayBanner", new object?[] { process.Name, process.ProcessId }),
+                    this.Parent is { } parent
+                        ? format("M.Dash.StrayParent", new object?[] { parent.Name, parent.ProcessId })
+                        : format("M.Dash.StrayOrphan", Array.Empty<object?>()),
+                    format("M.Dash.StrayHint", Array.Empty<object?>()));
+            }
+
+            string banner = this.Parent is { } starter
+                ? format("M.Dash.PortHeldBy", new object?[] { this.Port, process.Name, process.ProcessId, starter.Name })
+                : format("M.Dash.PortHeld", new object?[] { this.Port, process.Name, process.ProcessId });
+
+            // What is not to be ended is said so, in place of who started it: there is no button
+            // for it, and an explanation of what would restart it would only suggest there were.
+            string about = !StrayProcesses.MayEnd(process)
+                ? process.ProcessId == 4
+                    ? format("M.Dash.PortHeldBySystem", Array.Empty<object?>())
+                    : format("M.Dash.PortHeldByWindows", new object?[] { process.Name })
+                : this.Parent is { } parentOfHolder
+                    ? format("M.Dash.PortParent", new object?[] { parentOfHolder.Name, parentOfHolder.ProcessId, process.Name })
+                    : format("M.Dash.StrayOrphan", Array.Empty<object?>());
+
+            return new StrayText(banner, about, format("M.Dash.PortHint", new object?[] { serviceName }));
+        }
+    }
+
+    /// <summary>A <see cref="StrayFinding"/> in words: the banner's three lines.</summary>
+    /// <param name="Banner">What was found.</param>
+    /// <param name="Parent">Who started it, or why it is not to be ended.</param>
+    /// <param name="Hint">What to make of it.</param>
+    public sealed record StrayText(string Banner, string Parent, string Hint);
 
     /// <summary>
     /// The program of a stopped service, still running outside it.
@@ -44,6 +96,11 @@ namespace WinSW.Gui.Services
     /// java.exe. Nor is a process claimed whose ancestry leads to a WinSW wrapper — another
     /// service or a desktop task running the same program — or to this console, which is a
     /// try run.
+    /// </para>
+    /// <para>
+    /// A third sign covers what neither recognises — a venv's base interpreter, a copy started by
+    /// hand: the port. What holds a port the service listened on when it last ran, outside every
+    /// wrapper, is what its next start will fail on, whoever it is; see <see cref="FindPortHolder"/>.
     /// </para>
     /// </remarks>
     public static class StrayProcesses
@@ -116,6 +173,53 @@ namespace WinSW.Gui.Services
                 if (string.Equals(imagePathOf(record.ProcessId), executablePath, StringComparison.OrdinalIgnoreCase))
                 {
                     return FindingFor(snapshot, record);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// A process outside every wrapper that holds one of the ports a service last listened on,
+        /// or null: what keeps the service from starting, whether or not it is the service's own
+        /// program. See <see cref="RememberedRuns"/> for where the ports come from, and
+        /// <see cref="PortWatch"/> for when they are looked for.
+        /// </summary>
+        /// <remarks>
+        /// A holder under a wrapper — another service, a desktop task, a try run from this console —
+        /// is left alone, as <see cref="Find"/> leaves it: it is somebody's, and ending it from this
+        /// service's banner would be the wrong place. The kernel is never a holder to name by PID 0;
+        /// PID 4 is named, since HTTP.sys takes its ports in System's name, but is not offered for
+        /// ending, which <see cref="MayEnd"/> sees to.
+        /// </remarks>
+        /// <param name="ports">The machine's listeners, read once for the poll.</param>
+        /// <param name="remembered">The ports the service listened on in its last run, lowest first.</param>
+        /// <param name="wrapperNames">Image names of the WinSW wrappers on this machine.</param>
+        /// <param name="consoleProcessId">This console, whose try runs are its own business.</param>
+        public static StrayFinding? FindPortHolder(
+            ProcessSnapshot snapshot,
+            PortTable ports,
+            IReadOnlyList<int> remembered,
+            ISet<string> wrapperNames,
+            int consoleProcessId)
+        {
+            foreach (int port in remembered)
+            {
+                foreach (int holder in ports.HoldersOf(port))
+                {
+                    // Not in the snapshot: started after it was taken, and named at the next poll.
+                    if (holder <= 0
+                        || holder == consoleProcessId
+                        || !snapshot.TryGet(holder, out var record)
+                        || wrapperNames.Contains(record.Name)
+                        || IsOwned(snapshot, record, wrapperNames, consoleProcessId))
+                    {
+                        continue;
+                    }
+
+                    // System's parent is Idle, and nothing is "started by Idle".
+                    var finding = FindingFor(snapshot, record);
+                    return finding with { Parent = finding.Parent is { ProcessId: > 4 } ? finding.Parent : null, Port = port };
                 }
             }
 

@@ -497,6 +497,17 @@
     <sys:String x:Key="M.Dash.StrayEnded">{0}（PID {1}）を終了しました。</sys:String>
     <sys:String x:Key="M.Dash.StrayGone">そのプロセスはすでに終了しています。</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">終了できませんでした: {0}</sys:String>
+    <!-- Ports on the Services page: the label of the line under a running service's metrics, then the banner for a service whose port, remembered from its last run, is held by a process outside every wrapper, and the questions before ending that process or its parent. PortHeld/PortHeldBy: {0} the port, {1} {2} the process and its PID, {3} what started it. PortParent: {0} {1} the parent, {2} the process. PortHeldByWindows: {0} the process. PortHint: {0} the service. PortEndBody: {0} {1} the process, {2} the port, {3} the service. PortParentBody: {0} {1} the parent, {2} {3} the process, {4} the port, {5} the service. -->
+    <sys:String x:Key="M.Dash.Listening">待ち受けポート</sys:String>
+    <sys:String x:Key="M.Dash.PortHeld">ポート {0} は {1}（PID {2}）が使用中です。</sys:String>
+    <sys:String x:Key="M.Dash.PortHeldBy">ポート {0} は {1}（PID {2}、{3} が起動）が使用中です。</sys:String>
+    <sys:String x:Key="M.Dash.PortParent">{0}（PID {1}）はまだ実行中です。終了しても {2} が繰り返し現れる場合は、これが再起動しています。</sys:String>
+    <sys:String x:Key="M.Dash.PortHeldBySystem">System は IIS や HttpListener を使うプログラムに代わって HTTP.sys のポートを使用しているため、ここからは終了できません。netsh http show servicestate でプログラムを確認するか、サービスのポートを変更してください。</sys:String>
+    <sys:String x:Key="M.Dash.PortHeldByWindows">{0} は Windows 自身のプロセスのため、ここからは終了できません。このポートを使用している Windows サービスを停止するか、このサービスのポートを変更してください。</sys:String>
+    <sys:String x:Key="M.Dash.PortHint">'{0}' は前回の実行時にこのポートで待ち受けていました。ほかのプログラムが使用している間は、サービスの起動に失敗するか、再起動を繰り返します。</sys:String>
+    <sys:String x:Key="M.Dash.PortEndTitle">ポートを使用しているプロセスを終了しますか？</sys:String>
+    <sys:String x:Key="M.Dash.PortEndBody">{0}（PID {1}）と、それが起動したすべてのプロセスを正常なシャットダウンなしで終了し、ポート {2} を解放します。その後 '{3}' を起動してください。</sys:String>
+    <sys:String x:Key="M.Dash.PortParentBody">{0}（PID {1}）と、それが起動したすべてのプロセス（{2}、PID {3} を含む）を正常なシャットダウンなしで終了し、ポート {4} を解放します。その後 '{5}' を起動してください。</sys:String>
     <sys:String x:Key="M.Sched.Label">定期再起動</sys:String>
     <sys:String x:Key="M.Sched.Off">オフ</sys:String>
     <sys:String x:Key="M.Sched.Daily">毎日</sys:String>

@@ -552,5 +552,24 @@ namespace WinSW.Gui.Services
         [DllImport("user32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool AllowSetForegroundWindow(int processId);
+
+        // Listening ports ------------------------------------------------------
+        //
+        // What PortTable reads: every TCP listener on the machine with the process that opened
+        // it, as netstat -ano prints it. The owner-PID tables ask for no rights, so a standard
+        // user sees the listeners of LocalSystem services as readily as their own.
+
+        internal const int AF_INET = 2;
+        internal const int AF_INET6 = 23;
+
+        /// <summary>TCP_TABLE_OWNER_PID_LISTENER: a MIB_TCPTABLE_OWNER_PID (or its IPv6 twin) of listeners alone.</summary>
+        internal const int TCP_TABLE_OWNER_PID_LISTENER = 3;
+
+        /// <summary>
+        /// Returns NO_ERROR, or ERROR_INSUFFICIENT_BUFFER with <paramref name="size"/> set to what
+        /// the table needs — also for a null <paramref name="table"/>, which is how the size is asked.
+        /// </summary>
+        [DllImport("iphlpapi.dll")]
+        internal static extern int GetExtendedTcpTable(byte[]? table, ref int size, [MarshalAs(UnmanagedType.Bool)] bool order, int addressFamily, int tableClass, int reserved);
     }
 }

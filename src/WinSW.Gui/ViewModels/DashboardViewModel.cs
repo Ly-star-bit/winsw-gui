@@ -183,7 +183,7 @@ namespace WinSW.Gui.ViewModels
             // Ending a stray holds nothing, but is not offered while a command is working on the
             // same service: the banner was read before that command began, and it is about to
             // change what is running.
-            this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.HasStrayProcess == true && this.IsIdle(this.selectedService, null));
+            this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.CanEndStray == true && this.IsIdle(this.selectedService, null));
             this.EndStrayParentCommand = new RelayCommand(this.AskEndStrayParent, () => this.selectedService?.CanEndStrayParent == true && this.IsIdle(this.selectedService, null));
 
             // Neither needs the configuration: the start type is changed through sc.exe, by name.
@@ -669,28 +669,39 @@ namespace WinSW.Gui.ViewModels
 
         private void AskEndStrayParent()
         {
-            if (this.selectedService is not { StrayProcess: { Process: var stray, Parent: { } parent } } entry || !StrayProcesses.MayEnd(parent))
+            if (this.selectedService is not { StrayProcess: { Process: var stray, Parent: { } parent } finding } entry || !entry.CanEndStrayParent)
             {
                 return;
             }
 
+            // As for the process itself: a port holder is ended for the port, not to be run again.
             this.Ask(
                 Localizer.Get("M.Dash.StrayParentTitle"),
-                Localizer.Format("M.Dash.StrayParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, entry.ServiceName),
+                finding.HoldsPort
+                    ? Localizer.Format("M.Dash.PortParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, finding.Port, entry.ServiceName)
+                    : Localizer.Format("M.Dash.StrayParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, entry.ServiceName),
                 Localizer.Get("M.Dash.StrayAction"),
                 () => this.TerminateStrayAsync(entry, parent));
         }
 
+        /// <summary>
+        /// Asks before ending the process on the selected service's banner. Never for one of
+        /// Windows' own or the kernel, which a port can be held by as readily as by a leftover.
+        /// </summary>
         private void AskTerminateStray()
         {
-            if (this.selectedService is not { StrayProcess: { Process: var stray } } entry)
+            if (this.selectedService is not { StrayProcess: { Process: var stray } finding } entry || !StrayProcesses.MayEnd(stray))
             {
                 return;
             }
 
+            // A port holder need not be the service's program at all; the question names the port
+            // it is ended for rather than calling it left behind.
             this.Ask(
-                Localizer.Get("M.Dash.StrayTitle"),
-                Localizer.Format("M.Dash.StrayBody", stray.Name, stray.ProcessId, entry.ServiceName),
+                Localizer.Get(finding.HoldsPort ? "M.Dash.PortEndTitle" : "M.Dash.StrayTitle"),
+                finding.HoldsPort
+                    ? Localizer.Format("M.Dash.PortEndBody", stray.Name, stray.ProcessId, finding.Port, entry.ServiceName)
+                    : Localizer.Format("M.Dash.StrayBody", stray.Name, stray.ProcessId, entry.ServiceName),
                 Localizer.Get("M.Dash.StrayAction"),
                 () => this.TerminateStrayAsync(entry, stray));
         }
@@ -1529,9 +1540,9 @@ namespace WinSW.Gui.ViewModels
         /// </para>
         /// <para>
         /// With <paramref name="statesOnly"/>, the reading the poll takes behind another page: no
-        /// snapshot, so no counters, no tree and no stray check, and what is left is one query per
-        /// service to the service control manager. That is all a stop needs to be seen and told,
-        /// and what is on the page catches up when it is shown again.
+        /// snapshot, so no counters, no tree, no stray check and no ports, and what is left is one
+        /// query per service to the service control manager. That is all a stop needs to be seen
+        /// and told, and what is on the page catches up when it is shown again.
         /// </para>
         /// </remarks>
         private async Task RefreshStatusesAsync(bool statesOnly = false)
@@ -1548,6 +1559,11 @@ namespace WinSW.Gui.ViewModels
             var executables = entries.Select(e => e.ExecutablePath).ToArray();
             var remembered = entries.Select(e => e.Descendants).ToArray();
             var wrapperNames = new HashSet<string>(entries.Select(e => Path.GetFileName(e.WrapperPath)), StringComparer.OrdinalIgnoreCase) { "WinSW.exe" };
+
+            // And what the ports need: which service is on screen, and which banners name a port.
+            var polled = entries
+                .Select(e => new PolledService(e.ServiceName, ReferenceEquals(e, selectedAtStart), e.StrayProcess is { HoldsPort: true }))
+                .ToArray();
 
             // Held across the writing as well as the reading. Dropped after the await, the
             // next tick could start a second reading while this one was still applying the
@@ -1579,6 +1595,14 @@ namespace WinSW.Gui.ViewModels
                         {
                             read[i] = read[i] with { Stray = reading.FindStray(remembered[i], executables[i], wrapperNames) };
                         }
+                    }
+
+                    // The machine's listening ports, read once for every service and only when one
+                    // of them needs them: what each running service listens on, and what holds a
+                    // port a stopped one last did. See PortWatch.
+                    if (reading.Processes is { } processes)
+                    {
+                        PortWatch.Look(read, polled, processes, PortTable.Read, RememberedRuns.Current, wrapperNames, Environment.ProcessId, DateTime.Now);
                     }
 
                     // Built from the reading just taken rather than from the entry, so a

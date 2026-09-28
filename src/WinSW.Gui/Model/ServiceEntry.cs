@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.ServiceProcess;
 using WinSW.Gui.Localization;
@@ -62,6 +63,7 @@ namespace WinSW.Gui.Model
         private Services.StrayFinding? strayProcess;
         private Services.StrayFinding? strayCandidate;
         private DateTime strayCandidateSince;
+        private ImmutableArray<Services.ListeningPort> listeningPorts = ImmutableArray<Services.ListeningPort>.Empty;
         private ServiceStartMode? startType;
         private bool delayedAutoStart;
         private Services.RecoverySettings? recovery;
@@ -764,8 +766,8 @@ namespace WinSW.Gui.Model
         }
 
         /// <summary>
-        /// The service's program, still running though the service is stopped; see
-        /// <see cref="Services.StrayProcesses"/>.
+        /// The service's program, still running though the service is stopped, or whatever holds a
+        /// port it last listened on; see <see cref="Services.StrayProcesses"/>.
         /// </summary>
         public Services.StrayFinding? StrayProcess
         {
@@ -775,8 +777,10 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.strayProcess, value))
                 {
                     this.Raise(nameof(this.HasStrayProcess));
+                    this.Raise(nameof(this.CanEndStray));
                     this.Raise(nameof(this.StrayProcessText));
                     this.Raise(nameof(this.StrayParentText));
+                    this.Raise(nameof(this.StrayHintText));
                     this.Raise(nameof(this.CanEndStrayParent));
                     this.Raise(nameof(this.StrayParentActionText));
                 }
@@ -789,6 +793,13 @@ namespace WinSW.Gui.Model
         /// program's own children a moment to exit, and a warning that flashed on every stop
         /// would be the one nobody reads when it matters.
         /// </summary>
+        /// <remarks>
+        /// Something holding the service's port that was never seen under its wrapper is not one of
+        /// those children, and is shown at once. The wait would otherwise hide it for good in the
+        /// very case it is found for: a service failing on its port and restarted by Windows can
+        /// spend less than the wait stopped between two runs, and every reading in between that sees
+        /// it running starts the wait over.
+        /// </remarks>
         public void NoteStray(Services.StrayFinding? seen, DateTime now)
         {
             if (seen is not { } finding)
@@ -798,34 +809,59 @@ namespace WinSW.Gui.Model
                 return;
             }
 
+            bool settled = finding.HoldsPort && !this.WasUnderWrapper(finding.Process);
+
             // The same process is judged by its ID and start alone. Its parent may exit between
             // two readings, and that is news for the banner, not a new process to wait out.
             if (this.strayCandidate is not { } candidate || !candidate.Process.IsSameProcessAs(finding.Process))
             {
                 this.strayCandidate = finding;
                 this.strayCandidateSince = now;
-                this.StrayProcess = this.strayProcess is { } shown && shown.Process.IsSameProcessAs(finding.Process) ? finding : null;
+                this.StrayProcess = settled || (this.strayProcess is { } shown && shown.Process.IsSameProcessAs(finding.Process)) ? finding : null;
                 return;
             }
 
             this.strayCandidate = finding;
-            if (now - this.strayCandidateSince >= StrayConfirmation || this.strayProcess != null)
+            if (settled || now - this.strayCandidateSince >= StrayConfirmation || this.strayProcess != null)
             {
                 this.StrayProcess = finding;
             }
         }
 
+        /// <summary>The process was among those noted under the wrapper while the service last ran.</summary>
+        private bool WasUnderWrapper(Services.ProcessMark process)
+        {
+            foreach (var noted in this.descendants)
+            {
+                if (noted.IsSameProcessAs(process))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool HasStrayProcess => this.strayProcess != null;
 
-        public string StrayProcessText => this.strayProcess is { } stray
-            ? Localizer.Format("M.Dash.StrayBanner", stray.Process.Name, stray.Process.ProcessId)
-            : string.Empty;
+        /// <summary>
+        /// The process may be offered for ending: not one of Windows' own, and not the kernel, which
+        /// is what a port taken through HTTP.sys shows as held by. See <see cref="Services.StrayProcesses.MayEnd"/>.
+        /// </summary>
+        public bool CanEndStray => this.strayProcess is { } stray && Services.StrayProcesses.MayEnd(stray.Process);
+
+        /// <summary>What was found: "api.exe is still running, outside the service", or "port 8000 is held by …".</summary>
+        public string StrayProcessText => this.DescribeStray()?.Banner ?? string.Empty;
+
+        /// <summary>What to make of it, under the banner's two lines.</summary>
+        public string StrayHintText => this.DescribeStray()?.Hint ?? string.Empty;
 
         /// <summary>
         /// The parent is still running and is not one of Windows' own: ending it, and so what it
-        /// keeps starting, can be offered.
+        /// keeps starting, can be offered. Not for a process that may not be ended itself, whose
+        /// banner says so in place of who started it.
         /// </summary>
-        public bool CanEndStrayParent => this.strayProcess is { Parent: { } parent } && Services.StrayProcesses.MayEnd(parent);
+        public bool CanEndStrayParent => this.CanEndStray && this.strayProcess is { Parent: { } parent } && Services.StrayProcesses.MayEnd(parent);
 
         public string StrayParentActionText => this.strayProcess is { Parent: { } parent }
             ? Localizer.Format("M.Dash.StrayEndParent", parent.Name, parent.ProcessId)
@@ -835,12 +871,33 @@ namespace WinSW.Gui.Model
         /// Who started the stray process: the answer to "why does it keep coming back" when the
         /// parent is still running, and a true orphan when it is not.
         /// </summary>
-        public string StrayParentText => this.strayProcess switch
+        public string StrayParentText => this.DescribeStray()?.Parent ?? string.Empty;
+
+        private Services.StrayText? DescribeStray() => this.strayProcess?.Describe(this.ServiceName, Localizer.Format);
+
+        /// <summary>
+        /// What the service's wrapper and the processes under it listen on, lowest port first. Empty
+        /// while it is not running, and when the last reading had no reason to read the ports.
+        /// </summary>
+        public ImmutableArray<Services.ListeningPort> ListeningPorts
         {
-            { Parent: { } parent } => Localizer.Format("M.Dash.StrayParent", parent.Name, parent.ProcessId),
-            { } => Localizer.Get("M.Dash.StrayOrphan"),
-            _ => string.Empty,
-        };
+            get => this.listeningPorts;
+            set
+            {
+                var ports = value.IsDefault ? ImmutableArray<Services.ListeningPort>.Empty : value;
+
+                // A fresh array every poll, and nearly always the same ports in it.
+                if (!this.listeningPorts.AsSpan().SequenceEqual(ports.AsSpan()))
+                {
+                    this.listeningPorts = ports;
+                    this.Raise();
+                    this.Raise(nameof(this.ListeningText));
+                }
+            }
+        }
+
+        /// <summary>"0.0.0.0:8000, [::]:8000"; empty, which hides the row, when nothing is listened on.</summary>
+        public string ListeningText => Services.PortTable.Describe(this.listeningPorts);
 
         /// <summary>
         /// Stops in the counting window now open, the one told at once included; 0 when none is
@@ -893,6 +950,7 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.UptimeText));
             this.Raise(nameof(this.StrayProcessText));
             this.Raise(nameof(this.StrayParentText));
+            this.Raise(nameof(this.StrayHintText));
             this.Raise(nameof(this.StrayParentActionText));
             this.Raise(nameof(this.RecoveryText));
             this.Raise(nameof(this.RecoveryDifferenceText));

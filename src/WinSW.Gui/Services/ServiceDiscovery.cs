@@ -51,8 +51,19 @@ namespace WinSW.Gui.Services
         /// </summary>
         public ImmutableArray<ProcessMark> Descendants { get; init; }
 
-        /// <summary>While stopped: the service's program, still running outside it; see <see cref="StrayProcesses"/>.</summary>
+        /// <summary>
+        /// While stopped: the service's program, still running outside it, or whatever holds a port
+        /// it last listened on; see <see cref="StrayProcesses"/>. While running, only a holder of its
+        /// port that its banner already names; see <see cref="PortWatch"/>.
+        /// </summary>
         public StrayFinding? Stray { get; init; }
+
+        /// <summary>
+        /// While running: what the wrapper and everything under it listen on, in the order the panel
+        /// shows it. Default (not merely empty) when the ports were not read at this reading, which
+        /// is only when nothing needed them; see <see cref="PortWatch"/>.
+        /// </summary>
+        public ImmutableArray<ListeningPort> Listening { get; init; }
     }
 
     /// <summary>
@@ -178,13 +189,16 @@ namespace WinSW.Gui.Services
                 entry.Status = null;
                 entry.ProcessId = 0;
                 entry.NoteStray(null, DateTime.UtcNow);
+                entry.ListeningPorts = ImmutableArray<ListeningPort>.Empty;
                 entry.ClearSample();
                 return;
             }
 
+            bool sameProcess = sample.ProcessId != 0 && sample.ProcessId == entry.ProcessId;
+
             // A new wrapper is a new tree: what was noted under the last one describes a run
             // that has ended, and is dropped before anything is noted under this one.
-            if (sample.ProcessId != 0 && sample.ProcessId != entry.ProcessId)
+            if (sample.ProcessId != 0 && !sameProcess)
             {
                 entry.Descendants = Array.Empty<ProcessMark>();
             }
@@ -196,6 +210,18 @@ namespace WinSW.Gui.Services
             if (!sample.Descendants.IsDefault)
             {
                 entry.Descendants = sample.Descendants;
+            }
+
+            // The ports are read only at a reading that needed them, which for the service on
+            // screen is every reading while it runs. Not read, they stay with the process they
+            // were read for, as its counters do under ApplyStatus.
+            if (!sample.HasProcess || (sample.Listening.IsDefault && !sameProcess))
+            {
+                entry.ListeningPorts = ImmutableArray<ListeningPort>.Empty;
+            }
+            else if (!sample.Listening.IsDefault)
+            {
+                entry.ListeningPorts = sample.Listening;
             }
 
             if (!sample.HasProcess)
@@ -223,8 +249,11 @@ namespace WinSW.Gui.Services
         /// </para>
         /// <para>
         /// What the stopped service has left running is not looked for, so a finding stays as the
-        /// last full reading left it until the next one. A service that is not stopped has none,
-        /// as under <see cref="Apply"/>, where one is only ever looked for while it is stopped.
+        /// last full reading left it until the next one. A service that is not stopped has none:
+        /// under <see cref="Apply"/> one is looked for while it is stopped, and kept while it runs
+        /// only when it holds the service's port, which only a full reading can tell. The ports a
+        /// running service listens on are not read either, and stay with the process they were
+        /// read for, as its counters do.
         /// </para>
         /// </remarks>
         public static void ApplyStatus(ServiceEntry entry, in ServiceSample sample)
@@ -254,6 +283,7 @@ namespace WinSW.Gui.Services
 
             if (!sameProcess)
             {
+                entry.ListeningPorts = ImmutableArray<ListeningPort>.Empty;
                 entry.ClearSample();
             }
         }

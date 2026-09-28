@@ -508,6 +508,17 @@
     <sys:String x:Key="M.Dash.StrayEnded">{0} (PID {1}) was ended.</sys:String>
     <sys:String x:Key="M.Dash.StrayGone">That process has already exited.</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">Could not end it: {0}</sys:String>
+    <!-- Ports on the Services page: the label of the line under a running service's metrics, then the banner for a service whose port, remembered from its last run, is held by a process outside every wrapper, and the questions before ending that process or its parent. PortHeld/PortHeldBy: {0} the port, {1} {2} the process and its PID, {3} what started it. PortParent: {0} {1} the parent, {2} the process. PortHeldByWindows: {0} the process. PortHint: {0} the service. PortEndBody: {0} {1} the process, {2} the port, {3} the service. PortParentBody: {0} {1} the parent, {2} {3} the process, {4} the port, {5} the service. -->
+    <sys:String x:Key="M.Dash.Listening">LISTENING</sys:String>
+    <sys:String x:Key="M.Dash.PortHeld">Port {0} is held by {1} (PID {2}).</sys:String>
+    <sys:String x:Key="M.Dash.PortHeldBy">Port {0} is held by {1} (PID {2}, started by {3}).</sys:String>
+    <sys:String x:Key="M.Dash.PortParent">{0} (PID {1}) is still running: if {2} comes back after being ended, that is what starts it again.</sys:String>
+    <sys:String x:Key="M.Dash.PortHeldBySystem">System holds ports for HTTP.sys, on behalf of IIS or a program using HttpListener, and is not ended from here. 'netsh http show servicestate' names the program; or move the service to another port.</sys:String>
+    <sys:String x:Key="M.Dash.PortHeldByWindows">{0} is part of Windows and is not ended from here: stop the Windows service that holds the port, or move this service to another port.</sys:String>
+    <sys:String x:Key="M.Dash.PortHint">'{0}' listened on this port when it last ran. While something else holds it, the service fails to start, or keeps restarting.</sys:String>
+    <sys:String x:Key="M.Dash.PortEndTitle">End the process holding the port?</sys:String>
+    <sys:String x:Key="M.Dash.PortEndBody">{0} (PID {1}) and every process it started will be ended without a graceful shutdown, which frees port {2}. Start '{3}' afterwards.</sys:String>
+    <sys:String x:Key="M.Dash.PortParentBody">{0} (PID {1}) and every process it started, {2} (PID {3}) among them, will be ended without a graceful shutdown, which frees port {4}. Start '{5}' afterwards.</sys:String>
     <sys:String x:Key="M.Sched.Label">Scheduled restart</sys:String>
     <sys:String x:Key="M.Sched.Off">Off</sys:String>
     <sys:String x:Key="M.Sched.Daily">Every day</sys:String>
