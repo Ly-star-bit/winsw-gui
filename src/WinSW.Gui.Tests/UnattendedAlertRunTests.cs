@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using WinSW.Gui.Services;
 using Xunit;
@@ -57,6 +58,19 @@ namespace WinSW.Gui.Tests
         public void OnlyAServiceThatRanIsGivenItsLastLine(ScmFailureKind kind, bool quoted)
         {
             Assert.Equal(quoted, UnattendedAlertRun.QuotesCause(kind));
+        }
+
+        /// <summary>
+        /// The run never makes the machine folder: made by it, the folder would take ProgramData's
+        /// permissions, under which any user may create files in it.
+        /// </summary>
+        [Fact]
+        public void AMissingFolderIsNeitherUsedNorMade()
+        {
+            string folder = Path.Combine(Path.GetTempPath(), "winsw-gui-tests", Guid.NewGuid().ToString("N"));
+
+            Assert.False(UnattendedAlertRun.MayUse(folder));
+            Assert.False(Directory.Exists(folder));
         }
 
         private static string Format(string key, object?[] args) => string.Join("|", new object?[] { key }.Concat(args));

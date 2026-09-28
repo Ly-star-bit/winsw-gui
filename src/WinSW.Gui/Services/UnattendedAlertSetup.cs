@@ -251,8 +251,11 @@ namespace WinSW.Gui.Services
             }
         }
 
-        /// <summary>Whether administrators or SYSTEM own the folder, by SID: the groups' names are translated.</summary>
-        private static bool OwnedByAdministrators(DirectoryInfo folder)
+        /// <summary>
+        /// Whether administrators or SYSTEM own the folder, by SID: the groups' names are
+        /// translated. Also asked by the task's run before it writes; see <see cref="UnattendedAlertRun"/>.
+        /// </summary>
+        internal static bool OwnedByAdministrators(DirectoryInfo folder)
         {
             var owner = folder.GetAccessControl(AccessControlSections.Owner).GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
             return owner is not null && (owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid));

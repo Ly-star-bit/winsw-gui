@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -115,6 +116,9 @@ namespace WinSW.Gui.Services
         /// lose one's change.
         /// </summary>
         private const string GateName = "Global\\WinSW.Gui.UnattendedAlert";
+
+        /// <summary>See <see cref="MayUse"/>. Asked at the first read or write, and not again: a run takes seconds.</summary>
+        private static readonly Lazy<bool> MachineFolderUsable = new(CheckMachineFolder);
 
         /// <summary>
         /// Posts the failure recorded as <paramref name="recordNumber"/> in the System log.
@@ -253,10 +257,40 @@ namespace WinSW.Gui.Services
         internal static bool QuotesCause(ScmFailureKind kind) =>
             kind is ScmFailureKind.Crashed or ScmFailureKind.EndedWithError or ScmFailureKind.EndedWithCode;
 
+        /// <summary>
+        /// Whether this run may read and write in <see cref="UnattendedAlert.MachineFolder"/>: it
+        /// is there, is a folder rather than a link, and administrators or SYSTEM own it, as
+        /// turning the alert on leaves it. Never throws; anything that cannot be told is a no.
+        /// </summary>
+        /// <remarks>
+        /// The run never makes the folder. Made by SYSTEM, or by an administrator starting a
+        /// run by hand, it would take ProgramData's permissions, under which every user may
+        /// create files in it — among them a link named like the log or the state, for SYSTEM
+        /// to write through — and turning the alert on keeps a folder administrators or SYSTEM
+        /// own, with whatever was put in it. A folder that is missing, or that another account
+        /// made, is left alone: the message still goes, without its line in the log or the
+        /// throttle's count, and the throttle starts from nothing rather than from a state file
+        /// another account could have written.
+        /// </remarks>
+        internal static bool MayUse(string folder)
+        {
+            try
+            {
+                var info = new DirectoryInfo(folder);
+                return info.Exists
+                    && (info.Attributes & FileAttributes.ReparsePoint) == 0
+                    && UnattendedAlertSetup.OwnedByAdministrators(info);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or PlatformNotSupportedException or IdentityNotMappedException)
+            {
+                return false;
+            }
+        }
+
         private static int Announce(ScmFailure failure, string service, string? configPath, WebhookCopy copy)
         {
             var now = DateTimeOffset.Now;
-            var state = AlertState.Load(UnattendedAlert.StatePath);
+            var state = MachineFolderUsable.Value ? AlertState.Load(UnattendedAlert.StatePath) : new AlertState();
             AlertThrottle.Prune(state, now);
 
             int? held = AlertThrottle.Admit(state, service, now);
@@ -312,6 +346,11 @@ namespace WinSW.Gui.Services
 
         private static void Save(AlertState state)
         {
+            if (!MachineFolderUsable.Value)
+            {
+                return;
+            }
+
             try
             {
                 state.Save(UnattendedAlert.StatePath);
@@ -324,8 +363,30 @@ namespace WinSW.Gui.Services
             }
         }
 
-        /// <summary>One line in <see cref="UnattendedAlert.LogPath"/>, in the action log's shape. Never throws.</summary>
-        internal static void Log(string service, string outcome) =>
-            ActionLog.Append(UnattendedAlert.LogPath, ActionLog.Format(DateTime.Now, "SYSTEM", "unattended alert", service, outcome));
+        /// <summary>
+        /// One line in <see cref="UnattendedAlert.LogPath"/>, in the action log's shape, when the
+        /// folder may be written to (<see cref="MayUse"/>). Never throws.
+        /// </summary>
+        internal static void Log(string service, string outcome)
+        {
+            if (MachineFolderUsable.Value)
+            {
+                ActionLog.Append(UnattendedAlert.LogPath, ActionLog.Format(DateTime.Now, "SYSTEM", "unattended alert", service, outcome));
+            }
+        }
+
+        /// <summary><see cref="MayUse"/> for the machine folder, asked once per run; a no is recorded in the error log, once.</summary>
+        private static bool CheckMachineFolder()
+        {
+            bool usable = MayUse(UnattendedAlert.MachineFolder);
+            if (!usable)
+            {
+                ErrorLog.Record(
+                    "unattended alert",
+                    new IOException($"'{UnattendedAlert.MachineFolder}' is missing, is a link, or is not owned by administrators or SYSTEM. The message is posted without the log and the throttle's state. Turn the unattended alert on again."));
+            }
+
+            return usable;
+        }
     }
 }
