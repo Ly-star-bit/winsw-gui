@@ -16,6 +16,7 @@ namespace WinSW.Gui.Tests
     /// left step 2 red with nothing suggesting the next number.
     /// </summary>
     /// <remarks>Messages are compared by key, which is what the localizer hands back outside the application.</remarks>
+    [Collection("install root")]
     public sealed class WizardCloneNamesTests : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "winsw-copy-names-" + Guid.NewGuid().ToString("N"));

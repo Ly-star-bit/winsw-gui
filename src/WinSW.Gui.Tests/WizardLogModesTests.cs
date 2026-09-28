@@ -11,6 +11,7 @@ namespace WinSW.Gui.Tests
     /// start from. roll-by-time used not to: the wrapper refuses it without a pattern, the
     /// wizard had no field for one, and choosing it left a wizard that could not be finished.
     /// </summary>
+    [Collection("install root")]
     public sealed class WizardLogModesTests : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "winsw-gui-" + Guid.NewGuid().ToString("n"));

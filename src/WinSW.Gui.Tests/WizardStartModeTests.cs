@@ -9,6 +9,7 @@ namespace WinSW.Gui.Tests
     /// Disabled service (1058); the wizard installed one and then started it, reported the
     /// install as failed, and failed again with 1073 when asked to try once more.
     /// </summary>
+    [Collection("install root")]
     public class WizardStartModeTests
     {
         /// <summary>Disabled unticks the box and greys it out; the install goes by the box.</summary>

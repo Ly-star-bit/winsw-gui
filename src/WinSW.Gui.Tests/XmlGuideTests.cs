@@ -14,6 +14,7 @@ namespace WinSW.Gui.Tests
     /// here: a document that no longer embeds, or a table row that gained a column, would
     /// otherwise only show up as a broken page at runtime.
     /// </summary>
+    [Collection("install root")]
     public class XmlGuideTests
     {
         [Fact]

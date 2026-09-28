@@ -12,6 +12,7 @@ namespace WinSW.Gui.Tests
     /// ten-second restart started a program that could never run some 360 times an hour. The
     /// wizard now backs off: the chosen delay, then a minute, then five minutes.
     /// </summary>
+    [Collection("install root")]
     public class WizardRecoveryTests
     {
         [Fact]

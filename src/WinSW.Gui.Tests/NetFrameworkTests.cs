@@ -11,6 +11,7 @@ namespace WinSW.Gui.Tests
     /// or at the first start. The wizard reads the framework's <c>Release</c> and, below 4.6.2,
     /// starts on the self-contained download instead.
     /// </summary>
+    [Collection("install root")]
     public class NetFrameworkTests
     {
         /// <summary>A few versions around the line, each by a <c>Release</c> Microsoft documents for it.</summary>

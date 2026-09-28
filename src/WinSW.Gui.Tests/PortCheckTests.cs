@@ -15,6 +15,7 @@ namespace WinSW.Gui.Tests
     /// Try run — for what already listens on the ports it names, over a port table and a process
     /// snapshot built by hand. Localized text reads back as its key here.
     /// </summary>
+    [Collection("install root")]
     public class PortCheckTests
     {
         private const int Console = 900;

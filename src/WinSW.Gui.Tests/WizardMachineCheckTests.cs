@@ -15,6 +15,7 @@ namespace WinSW.Gui.Tests
     /// the wrapper is a .NET Framework build the machine cannot run. Localized text reads back
     /// as its key here, as everywhere in these tests.
     /// </summary>
+    [Collection("install root")]
     public sealed class WizardMachineCheckTests : IDisposable
     {
         private static readonly ServiceNames Machine = new(new[]

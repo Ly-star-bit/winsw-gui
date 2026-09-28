@@ -16,6 +16,7 @@ namespace WinSW.Gui.Tests
     /// prompt, with the configuration already written. An ID another service shows as its
     /// display name is not a documented refusal, and is only warned about.
     /// </summary>
+    [Collection("install root")]
     public class ServiceNamesTests
     {
         private static readonly ServiceNames Machine = new(new[]

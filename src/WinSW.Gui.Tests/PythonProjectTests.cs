@@ -13,6 +13,7 @@ namespace WinSW.Gui.Tests
     /// test runs against a real layout in a temporary folder, the way pip and venv leave one:
     /// <c>api\.venv\pyvenv.cfg</c>, <c>api\.venv\Scripts\uvicorn.exe</c>, <c>api\main.py</c>.
     /// </summary>
+    [Collection("install root")]
     public sealed class PythonProjectTests : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "winsw-gui-" + Guid.NewGuid().ToString("n"));

@@ -13,6 +13,7 @@ namespace WinSW.Gui.Tests
     /// leaves nothing running on the port; a copy says what its source said, and a desktop task,
     /// whose wrapper runs as a console, is left at the wrapper's default.
     /// </summary>
+    [Collection("install root")]
     public sealed class WizardEndProcessesWithWrapperTests : IDisposable
     {
         private readonly string directory = Path.Combine(Path.GetTempPath(), "winsw-endprocs-" + Guid.NewGuid().ToString("N"));
