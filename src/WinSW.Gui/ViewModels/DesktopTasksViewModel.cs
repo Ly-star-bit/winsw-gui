@@ -322,11 +322,11 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        private Task StartAsync() => this.RunAsync("start", entry => DesktopTasks.Start(entry.Name));
+        private Task StartAsync() => this.RunAsync(DesktopTaskOperation.Start, entry => DesktopTasks.Start(entry.Name));
 
-        private Task StopAsync() => this.RunAsync("stop", entry => DesktopTasks.Stop(entry.Name, entry.Name, this.GraceFor(entry)));
+        private Task StopAsync() => this.RunAsync(DesktopTaskOperation.Stop, entry => DesktopTasks.Stop(entry.Name, entry.Name, this.GraceFor(entry)));
 
-        private Task RestartAsync() => this.RunAsync("restart", entry =>
+        private Task RestartAsync() => this.RunAsync(DesktopTaskOperation.Restart, entry =>
         {
             if (entry.State == DesktopTaskState.Running)
             {
@@ -337,10 +337,10 @@ namespace WinSW.Gui.ViewModels
         });
 
         private Task ToggleEnabledAsync() => this.RunAsync(
-            this.selectedTask?.Enabled == true ? "disable" : "enable",
+            this.selectedTask?.Enabled == true ? DesktopTaskOperation.Disable : DesktopTaskOperation.Enable,
             entry => DesktopTasks.SetEnabled(entry.Name, !entry.Enabled));
 
-        private Task DeleteAsync() => this.RunAsync("delete", entry =>
+        private Task DeleteAsync() => this.RunAsync(DesktopTaskOperation.Delete, entry =>
         {
             if (entry.State == DesktopTaskState.Running)
             {
@@ -354,7 +354,7 @@ namespace WinSW.Gui.ViewModels
         /// Runs one operation against the selected task off the interface thread. Every call
         /// here is a blocking COM round trip, and a stop waits for the program to shut down.
         /// </summary>
-        private async Task RunAsync(string label, Action<DesktopTaskEntry> operation)
+        private async Task RunAsync(DesktopTaskOperation kind, Action<DesktopTaskEntry> operation)
         {
             var entry = this.selectedTask;
             if (entry is null)
@@ -362,20 +362,27 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            string verb = Localizer.Get(DesktopTasks.VerbKey(kind));
+
+            // The log is English whatever the interface language, like every line in it.
+            string logged = "task " + kind.ToString().ToLowerInvariant();
+
             this.IsBusy = true;
-            this.StatusMessage = Localizer.Format("M.Task.Running", label, entry.Name);
+            this.StatusMessage = Localizer.Format("M.Task.Running", verb, entry.Name);
 
             try
             {
                 await Task.Run(() => operation(entry)).ConfigureAwait(true);
-                ActionLog.Record("task " + label, entry.Name, "ok");
-                this.StatusMessage = Localizer.Format("M.Task.Completed", label, entry.Name);
+                ActionLog.Record(logged, entry.Name, "ok");
+                this.StatusMessage = Localizer.Format("M.Task.Completed", verb, entry.Name);
                 this.Toast?.Invoke(this.StatusMessage, false);
             }
             catch (Exception e)
             {
-                ActionLog.Record("task " + label, entry.Name, "failed: " + e.Message);
-                this.StatusMessage = Localizer.Format("M.Task.Failed", label, e.Message);
+                ActionLog.Record(logged, entry.Name, "failed: " + e.Message);
+
+                // Named, because the toast can outlive the selection it was about.
+                this.StatusMessage = Localizer.Format("M.Task.Failed", verb, entry.Name, e.Message);
                 this.Toast?.Invoke(this.StatusMessage, true);
             }
             finally

@@ -22,6 +22,17 @@ namespace WinSW.Gui.Services
         Running = 4,
     }
 
+    /// <summary>What the desktop-task page can do to a registered task.</summary>
+    public enum DesktopTaskOperation
+    {
+        Start,
+        Stop,
+        Restart,
+        Enable,
+        Disable,
+        Delete,
+    }
+
     /// <summary>Everything needed to register one desktop task; see <see cref="DesktopTasks"/>.</summary>
     public sealed class DesktopTaskPlan
     {
@@ -166,6 +177,23 @@ namespace WinSW.Gui.Services
 
         /// <summary>The command line that runs one configuration in the current session.</summary>
         public static string BuildArguments(string configPath) => "console \"" + configPath + "\"";
+
+        /// <summary>
+        /// The dictionary key naming <paramref name="operation"/> in a message. Start, stop and
+        /// restart are the words on the buttons that start them; the other buttons are labels
+        /// ("Enable / disable", "Delete task"), not verbs a sentence can take, so those have
+        /// keys of their own.
+        /// </summary>
+        internal static string VerbKey(DesktopTaskOperation operation) => operation switch
+        {
+            DesktopTaskOperation.Start => "S.Start",
+            DesktopTaskOperation.Stop => "S.Stop",
+            DesktopTaskOperation.Restart => "S.Restart",
+            DesktopTaskOperation.Enable => "M.Task.Verb.Enable",
+            DesktopTaskOperation.Disable => "M.Task.Verb.Disable",
+            DesktopTaskOperation.Delete => "M.Task.Verb.Delete",
+            _ => throw new ArgumentOutOfRangeException(nameof(operation)),
+        };
 
         /// <summary>
         /// Recovers the configuration path from an argument string produced by

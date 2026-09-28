@@ -665,9 +665,12 @@
     <sys:String x:Key="M.Task.Scanning">正在读取已注册的任务…</sys:String>
     <sys:String x:Key="M.Task.Found">共 {0} 个桌面任务。</sys:String>
     <sys:String x:Key="M.Task.ScanFailed">读取任务计划程序失败。{0}</sys:String>
-    <sys:String x:Key="M.Task.Running">正在对“{1}”执行 {0}…</sys:String>
-    <sys:String x:Key="M.Task.Completed">“{1}”的 {0} 已完成。</sys:String>
-    <sys:String x:Key="M.Task.Failed">{0} 失败。{1}</sys:String>
+    <sys:String x:Key="M.Task.Running">正在{0}“{1}”…</sys:String>
+    <sys:String x:Key="M.Task.Completed">已{0}“{1}”。</sys:String>
+    <sys:String x:Key="M.Task.Failed">{0}“{1}”失败。{2}</sys:String>
+    <sys:String x:Key="M.Task.Verb.Enable">启用</sys:String>
+    <sys:String x:Key="M.Task.Verb.Disable">禁用</sys:String>
+    <sys:String x:Key="M.Task.Verb.Delete">删除</sys:String>
     <sys:String x:Key="M.Task.State.Broken">有问题</sys:String>
     <sys:String x:Key="M.Task.State.Disabled">已禁用</sys:String>
     <sys:String x:Key="M.Wiz.HostMode">这个程序要怎么运行？</sys:String>

@@ -227,7 +227,11 @@
                                 </Border>
                             </Grid>
 
-                            <!-- Problem banner -->
+                            <!--
+                              Problem banner. A grid, not a horizontal stack panel: a stack panel
+                              offers the text all the width it asks for, so a long path ran off
+                              the card instead of wrapping.
+                            -->
                             <Border
                                 Grid.Row="1"
                                 Margin="0,0,0,14"
@@ -237,10 +241,14 @@
                                 BorderThickness="1"
                                 CornerRadius="8"
                                 Visibility="{Binding HasProblem, Converter={StaticResource BoolToVisibility}}">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Margin="0,0,10,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
-                                    <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
-                                </StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Margin="0,0,10,0" VerticalAlignment="Center" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding Problem}" TextWrapping="Wrap" />
+                                </Grid>
                             </Border>
 
                             <!-- Facts -->

@@ -665,9 +665,12 @@
     <sys:String x:Key="M.Task.Scanning">登録済みのタスクを読み込んでいます…</sys:String>
     <sys:String x:Key="M.Task.Found">デスクトップタスク {0} 件。</sys:String>
     <sys:String x:Key="M.Task.ScanFailed">タスク スケジューラを読み取れませんでした。{0}</sys:String>
-    <sys:String x:Key="M.Task.Running">「{1}」に対して {0} を実行しています…</sys:String>
-    <sys:String x:Key="M.Task.Completed">「{1}」の {0} が完了しました。</sys:String>
-    <sys:String x:Key="M.Task.Failed">{0} に失敗しました。{1}</sys:String>
+    <sys:String x:Key="M.Task.Running">「{1}」を{0}しています…</sys:String>
+    <sys:String x:Key="M.Task.Completed">「{1}」を{0}しました。</sys:String>
+    <sys:String x:Key="M.Task.Failed">「{1}」の{0}に失敗しました。{2}</sys:String>
+    <sys:String x:Key="M.Task.Verb.Enable">有効化</sys:String>
+    <sys:String x:Key="M.Task.Verb.Disable">無効化</sys:String>
+    <sys:String x:Key="M.Task.Verb.Delete">削除</sys:String>
     <sys:String x:Key="M.Task.State.Broken">異常</sys:String>
     <sys:String x:Key="M.Task.State.Disabled">無効</sys:String>
     <sys:String x:Key="M.Wiz.HostMode">このプログラムをどう実行しますか？</sys:String>

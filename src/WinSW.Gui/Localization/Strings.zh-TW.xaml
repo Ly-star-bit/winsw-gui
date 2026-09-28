@@ -665,9 +665,12 @@
     <sys:String x:Key="M.Task.Scanning">正在讀取已註冊的工作…</sys:String>
     <sys:String x:Key="M.Task.Found">共 {0} 個桌面工作。</sys:String>
     <sys:String x:Key="M.Task.ScanFailed">讀取工作排程器失敗。{0}</sys:String>
-    <sys:String x:Key="M.Task.Running">正在對「{1}」執行 {0}…</sys:String>
-    <sys:String x:Key="M.Task.Completed">「{1}」的 {0} 已完成。</sys:String>
-    <sys:String x:Key="M.Task.Failed">{0} 失敗。{1}</sys:String>
+    <sys:String x:Key="M.Task.Running">正在{0}「{1}」…</sys:String>
+    <sys:String x:Key="M.Task.Completed">已{0}「{1}」。</sys:String>
+    <sys:String x:Key="M.Task.Failed">{0}「{1}」失敗。{2}</sys:String>
+    <sys:String x:Key="M.Task.Verb.Enable">啟用</sys:String>
+    <sys:String x:Key="M.Task.Verb.Disable">停用</sys:String>
+    <sys:String x:Key="M.Task.Verb.Delete">刪除</sys:String>
     <sys:String x:Key="M.Task.State.Broken">有問題</sys:String>
     <sys:String x:Key="M.Task.State.Disabled">已停用</sys:String>
     <sys:String x:Key="M.Wiz.HostMode">這個程式要怎麼執行？</sys:String>
