@@ -40,6 +40,21 @@
                     </StackPanel>
                 </Border>
 
+                <!-- settings.json could not be read at start: what is below is the defaults, not the user's choices. -->
+                <Border
+                    Margin="0,0,0,14"
+                    Padding="14,10"
+                    Background="{DynamicResource DangerSoftBrush}"
+                    BorderBrush="{DynamicResource HealthBrokenBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="{Binding SettingsFileProblem, Converter={StaticResource StringToVisibility}}">
+                    <DockPanel>
+                        <TextBlock Margin="0,0,10,0" VerticalAlignment="Top" DockPanel.Dock="Left" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
+                        <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding SettingsFileProblem}" TextWrapping="Wrap" />
+                    </DockPanel>
+                </Border>
+
                 <Border Style="{StaticResource Card}" Margin="0,0,0,14">
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionTitle}" Text="{DynamicResource M.Settings.Appearance}" />

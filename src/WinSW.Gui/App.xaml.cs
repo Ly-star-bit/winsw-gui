@@ -29,16 +29,13 @@ namespace WinSW.Gui
 
             bool startInTray = HasArgument(e, Autostart.TrayArgument);
 
-            // A configuration to open is something the running copy was not told about, so that
-            // launch goes ahead on its own; see SingleInstance.
-            if (StartupConfigPath is null)
+            // A configuration to open is handed to the running copy, when there is one that
+            // takes it; see SingleInstance.
+            this.instance = SingleInstance.Claim(replacing: HasArgument(e, Elevation.ReplaceArgument), wake: !startInTray, configPath: StartupConfigPath);
+            if (this.instance is null)
             {
-                this.instance = SingleInstance.Claim(replacing: HasArgument(e, Elevation.ReplaceArgument), wake: !startInTray);
-                if (this.instance is null)
-                {
-                    this.Shutdown();
-                    return;
-                }
+                this.Shutdown();
+                return;
             }
 
             // A crash dialog with the message beats the process silently disappearing,
@@ -73,7 +70,8 @@ namespace WinSW.Gui
                 window.Show();
             }
 
-            this.instance?.OnShowRequested(() => this.Dispatcher.BeginInvoke(window.BringToFront));
+            this.instance.OnShowRequested(() => this.Dispatcher.BeginInvoke(window.BringToFront));
+            this.instance.OnOpenRequested(path => this.Dispatcher.BeginInvoke(() => window.OpenHandedOver(path)));
         }
 
         protected override void OnExit(ExitEventArgs e)

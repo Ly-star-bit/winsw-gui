@@ -78,7 +78,10 @@ namespace WinSW.Gui.ViewModels
         private string toastText = string.Empty;
         private bool toastVisible;
         private bool toastIsError;
-        private bool exitPromptVisible;
+        private bool unsavedPromptVisible;
+
+        /// <summary>The configuration the unsaved-changes prompt stands before; null when it stands before exiting.</summary>
+        private string? pathToOpen;
         private readonly System.Windows.Threading.DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
 
         public ShellViewModel()
@@ -112,9 +115,13 @@ namespace WinSW.Gui.ViewModels
             this.RefreshPageCommand = new RelayCommand(() => ExecuteIfAllowed(this.PageRefresh()));
             this.CancelPageCommand = new RelayCommand(() => ExecuteIfAllowed(this.PageCancel()));
 
-            this.SaveAndExitCommand = new RelayCommand(() => this.DecideExit(save: true));
-            this.ExitWithoutSavingCommand = new RelayCommand(() => this.DecideExit(save: false));
-            this.CancelExitCommand = new RelayCommand(() => this.ExitPromptVisible = false);
+            this.UnsavedSaveCommand = new AsyncRelayCommand(() => this.DecideUnsavedAsync(save: true));
+            this.UnsavedDiscardCommand = new AsyncRelayCommand(() => this.DecideUnsavedAsync(save: false));
+            this.UnsavedCancelCommand = new RelayCommand(() =>
+            {
+                this.pathToOpen = null;
+                this.UnsavedPromptVisible = false;
+            });
             this.toastTimer.Tick += (_, _) =>
             {
                 this.toastTimer.Stop();
@@ -200,11 +207,7 @@ namespace WinSW.Gui.ViewModels
                 }
             });
 
-            this.Dashboard.OpenUninstalledConfigRequested += path =>
-            {
-                this.Editor.Load(path);
-                this.Navigate(this.Editor);
-            };
+            this.Dashboard.OpenUninstalledConfigRequested += this.OpenInEditor;
 
             // Nobody awaits this or the reload below, so a failure is recorded as it happens
             // rather than going nowhere.
@@ -259,7 +262,18 @@ namespace WinSW.Gui.ViewModels
                 this.Raise(nameof(this.ElevationLabel));
                 this.Raise(nameof(this.ElevationHint));
                 this.Raise(nameof(this.GuiUpdateText));
+                this.Raise(nameof(this.UnsavedPromptNext));
+                this.Raise(nameof(this.UnsavedSaveLabel));
+                this.Raise(nameof(this.UnsavedDiscardLabel));
+                this.Raise(nameof(this.SettingsFileProblem));
             };
+
+            // The defaults on screen must not pass for the user's own choices. The page keeps
+            // saying so; this is for whoever is looking at the window as it opens.
+            if (this.SettingsFileProblem.Length > 0)
+            {
+                this.ShowToast(this.SettingsFileProblem, isError: true);
+            }
         }
 
         public DashboardViewModel Dashboard { get; }
@@ -347,42 +361,109 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        // Exit prompt -------------------------------------------------------------
+        // Unsaved-changes prompt -----------------------------------------------------
 
         /// <summary>
-        /// Raised once the user has answered the unsaved-changes prompt, with true when the
-        /// configuration is to be written first. Cancelling raises nothing.
+        /// Raised once the user has answered the unsaved-changes prompt on the way out, with
+        /// true when the configuration is to be written first. Cancelling raises nothing.
         /// </summary>
         public event Action<bool>? ExitDecided;
 
-        public RelayCommand SaveAndExitCommand { get; }
+        /// <summary>Writes the changes, then goes on: out, or to the other configuration.</summary>
+        public AsyncRelayCommand UnsavedSaveCommand { get; }
 
-        public RelayCommand ExitWithoutSavingCommand { get; }
+        /// <summary>Goes on without writing them.</summary>
+        public AsyncRelayCommand UnsavedDiscardCommand { get; }
 
-        public RelayCommand CancelExitCommand { get; }
+        /// <summary>Stays with the changes, which is the safe answer.</summary>
+        public RelayCommand UnsavedCancelCommand { get; }
 
         /// <summary>Shown over the whole window, so it covers the page the changes are on.</summary>
-        public bool ExitPromptVisible
+        public bool UnsavedPromptVisible
         {
-            get => this.exitPromptVisible;
-            private set => this.Set(ref this.exitPromptVisible, value);
+            get => this.unsavedPromptVisible;
+            private set => this.Set(ref this.unsavedPromptVisible, value);
         }
 
         /// <summary>The file that would lose its changes; blank for one never saved.</summary>
-        public string ExitPromptFile => this.Editor.FilePath ?? string.Empty;
+        public string UnsavedPromptFile => this.Editor.FilePath ?? string.Empty;
+
+        /// <summary>The configuration waiting to be opened; blank when the prompt stands before exiting.</summary>
+        public string UnsavedPromptNext => this.pathToOpen is null ? string.Empty : Localizer.Format("M.Open.Next", this.pathToOpen);
+
+        public string UnsavedSaveLabel => Localizer.Get(this.pathToOpen is null ? "M.Exit.Save" : "M.Open.Save");
+
+        public string UnsavedDiscardLabel => Localizer.Get(this.pathToOpen is null ? "M.Exit.Discard" : "M.Open.Discard");
 
         /// <summary>Asks what to do about the editor's unsaved changes before the window closes.</summary>
-        public void AskToExit()
+        public void AskToExit() => this.AskAboutUnsavedChanges(null);
+
+        /// <summary>
+        /// Puts the prompt up, standing before exiting or, with <paramref name="next"/>, before
+        /// opening that configuration. The latest request is the one answered: an exit that was
+        /// interrupted starts over at the next close anyway.
+        /// </summary>
+        private void AskAboutUnsavedChanges(string? next)
         {
-            this.Raise(nameof(this.ExitPromptFile));
-            this.ExitPromptVisible = true;
+            this.pathToOpen = next;
+            this.Raise(nameof(this.UnsavedPromptFile));
+            this.Raise(nameof(this.UnsavedPromptNext));
+            this.Raise(nameof(this.UnsavedSaveLabel));
+            this.Raise(nameof(this.UnsavedDiscardLabel));
+            this.UnsavedPromptVisible = true;
         }
 
-        private void DecideExit(bool save)
+        private async Task DecideUnsavedAsync(bool save)
         {
-            this.ExitPromptVisible = false;
-            this.ExitDecided?.Invoke(save);
+            string? next = this.pathToOpen;
+            this.pathToOpen = null;
+            this.UnsavedPromptVisible = false;
+
+            if (next is null)
+            {
+                this.ExitDecided?.Invoke(save);
+                return;
+            }
+
+            // As on the way out: a save that did not take — an invalid configuration, a
+            // declined elevation, a cancelled Save As — leaves the changes in the editor, with
+            // the editor showing why, rather than opening the other file over them.
+            if (save && !await this.Editor.TrySaveAsync().ConfigureAwait(true))
+            {
+                return;
+            }
+
+            this.Editor.Load(next);
+            this.Navigate(this.Editor);
         }
+
+        /// <summary>
+        /// Opens a configuration no installed service uses — one given at start, or handed over
+        /// by a later launch — in the editor. Over unsaved changes to another configuration,
+        /// only once the user has said what becomes of them.
+        /// </summary>
+        private void OpenInEditor(string path)
+        {
+            if (this.Editor.IsDirty)
+            {
+                this.Navigate(this.Editor);
+
+                // The file being edited already: what the editor holds is newer than the disk,
+                // and reading the disk back over it would be the very loss the prompt prevents.
+                if (!IsSameFile(path, this.Editor.FilePath))
+                {
+                    this.AskAboutUnsavedChanges(path);
+                }
+
+                return;
+            }
+
+            this.Editor.Load(path);
+            this.Navigate(this.Editor);
+        }
+
+        private static bool IsSameFile(string path, string? other) =>
+            other != null && string.Equals(System.IO.Path.GetFullPath(path), System.IO.Path.GetFullPath(other), StringComparison.OrdinalIgnoreCase);
 
         /// <summary>Icon-only rail; remembered across sessions.</summary>
         public bool IsRailCollapsed
@@ -493,6 +574,24 @@ namespace WinSW.Gui.ViewModels
         {
             this.Dashboard.OpenConfigPathWhenReady(path);
             this.Navigate(this.Dashboard);
+        }
+
+        /// <summary>
+        /// The same for a path a later launch handed to this copy; see <see cref="ConfigHandoff"/>.
+        /// </summary>
+        /// <remarks>
+        /// The path is applied at the end of a scan. At start the first one is under way; here
+        /// the list was loaded long ago, and the next background rescan may be half a minute
+        /// off, or never come when rescanning is turned off, so one is asked for now. A scan
+        /// already under way picks the path up when it finishes.
+        /// </remarks>
+        public void OpenHandedOverPath(string path)
+        {
+            this.OpenStartupPath(path);
+            if (!this.Dashboard.IsScanning)
+            {
+                this.Dashboard.ReloadCommand.Execute(null);
+            }
         }
 
         private async Task CheckGuiUpdateAsync()
@@ -687,6 +786,17 @@ namespace WinSW.Gui.ViewModels
         public string DefaultTaskRoot => AppSettings.Current.EffectiveTaskRoot;
 
         public RelayCommand BrowseTaskRootCommand { get; }
+
+        /// <summary>
+        /// Said when settings.json could not be read at start, so that the defaults in use do
+        /// not pass for the user's own choices; blank otherwise. See <see cref="AppSettings.Load"/>.
+        /// </summary>
+        public string SettingsFileProblem => AppSettings.Current switch
+        {
+            { SetAsidePath: { } kept } => Localizer.Format("M.Settings.SetAside", kept),
+            { IsFileUnreadable: true } => Localizer.Format("M.Settings.Unreadable", AppSettings.FilePath),
+            _ => string.Empty,
+        };
 
         public bool NotifyOnUnexpectedStop
         {

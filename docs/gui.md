@@ -31,7 +31,8 @@ Across the pages:
   with the window minimised to the tray. *Start with Windows* (Settings) adds a per-user
   sign-in entry that starts the console in the tray, so the watching begins without anyone
   remembering to open it. One console runs per sign-in: launching it again brings the running
-  one forward instead of starting a second that would announce every stop twice.
+  one forward instead of starting a second that would announce every stop twice. A launch
+  with an .xml does the same and hands the file over; see *Command line and Explorer*.
 - **Scheduled restarts**: the detail panel can have a service restarted every day, or on
   one day of the week, at a set time — by a task in the task scheduler (`\WinSW\Restart`),
   running as SYSTEM, so nobody needs to be signed in. It restarts only a service that is
@@ -74,6 +75,14 @@ Across the pages:
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside
   as `actions.1.log` past 1 MB. Settings has a button that opens it.
+- **Settings file**: the console's own preferences — language, theme, groups, alert webhook,
+  install roots, window placement — are kept per user in
+  `%LOCALAPPDATA%\WinSW.Gui\settings.json`, written to a temporary file beside it and then
+  swapped in, so a write cut short leaves the previous file whole. A file that cannot be
+  used is not written over with the defaults: it is moved aside to `settings.bad.json`, the
+  console starts with its defaults, the Settings page says so and the reason goes to the
+  error log. When it cannot even be moved (another program holding it), it is left alone and
+  not written for that session.
 - **Error log**: the console's own failures — what reaches the "unexpected error" dialog, a
   crash that closes it, and a background task that failed with nobody waiting for it — are
   appended to `%LOCALAPPDATA%\WinSW.Gui\errors.log` with the time, the console, Windows and
@@ -131,7 +140,13 @@ Across the pages:
   Installing or changing a configuration there still needs the wrapper on that machine.
 - **Command line and Explorer**: `WinSW.Gui.exe myapp.xml` opens that service (or the file in
   the editor if it is not installed); an optional "Open in WinSW" verb on .xml files is
-  registered per user from the rail.
+  registered per user from the rail. When a console is already running in the session, the
+  file is handed to it over a per-session pipe and opened there, its window brought forward,
+  and the launch exits; over unsaved changes to another configuration in the editor, it
+  first asks whether to save them. Only a console it cannot reach still gets a second one
+  beside it: one running at another elevation than the launch (as administrator when the
+  launch is not, or the other way round), or one that does not answer — hung, or an older
+  version that does not listen for files (the launch waits two seconds for it).
 - **Accessibility**: high-contrast mode is honoured automatically; controls carry automation
   names for screen readers.
 - **First run**: an empty dashboard offers to create the first service or open a file, and

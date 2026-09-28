@@ -647,13 +647,18 @@
     <sys:String x:Key="M.Settings.ActionLogHint">Every start, stop, restart, uninstall, upgrade, install and configuration save made from this console, with when, by whom and how it went. Kept per Windows user; past 1 MB the file is set aside as actions.1.log and a new one begun.</sys:String>
     <sys:String x:Key="M.Settings.ErrorLog">Error log</sys:String>
     <sys:String x:Key="M.Settings.ErrorLogHint">Failures inside this console itself, each with the time, the console and Windows versions and the full stack trace: the file to send when the console misbehaves. Kept per Windows user; past 1 MB the file is set aside as errors.1.log and a new one begun.</sys:String>
+    <sys:String x:Key="M.Settings.SetAside">The settings file could not be read, so the console started with its defaults. The file has been kept as {0}.</sys:String>
+    <sys:String x:Key="M.Settings.Unreadable">The settings file {0} could not be read, so the console started with its defaults. The file has been left as it is; changes made here last only until the console closes.</sys:String>
 
 
-    <!-- Closing the window over unsaved changes. -->
+    <!-- Closing the window, or opening another configuration, over unsaved changes. -->
     <sys:String x:Key="M.Exit.Title">Unsaved changes</sys:String>
     <sys:String x:Key="M.Exit.Body">The configuration open in the editor has changes that have not been written to disk.</sys:String>
     <sys:String x:Key="M.Exit.Save">Save and exit</sys:String>
     <sys:String x:Key="M.Exit.Discard">Exit without saving</sys:String>
+    <sys:String x:Key="M.Open.Next">Then open: {0}</sys:String>
+    <sys:String x:Key="M.Open.Save">Save and open</sys:String>
+    <sys:String x:Key="M.Open.Discard">Open without saving</sys:String>
 
     <!-- The network proxy handed to the wrapped program. -->
     <sys:String x:Key="M.Proxy.Title">NETWORK PROXY</sys:String>

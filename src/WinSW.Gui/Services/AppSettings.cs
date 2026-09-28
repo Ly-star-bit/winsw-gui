@@ -1,20 +1,41 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 
 namespace WinSW.Gui.Services
 {
     /// <summary>
     /// Per-user preferences, stored as JSON under <c>%LOCALAPPDATA%\WinSW.Gui</c>.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The file is written whole on every change, so it is written beside itself first and then
+    /// swapped in: a write cut short — the machine losing power, the disk filling — leaves the
+    /// previous settings in place rather than half of the new ones.
+    /// </para>
+    /// <para>
+    /// A file that is there but cannot be used is never quietly replaced. The console starts
+    /// with the defaults, and the file is moved aside to <c>settings.bad.json</c>, which is
+    /// what the settings page then says. It used to be written over with the defaults at the
+    /// first change, taking the groups, the webhook and the roots with it.
+    /// </para>
+    /// </remarks>
     public sealed class AppSettings
     {
-        private static readonly string FilePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "WinSW.Gui",
-            "settings.json");
+        /// <summary>
+        /// How many times a read that another process got in the way of is tried, <see cref="ReadRetryDelay"/>
+        /// apart, before the file is taken to be unreadable.
+        /// </summary>
+        private const int ReadAttempts = 3;
+
+        private static readonly TimeSpan ReadRetryDelay = TimeSpan.FromMilliseconds(100);
+
+        /// <summary>One save at a time from this process; each process writes through a file of its own.</summary>
+        private static readonly object SaveGate = new();
 
         private static readonly JsonSerializerOptions Options = new()
         {
@@ -26,8 +47,31 @@ namespace WinSW.Gui.Services
 
         private static AppSettings? current;
 
+        /// <summary>The file this instance was read from and is written back to.</summary>
+        private string location = FilePath;
+
+        public static string FilePath { get; } = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WinSW.Gui",
+            "settings.json");
+
         /// <summary>The one instance every subsystem reads and writes, loaded on first use.</summary>
-        public static AppSettings Current => current ??= Load();
+        public static AppSettings Current => current ??= Load(FilePath, e => ErrorLog.Record("settings file", e));
+
+        /// <summary>
+        /// Where a settings file that could not be used was moved to; null when there was none.
+        /// These settings are then the defaults.
+        /// </summary>
+        [JsonIgnore]
+        public string? SetAsidePath { get; private set; }
+
+        /// <summary>
+        /// The settings file could be neither used nor moved aside. It is left as it is, and not
+        /// written over for the life of this process: these settings are the defaults, and a
+        /// change to them lasts until the console closes.
+        /// </summary>
+        [JsonIgnore]
+        public bool IsFileUnreadable { get; private set; }
 
         /// <summary>A language code from <c>Localizer.Languages</c>, or null to follow the OS.</summary>
         public string? Language { get; set; }
@@ -109,37 +153,120 @@ namespace WinSW.Gui.Services
                 ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSW")
                 : this.TaskRoot!.Trim();
 
-        private static AppSettings Load()
+        /// <summary>
+        /// Reads the settings at <paramref name="path"/>; the defaults when there is no file.
+        /// </summary>
+        /// <remarks>
+        /// A file that is there but cannot be used is not worth failing startup over, and not
+        /// worth losing either. One that does not parse is moved aside to
+        /// <c>settings.bad.json</c>, replacing an older one, and the defaults are used. One that
+        /// cannot be read at all is tried again briefly — another process may have it open —
+        /// and then moved aside the same way; when even that fails it is left alone, and the
+        /// defaults returned are never written over it (<see cref="IsFileUnreadable"/>).
+        /// </remarks>
+        /// <param name="failed">Told why a file that is there could not be used.</param>
+        internal static AppSettings Load(string path, Action<Exception>? failed = null)
         {
-            try
+            Exception problem;
+            for (int attempt = 1; ; attempt++)
             {
-                if (File.Exists(FilePath))
+                try
                 {
-                    var loaded = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath), Options) ?? new AppSettings();
+                    if (!File.Exists(path))
+                    {
+                        return new AppSettings { location = path };
+                    }
+
+                    var loaded = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path), Options) ?? new AppSettings();
 
                     // Service names are not case-sensitive; the dictionary the reader builds is.
                     loaded.ServiceGroups = new Dictionary<string, string>(loaded.ServiceGroups ?? new(), StringComparer.OrdinalIgnoreCase);
+                    loaded.location = path;
                     return loaded;
                 }
-            }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException)
-            {
-                // A corrupt or unreadable settings file is not worth failing startup over.
+                catch (JsonException e)
+                {
+                    problem = e;
+                    break;
+                }
+                catch (IOException e) when (attempt < ReadAttempts)
+                {
+                    problem = e;
+                    Thread.Sleep(ReadRetryDelay);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    problem = e;
+                    break;
+                }
             }
 
-            return new AppSettings();
-        }
+            failed?.Invoke(problem);
 
-        public void Save()
-        {
+            var defaults = new AppSettings { location = path };
+            string setAside = Path.ChangeExtension(path, ".bad.json");
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-                File.WriteAllText(FilePath, JsonSerializer.Serialize(this, Options));
+                File.Move(path, setAside, overwrite: true);
+                defaults.SetAsidePath = setAside;
+            }
+            catch (Exception e) when ((e is IOException or UnauthorizedAccessException) && !File.Exists(path))
+            {
+                // A second console starting at the same moment moved it first.
+                defaults.SetAsidePath = setAside;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // Losing a preference is preferable to an error dialog for a preference.
+                defaults.IsFileUnreadable = true;
+            }
+
+            return defaults;
+        }
+
+        /// <summary>
+        /// Writes the settings, through a file beside them that is then swapped in.
+        /// </summary>
+        /// <remarks>
+        /// The temporary file is named after the process: a second console — an elevated one
+        /// beside a standard one — saving at the same moment must not write into the same file,
+        /// or one of them would swap in the other's half-written copy.
+        /// </remarks>
+        public void Save()
+        {
+            if (this.IsFileUnreadable)
+            {
+                return;
+            }
+
+            lock (SaveGate)
+            {
+                string temporary = this.location + "." + Environment.ProcessId.ToString(CultureInfo.InvariantCulture) + ".tmp";
+                try
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(this.location))!);
+                    File.WriteAllText(temporary, JsonSerializer.Serialize(this, Options));
+
+                    if (File.Exists(this.location))
+                    {
+                        File.Replace(temporary, this.location, null);
+                    }
+                    else
+                    {
+                        File.Move(temporary, this.location);
+                    }
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // Losing a preference is preferable to an error dialog for a preference. The
+                    // file it would have been is not left lying about.
+                    try
+                    {
+                        File.Delete(temporary);
+                    }
+                    catch (Exception again) when (again is IOException or UnauthorizedAccessException)
+                    {
+                    }
+                }
             }
         }
     }

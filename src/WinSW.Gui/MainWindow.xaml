@@ -196,18 +196,19 @@
         </Grid>
 
         <!--
-            Unsaved changes on the way out. Spans the title bar as well: it is the window
-            that is being closed, not a page, and a dialog you can walk behind is one you
-            can lose. Escape cancels, which is the safe answer.
+            Unsaved changes on the way out, or before another configuration is opened over
+            them. Spans the title bar as well: it is the window that is being closed, not a
+            page, and a dialog you can walk behind is one you can lose. Escape cancels, which
+            is the safe answer.
         -->
         <Grid
             Grid.Row="0"
             Grid.RowSpan="2"
             Background="{DynamicResource OverlayBrush}"
             Focusable="True"
-            Visibility="{Binding ExitPromptVisible, Converter={StaticResource BoolToVisibility}}">
+            Visibility="{Binding UnsavedPromptVisible, Converter={StaticResource BoolToVisibility}}">
             <Grid.InputBindings>
-                <KeyBinding Key="Escape" Command="{Binding CancelExitCommand}" />
+                <KeyBinding Key="Escape" Command="{Binding UnsavedCancelCommand}" />
             </Grid.InputBindings>
             <Border MaxWidth="480" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}">
                 <Border.Effect>
@@ -222,19 +223,25 @@
                     <TextBlock
                         Margin="0,8,0,0"
                         Style="{StaticResource Mono}"
-                        Text="{Binding ExitPromptFile}"
+                        Text="{Binding UnsavedPromptFile}"
                         TextTrimming="CharacterEllipsis"
-                        ToolTip="{Binding ExitPromptFile}"
-                        Visibility="{Binding ExitPromptFile, Converter={StaticResource StringToVisibility}}" />
+                        ToolTip="{Binding UnsavedPromptFile}"
+                        Visibility="{Binding UnsavedPromptFile, Converter={StaticResource StringToVisibility}}" />
+                    <TextBlock
+                        Margin="0,12,0,0"
+                        Style="{StaticResource PageSubtitle}"
+                        Text="{Binding UnsavedPromptNext}"
+                        TextWrapping="Wrap"
+                        Visibility="{Binding UnsavedPromptNext, Converter={StaticResource StringToVisibility}}" />
                     <StackPanel Margin="0,22,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelExitCommand}" Content="{DynamicResource S.Cancel}" />
-                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding ExitWithoutSavingCommand}" Content="{DynamicResource M.Exit.Discard}" Foreground="{DynamicResource HealthBrokenBrush}" />
+                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding UnsavedCancelCommand}" Content="{DynamicResource S.Cancel}" />
+                        <Button Margin="0,0,8,0" Padding="14,7" Command="{Binding UnsavedDiscardCommand}" Content="{Binding UnsavedDiscardLabel}" Foreground="{DynamicResource HealthBrokenBrush}" />
                         <Button
-                            x:Name="SaveAndExitButton"
+                            x:Name="UnsavedSaveButton"
                             Padding="14,7"
                             Background="{DynamicResource AccentGradientBrush}"
-                            Command="{Binding SaveAndExitCommand}"
-                            Content="{DynamicResource M.Exit.Save}"
+                            Command="{Binding UnsavedSaveCommand}"
+                            Content="{Binding UnsavedSaveLabel}"
                             Foreground="White" />
                     </StackPanel>
                 </StackPanel>

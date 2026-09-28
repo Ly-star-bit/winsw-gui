@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace WinSW.Gui.Services
 {
@@ -16,11 +17,16 @@ namespace WinSW.Gui.Services
     /// window forward and exits.
     /// </para>
     /// <para>
-    /// Two launches are let through as before. One with a configuration to open — the
-    /// Explorer verb, or a path on the command line — has something to show that the running
-    /// copy was not told about. And a copy running elevated cannot be reached from a standard
-    /// one: the objects it created are closed to a lower integrity level, so the check fails
-    /// open rather than refusing to start.
+    /// A launch with a configuration to open — the Explorer verb, or a path on the command
+    /// line — hands the path to the running copy, which opens it; see <see cref="ConfigHandoff"/>.
+    /// It used to start a copy of its own, and that one announced every stop a second time.
+    /// </para>
+    /// <para>
+    /// Two launches still go ahead on their own. A copy running elevated cannot be reached from
+    /// a standard one: the objects it created are closed to a lower integrity level, so the
+    /// check fails open rather than refusing to start. And a launch with a configuration whose
+    /// running copy does not take it — hung, or a version that does not listen — opens the file
+    /// itself rather than losing it.
     /// </para>
     /// </remarks>
     public sealed class SingleInstance : IDisposable
@@ -38,9 +44,17 @@ namespace WinSW.Gui.Services
         /// </summary>
         private static readonly TimeSpan ReplaceTimeout = TimeSpan.FromSeconds(10);
 
+        /// <summary>
+        /// How long letting go waits for the pipe to close. It closes as soon as it is told to;
+        /// this only keeps a stuck one from holding up the exit.
+        /// </summary>
+        private static readonly TimeSpan HandoffCloseTimeout = TimeSpan.FromSeconds(2);
+
         private readonly Mutex? mutex;
         private readonly EventWaitHandle? showRequests;
+        private readonly CancellationTokenSource handoffStop = new();
         private RegisteredWaitHandle? registration;
+        private Task? handoff;
 
         private SingleInstance(Mutex? mutex, EventWaitHandle? showRequests)
         {
@@ -50,8 +64,9 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Claims the session for this process. Null means another copy already holds it, and
-        /// — when <paramref name="wake"/> is set — has been asked to bring its window forward;
-        /// this one should exit.
+        /// has been given <paramref name="configPath"/> to open or — when
+        /// <paramref name="wake"/> is set — asked to bring its window forward; this one should
+        /// exit.
         /// </summary>
         /// <param name="replacing">
         /// This copy was started by the one it is replacing, which is on its way out: wait for it
@@ -61,7 +76,13 @@ namespace WinSW.Gui.Services
         /// Ask the running copy to show its window. Not for a launch at sign-in, which is meant
         /// to stay in the tray.
         /// </param>
-        public static SingleInstance? Claim(bool replacing, bool wake)
+        /// <param name="configPath">
+        /// A configuration this launch was asked to open, as a full path. The running copy is
+        /// handed it, and shows its window to open it. When that copy does not take it, the
+        /// claim still succeeds, without the session: this launch opens the file as a copy of its
+        /// own, and the running one stays the one later launches reach.
+        /// </param>
+        public static SingleInstance? Claim(bool replacing, bool wake, string? configPath = null)
         {
             Mutex mutex;
             try
@@ -89,6 +110,11 @@ namespace WinSW.Gui.Services
             if (!acquired)
             {
                 mutex.Dispose();
+                if (configPath != null)
+                {
+                    return HandOver(configPath) ? null : new SingleInstance(null, null);
+                }
+
                 if (wake)
                 {
                     WakeRunningCopy();
@@ -126,14 +152,45 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
+        /// Calls <paramref name="open"/> — on a thread-pool thread — with each configuration a
+        /// later launch hands to this copy. Only a copy that holds the session listens.
+        /// </summary>
+        public void OnOpenRequested(Action<string> open)
+        {
+            if (this.mutex is null || this.handoff != null)
+            {
+                return;
+            }
+
+            this.handoff = ConfigHandoff.Listen(open, e => ErrorLog.Record("configuration hand-off", e), this.handoffStop.Token);
+        }
+
+        /// <summary>
         /// Lets go of the session. Called on the thread that claimed it, which is the only one
         /// that may release the mutex; were it not, the mutex would be abandoned at exit, which
         /// the next claim treats the same way.
         /// </summary>
+        /// <remarks>
+        /// The pipe is closed before the mutex is released. A copy started by "Restart as
+        /// administrator" takes the session the moment the mutex is let go, and opens a pipe of
+        /// the same name straight after.
+        /// </remarks>
         public void Dispose()
         {
             this.registration?.Unregister(null);
             this.showRequests?.Dispose();
+
+            this.handoffStop.Cancel();
+            try
+            {
+                this.handoff?.Wait(HandoffCloseTimeout);
+            }
+            catch (AggregateException)
+            {
+                // It ended by failing, which it has already recorded; it has ended.
+            }
+
+            this.handoffStop.Dispose();
 
             if (this.mutex != null)
             {
@@ -148,6 +205,14 @@ namespace WinSW.Gui.Services
 
                 this.mutex.Dispose();
             }
+        }
+
+        private static bool HandOver(string configPath)
+        {
+            // As when waking it: this process is the one the user just started, so it is the one
+            // allowed to hand the foreground on to the window that opens the file.
+            NativeMethods.AllowSetForegroundWindow(NativeMethods.ASFW_ANY);
+            return ConfigHandoff.TrySend(configPath);
         }
 
         private static void WakeRunningCopy()

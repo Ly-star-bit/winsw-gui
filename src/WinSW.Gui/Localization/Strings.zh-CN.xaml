@@ -647,13 +647,18 @@
     <sys:String x:Key="M.Settings.ActionLogHint">从这个控制台做的每一次启动、停止、重启、卸载、升级、安装和配置保存，连同时间、操作人和结果。按 Windows 用户分别记录；超过 1 MB 时旧文件改名为 actions.1.log，重新开始记录。</sys:String>
     <sys:String x:Key="M.Settings.ErrorLog">错误日志</sys:String>
     <sys:String x:Key="M.Settings.ErrorLogHint">控制台自身出的错，每条都带时间、控制台和 Windows 版本以及完整的堆栈：控制台出问题时，发这个文件就行。按 Windows 用户分别记录；超过 1 MB 时旧文件改名为 errors.1.log，重新开始记录。</sys:String>
+    <sys:String x:Key="M.Settings.SetAside">设置文件读取失败，控制台已按默认设置启动。原文件已另存为 {0}。</sys:String>
+    <sys:String x:Key="M.Settings.Unreadable">设置文件 {0} 读取失败，控制台已按默认设置启动。原文件保持不动；现在在这里做的修改只在本次运行期间有效。</sys:String>
 
 
-    <!-- Closing the window over unsaved changes. -->
+    <!-- Closing the window, or opening another configuration, over unsaved changes. -->
     <sys:String x:Key="M.Exit.Title">有未保存的修改</sys:String>
     <sys:String x:Key="M.Exit.Body">编辑器里打开的配置有修改还没有写入磁盘。</sys:String>
     <sys:String x:Key="M.Exit.Save">保存并退出</sys:String>
     <sys:String x:Key="M.Exit.Discard">不保存直接退出</sys:String>
+    <sys:String x:Key="M.Open.Next">接着打开：{0}</sys:String>
+    <sys:String x:Key="M.Open.Save">保存并打开</sys:String>
+    <sys:String x:Key="M.Open.Discard">不保存直接打开</sys:String>
 
     <!-- 传给被包装程序的网络代理。 -->
     <sys:String x:Key="M.Proxy.Title">网络代理</sys:String>

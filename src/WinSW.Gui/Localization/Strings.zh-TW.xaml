@@ -647,13 +647,18 @@
     <sys:String x:Key="M.Settings.ActionLogHint">從這個主控台做的每一次啟動、停止、重新啟動、解除安裝、升級、安裝和設定儲存，連同時間、操作人和結果。按 Windows 使用者分別記錄；超過 1 MB 時舊檔案改名為 actions.1.log，重新開始記錄。</sys:String>
     <sys:String x:Key="M.Settings.ErrorLog">錯誤記錄</sys:String>
     <sys:String x:Key="M.Settings.ErrorLogHint">主控台本身發生的錯誤，每筆都附有時間、主控台與 Windows 版本以及完整的堆疊追蹤：主控台出問題時，提供這個檔案即可。按 Windows 使用者分別記錄；超過 1 MB 時舊檔案改名為 errors.1.log，重新開始記錄。</sys:String>
+    <sys:String x:Key="M.Settings.SetAside">主控台的設定檔讀取失敗，已按預設設定啟動。原檔案已另存為 {0}。</sys:String>
+    <sys:String x:Key="M.Settings.Unreadable">主控台的設定檔 {0} 讀取失敗，已按預設設定啟動。原檔案保持不動；現在在這裡做的修改只在本次執行期間有效。</sys:String>
 
 
-    <!-- Closing the window over unsaved changes. -->
+    <!-- Closing the window, or opening another configuration, over unsaved changes. -->
     <sys:String x:Key="M.Exit.Title">有未儲存的修改</sys:String>
     <sys:String x:Key="M.Exit.Body">編輯器裡開啟的設定有修改還沒有寫入磁碟。</sys:String>
     <sys:String x:Key="M.Exit.Save">儲存並結束</sys:String>
     <sys:String x:Key="M.Exit.Discard">不儲存直接結束</sys:String>
+    <sys:String x:Key="M.Open.Next">接著開啟：{0}</sys:String>
+    <sys:String x:Key="M.Open.Save">儲存並開啟</sys:String>
+    <sys:String x:Key="M.Open.Discard">不儲存直接開啟</sys:String>
 
     <!-- 傳給被包裝程式的網路代理。 -->
     <sys:String x:Key="M.Proxy.Title">網路代理</sys:String>

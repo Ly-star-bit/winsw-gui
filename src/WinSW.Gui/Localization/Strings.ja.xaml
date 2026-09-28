@@ -647,13 +647,18 @@
     <sys:String x:Key="M.Settings.ActionLogHint">このコンソールから行った起動・停止・再起動・アンインストール・アップグレード・インストール・構成の保存を、日時・実行者・結果とともに記録します。Windows ユーザーごとに保存され、1 MB を超えると古いファイルは actions.1.log に移され、新しいファイルに記録を続けます。</sys:String>
     <sys:String x:Key="M.Settings.ErrorLog">エラーログ</sys:String>
     <sys:String x:Key="M.Settings.ErrorLogHint">このコンソール自体で起きたエラーを、日時、コンソールと Windows のバージョン、完全なスタック トレースとともに記録します。コンソールの動作がおかしいときは、このファイルを送ってください。Windows ユーザーごとに保存され、1 MB を超えると古いファイルは errors.1.log に移され、新しいファイルに記録を続けます。</sys:String>
+    <sys:String x:Key="M.Settings.SetAside">設定ファイルを読み込めなかったため、既定の設定で起動しました。元のファイルは {0} として残してあります。</sys:String>
+    <sys:String x:Key="M.Settings.Unreadable">設定ファイル {0} を読み込めなかったため、既定の設定で起動しました。元のファイルはそのまま残してあります。ここでの変更は、コンソールを閉じるまでしか保持されません。</sys:String>
 
 
-    <!-- Closing the window over unsaved changes. -->
+    <!-- Closing the window, or opening another configuration, over unsaved changes. -->
     <sys:String x:Key="M.Exit.Title">保存されていない変更があります</sys:String>
     <sys:String x:Key="M.Exit.Body">エディターで開いている構成に、ディスクへ書き込まれていない変更があります。</sys:String>
     <sys:String x:Key="M.Exit.Save">保存して終了</sys:String>
     <sys:String x:Key="M.Exit.Discard">保存せずに終了</sys:String>
+    <sys:String x:Key="M.Open.Next">次に開くファイル: {0}</sys:String>
+    <sys:String x:Key="M.Open.Save">保存して開く</sys:String>
+    <sys:String x:Key="M.Open.Discard">保存せずに開く</sys:String>
 
     <!-- ラップされたプログラムに渡すネットワークプロキシ。 -->
     <sys:String x:Key="M.Proxy.Title">ネットワークプロキシ</sys:String>

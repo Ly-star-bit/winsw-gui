@@ -92,6 +92,18 @@ namespace WinSW.Gui
             }
         }
 
+        /// <summary>
+        /// Opens a configuration a later launch handed to this copy: "Open in WinSW" while this
+        /// one watches from the tray.
+        /// </summary>
+        public void OpenHandedOver(string path)
+        {
+            // On screen first: opening it may ask about unsaved changes, and a prompt in a window
+            // hidden in the tray is a hang, not a question.
+            this.BringToFront();
+            this.shell.OpenHandedOverPath(path);
+        }
+
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
