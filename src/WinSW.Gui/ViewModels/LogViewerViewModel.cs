@@ -195,7 +195,9 @@ namespace WinSW.Gui.ViewModels
         private static readonly TimeSpan FileScanInterval = TimeSpan.FromSeconds(30);
 
         private readonly DispatcherTimer timer;
-        private readonly LinkedList<string> history = new();
+
+        /// <summary>The lines held, the ones of them shown, and the error count of those.</summary>
+        private readonly LogLineBuffer buffer;
 
         private LogTailReader? reader;
 
@@ -243,6 +245,7 @@ namespace WinSW.Gui.ViewModels
 
         public LogViewerViewModel()
         {
+            this.buffer = new LogLineBuffer(MaxLines, line => this.IsVisible(line.Text));
             this.timer = new DispatcherTimer { Interval = PollInterval };
             this.timer.Tick += async (_, _) =>
             {
@@ -263,13 +266,7 @@ namespace WinSW.Gui.ViewModels
             this.selectedEncoding = this.Encodings.FirstOrDefault(e => e.Choice == AppSettings.Current.LogEncoding) ?? this.Encodings[0];
 
             this.RescanCommand = new RelayCommand(this.Rescan, () => this.service != null);
-            this.ClearCommand = new RelayCommand(() =>
-            {
-                this.history.Clear();
-                this.Lines.Clear();
-                this.ErrorCount = 0;
-                this.lastJumpIndex = -1;
-            });
+            this.ClearCommand = new RelayCommand(this.ClearLines);
 
             this.TogglePauseCommand = new RelayCommand(() => this.IsPaused = !this.IsPaused);
             this.OpenExternallyCommand = new RelayCommand(this.OpenExternally, () => this.selectedFile != null);
@@ -297,12 +294,15 @@ namespace WinSW.Gui.ViewModels
 
         public ObservableCollection<LogFileEntry> Files { get; } = new();
 
-        /// <summary>The lines currently shown, after filtering.</summary>
         /// <summary>
         /// The lines currently shown, which is the buffer with the filter applied. Bulk so
         /// that re-filtering announces itself once rather than once per line.
         /// </summary>
-        public BulkObservableCollection<string> Lines { get; } = new();
+        /// <remarks>
+        /// Each line its own item, not its text: the view scrolls and selects by item, and a
+        /// restart loop writes the same lines again and again.
+        /// </remarks>
+        public BulkObservableCollection<LogLine> Lines => this.buffer.Visible;
 
         public ObservableCollection<ServiceEvent> Events { get; } = new();
 
@@ -781,10 +781,7 @@ namespace WinSW.Gui.ViewModels
         private void OpenSelected()
         {
             this.CloseReader();
-            this.history.Clear();
-            this.Lines.Clear();
-            this.ErrorCount = 0;
-            this.lastJumpIndex = -1;
+            this.ClearLines();
             this.EncodingInfo = string.Empty;
 
             if (this.selectedFile is null)
@@ -885,8 +882,9 @@ namespace WinSW.Gui.ViewModels
             string? rolled = null;
             if (reader.Restarted)
             {
-                this.history.Clear();
-                this.Lines.Clear();
+                // The count goes with the lines: it kept counting the errors of a file that
+                // was no longer on screen.
+                this.ClearLines();
                 rolled = Localizer.Get("M.Log.Rolled");
             }
 
@@ -911,30 +909,31 @@ namespace WinSW.Gui.ViewModels
                 // A batch this size replaces everything on screen. Built to one side and
                 // announced once, the way a filter change is, instead of thousands of adds
                 // each followed by the removal of the line it pushed out.
-                this.history.Clear();
+                var batch = new List<LogLine>(MaxLines);
                 if (rolled != null)
                 {
-                    this.history.AddLast(rolled);
+                    batch.Add(new LogLine(rolled));
                 }
 
                 if (skipped != null)
                 {
-                    this.history.AddLast(skipped);
+                    batch.Add(new LogLine(skipped));
                 }
 
-                int room = MaxLines - this.history.Count - (rolledOver is null ? 0 : 1);
+                int room = MaxLines - batch.Count - (rolledOver is null ? 0 : 1);
                 for (int i = lines.Count - room; i < lines.Count; i++)
                 {
-                    this.history.AddLast(lines[i]);
+                    batch.Add(new LogLine(lines[i]));
                 }
 
                 if (rolledOver != null)
                 {
-                    this.history.AddLast(rolledOver);
+                    batch.Add(new LogLine(rolledOver));
                 }
 
+                this.buffer.ReplaceAll(batch);
                 this.EncodingInfo = Localizer.Format("M.Log.Detected", reader.EncodingName);
-                this.RebuildVisibleLines();
+                this.OnLinesRebuilt();
                 return;
             }
 
@@ -969,52 +968,35 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        private void Append(string line)
+        private void Append(string text)
         {
-            this.history.AddLast(line);
-            if (this.history.Count > MaxLines)
+            if (this.buffer.Append(new LogLine(text)) && this.lastJumpIndex >= 0)
             {
-                string dropped = this.history.First!.Value;
-                this.history.RemoveFirst();
-
-                // Keep the visible list in step with the buffer, but only when the dropped
-                // line was actually on screen.
-                if (this.Lines.Count > 0 && this.Lines[0] == dropped)
-                {
-                    this.Lines.RemoveAt(0);
-                }
+                // The line "next error" stopped at moved up with the rest, and the next press
+                // carries on from it rather than from the line after it.
+                this.lastJumpIndex--;
             }
 
-            if (this.IsVisible(line))
-            {
-                this.Lines.Add(line);
-                if (LogSeverity.IsError(line))
-                {
-                    this.ErrorCount++;
-                }
-            }
+            this.ErrorCount = this.buffer.ErrorCount;
+        }
+
+        private void ClearLines()
+        {
+            this.buffer.Clear();
+            this.ErrorCount = 0;
+            this.lastJumpIndex = -1;
         }
 
         private void RebuildVisibleLines()
         {
-            // Built to one side and handed over whole. This runs on every keystroke in the
-            // filter box, against a buffer of up to five thousand lines.
-            int errors = 0;
-            var visible = new List<string>(this.history.Count);
-            foreach (string line in this.history)
-            {
-                if (this.IsVisible(line))
-                {
-                    visible.Add(line);
-                    if (LogSeverity.IsError(line))
-                    {
-                        errors++;
-                    }
-                }
-            }
+            this.buffer.Rebuild();
+            this.OnLinesRebuilt();
+        }
 
-            this.Lines.ReplaceAll(visible);
-            this.ErrorCount = errors;
+        /// <summary>Brings what goes with the list up to date after it was refilled whole.</summary>
+        private void OnLinesRebuilt()
+        {
+            this.ErrorCount = this.buffer.ErrorCount;
             this.lastJumpIndex = -1;
             this.LinesAppended?.Invoke();
         }
@@ -1079,7 +1061,7 @@ namespace WinSW.Gui.ViewModels
             for (int step = 1; step <= count; step++)
             {
                 int index = (this.lastJumpIndex + step) % count;
-                if (LogSeverity.IsError(this.Lines[index]))
+                if (this.Lines[index].IsError)
                 {
                     this.lastJumpIndex = index;
                     this.AutoScroll = false;

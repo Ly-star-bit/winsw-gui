@@ -141,13 +141,25 @@
                                 <Setter Property="Focusable" Value="False" />
                             </Style>
                         </ListBox.ItemContainerStyle>
+                        <!--
+                            Each item is a LogLine, whose severity was worked out when it was read.
+                            OneTime because a line never changes, so there is nothing to watch.
+                            No Foreground on the element itself: a local value beats the triggers.
+                        -->
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Foreground="{Binding Converter={StaticResource LogSeverityToBrush}}" Text="{Binding}">
+                                <TextBlock Text="{Binding Text, Mode=OneTime}">
                                     <TextBlock.Style>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="TextWrapping" Value="NoWrap" />
+                                            <Setter Property="Foreground" Value="{DynamicResource LogInfoBrush}" />
                                             <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsWarning, Mode=OneTime}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource LogWarnBrush}" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsError, Mode=OneTime}" Value="True">
+                                                    <Setter Property="Foreground" Value="{DynamicResource LogErrorBrush}" />
+                                                </DataTrigger>
                                                 <DataTrigger Binding="{Binding DataContext.WrapLines, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                                                     <Setter Property="TextWrapping" Value="Wrap" />
                                                 </DataTrigger>

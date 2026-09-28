@@ -1,7 +1,9 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using WinSW.Gui.Services;
 using WinSW.Gui.ViewModels;
 
 namespace WinSW.Gui.Views
@@ -44,17 +46,21 @@ namespace WinSW.Gui.Views
             }
         }
 
-        // Following the tail is a view concern: the view model only knows whether it is on.
-        // It fires once per batch of lines, not once per line, so a burst of output does
-        // not turn into thousands of layout passes.
-        // Ctrl+C copies the highlighted lines; string items would otherwise copy nothing.
+        // Ctrl+C copies the highlighted lines, which a list of data items would otherwise not
+        // do. Top to bottom, as they are on screen: the selection lists them in the order they
+        // were clicked.
         private void OnOutputKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control && this.Output.SelectedItems.Count > 0)
             {
+                var picked = new HashSet<LogLine>(this.Output.SelectedItems.OfType<LogLine>());
+                string text = string.Join(
+                    System.Environment.NewLine,
+                    this.Output.Items.OfType<LogLine>().Where(picked.Contains).Select(line => line.Text));
+
                 try
                 {
-                    Clipboard.SetText(string.Join(System.Environment.NewLine, this.Output.SelectedItems.OfType<string>()));
+                    Clipboard.SetText(text);
                 }
                 catch (System.Runtime.InteropServices.COMException)
                 {
@@ -75,6 +81,9 @@ namespace WinSW.Gui.Views
             }
         }
 
+        // Scrolling to an item finds it by comparing it with the list's items. Log lines are
+        // compared as the same line, not the same text, so this lands on the line asked for
+        // and not on the first earlier line that reads the same.
         private void ScrollToIndex(int index)
         {
             if (index < 0 || index >= this.Output.Items.Count)
@@ -86,6 +95,9 @@ namespace WinSW.Gui.Views
             this.Output.ScrollIntoView(this.Output.Items[index]);
         }
 
+        // Following the tail is a view concern: the view model only knows whether it is on.
+        // It fires once per batch of lines, not once per line, so a burst of output does
+        // not turn into thousands of layout passes.
         private void ScrollToEnd()
         {
             if (this.attached?.AutoScroll != true)
