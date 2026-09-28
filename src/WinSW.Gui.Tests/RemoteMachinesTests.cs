@@ -1,5 +1,8 @@
+using System;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 using WinSW.Gui.ViewModels;
 using Xunit;
 
@@ -106,6 +109,41 @@ namespace WinSW.Gui.Tests
         public void NothingSavedLoadsAsAnEmptyList()
         {
             Assert.Empty(MachineHistory.Load(null));
+        }
+
+        /// <summary>
+        /// An editable ComboBox completes what is typed with the first item that starts with it
+        /// unless told not to: with 10.0.0.12 remembered, typing 10.0.0.1 and pressing Enter
+        /// would connect to 10.0.0.12, and the next Stop would go there. Read from the source:
+        /// the view needs WPF to load.
+        /// </summary>
+        [Fact]
+        public void TheMachineBoxDoesNotCompleteANameBeingTyped()
+        {
+            XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+            var boxes = XDocument.Load(Path.Combine(GuiRoot, "Views", "RemoteView.xaml"))
+                .Descendants(presentation + "ComboBox")
+                .Where(e => (string?)e.Attribute("IsEditable") == "True")
+                .ToList();
+
+            var box = Assert.Single(boxes);
+            Assert.Equal("False", (string?)box.Attribute("IsTextSearchEnabled"));
+        }
+
+        /// <summary>The WinSW.Gui project directory, found upwards from the test binary.</summary>
+        private static string GuiRoot
+        {
+            get
+            {
+                var directory = new DirectoryInfo(AppContext.BaseDirectory);
+                while (directory != null && !File.Exists(Path.Combine(directory.FullName, "src", "WinSW.sln")))
+                {
+                    directory = directory.Parent;
+                }
+
+                Assert.True(directory != null, "The repository root could not be found from " + AppContext.BaseDirectory);
+                return Path.Combine(directory!.FullName, "src", "WinSW.Gui");
+            }
         }
     }
 }

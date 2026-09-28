@@ -53,11 +53,15 @@
                     would take the key from an open drop-down too, and connect to the text as
                     typed instead of picking the highlighted machine. The list is the machines
                     connected to before; see RemoteViewModel.Remember for why its text needs care.
+                    No text search: it completes what is typed with the first machine that starts
+                    with it, so 10.0.0.1 becomes 10.0.0.12 and web1 becomes web10, and Connect and
+                    Enter go to the completed name. Picking from the drop-down fills the box without it.
                 -->
                 <ComboBox
                     Grid.Column="1"
                     AutomationProperties.Name="{DynamicResource M.Remote.Machine}"
                     IsEditable="True"
+                    IsTextSearchEnabled="False"
                     ItemsSource="{Binding RecentMachines}"
                     PreviewKeyDown="OnMachineKeyDown"
                     Text="{Binding Machine, UpdateSourceTrigger=PropertyChanged}"

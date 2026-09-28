@@ -58,8 +58,9 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Whether a WinSW wrapper hosts the service, told from how it was registered; see
-        /// <see cref="RemoteMonitor.LooksLikeWrapper"/>. Null when that could not be read, and
-        /// on a row from a poll that was not asked because the row on screen already knows.
+        /// <see cref="RemoteMonitor.LooksLikeWrapper"/>. Null when that could not be read, on a
+        /// row from a poll that was not asked because the row on screen already knows, and on
+        /// every row read while the page shows all services, when nothing asks.
         /// </summary>
         public bool? IsWrapper { get; private set; }
 
@@ -190,15 +191,20 @@ namespace WinSW.Gui.Services
 
         /// <summary>Every service on <paramref name="machine"/>, sorted by display name.</summary>
         /// <param name="machine">The computer, as the service control manager takes it.</param>
+        /// <param name="classify">
+        /// Whether to ask each service if a wrapper hosts it at all. Asking is three round trips
+        /// to the other machine for every service, where the listing itself is one, so it is
+        /// done only while the page shows WinSW services alone; otherwise every row comes back
+        /// with <see cref="RemoteServiceStatus.IsWrapper"/> null.
+        /// </param>
         /// <param name="classified">
         /// Services not to ask about, because the rows on screen already know: none on a
         /// connect, every row on a poll. These come back with
-        /// <see cref="RemoteServiceStatus.IsWrapper"/> null. Asking costs round trips to the
-        /// other machine for every service, so a connect asks once for each and a poll only for
-        /// a service that has appeared since.
+        /// <see cref="RemoteServiceStatus.IsWrapper"/> null. A connect asks once for each and a
+        /// poll only for a service that has appeared since.
         /// </param>
         /// <exception cref="InvalidOperationException">The machine cannot be reached or refuses the query.</exception>
-        public static IReadOnlyList<RemoteServiceStatus> List(string machine, ImmutableHashSet<string> classified)
+        public static IReadOnlyList<RemoteServiceStatus> List(string machine, bool classify, ImmutableHashSet<string> classified)
         {
             var results = new List<RemoteServiceStatus>();
             ServiceController[] services;
@@ -229,7 +235,7 @@ namespace WinSW.Gui.Services
                     }
 
                     bool? isWrapper = null;
-                    if (!classified.Contains(name) && commandLines.Read(name) is { } binaryPath)
+                    if (classify && !classified.Contains(name) && commandLines.Read(name) is { } binaryPath)
                     {
                         isWrapper = LooksLikeWrapper(binaryPath);
                     }

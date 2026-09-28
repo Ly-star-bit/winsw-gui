@@ -71,7 +71,10 @@ namespace WinSW.Gui.ViewModels
             this.timer = new DispatcherTimer { Interval = PollInterval };
             this.timer.Tick += async (_, _) =>
             {
-                if (this.autoRefresh && this.Services.Count > 0 && this.RefreshCommand.CanExecute(null))
+                // A refresh reads whatever the box names. Another name there is one being typed,
+                // or one that failed to answer, and waits for Connect: a poll would otherwise
+                // switch the list to a half-typed name, or retry a failed one unasked.
+                if (this.autoRefresh && this.Services.Count > 0 && this.BoxNamesLoadedMachine && this.RefreshCommand.CanExecute(null))
                 {
                     await this.RefreshAsync(reclassify: false).ConfigureAwait(true);
                 }
@@ -187,6 +190,18 @@ namespace WinSW.Gui.ViewModels
 
                     AppSettings.Current.RemoteWrappersOnly = value;
                     AppSettings.Current.Save();
+
+                    // Rows listed while the switch was off were never asked, which costs round
+                    // trips nobody needed then; they are asked now, as Connect would. Only for
+                    // the machine on screen: another name in the box waits for Connect, which
+                    // asks anyway.
+                    if (value
+                        && this.BoxNamesLoadedMachine
+                        && this.Services.Any(s => s.IsWrapper == null)
+                        && this.RefreshCommand.CanExecute(null))
+                    {
+                        this.RefreshCommand.Execute(null);
+                    }
                 }
             }
         }
@@ -212,6 +227,14 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Running services among the rows the filter lets through.</summary>
         public int RunningCount => this.ServicesView.Cast<RemoteServiceStatus>().Count(s => s.IsRunning);
+
+        /// <summary>
+        /// Whether the machine box still names the machine the list was read from. Everything
+        /// the page does on its own — a poll, the reading after a start or stop, asking which
+        /// services are WinSW's — waits for Connect while it names another.
+        /// </summary>
+        private bool BoxNamesLoadedMachine =>
+            this.loadedMachine != null && string.Equals(this.machine.Trim(), this.loadedMachine, StringComparison.OrdinalIgnoreCase);
 
         public void Activate() => this.timer.Start();
 
@@ -262,7 +285,7 @@ namespace WinSW.Gui.ViewModels
 
             // The row shows the state it settled in; the line under the list says what was done.
             // Only while the box still names that machine: a refresh reads whatever it names.
-            if (string.Equals(this.machine.Trim(), on, StringComparison.OrdinalIgnoreCase))
+            if (this.BoxNamesLoadedMachine)
             {
                 await this.RefreshAsync(reclassify: false).ConfigureAwait(true);
             }
@@ -275,22 +298,24 @@ namespace WinSW.Gui.ViewModels
         /// <param name="reclassify">
         /// Ask every service again whether a wrapper hosts it: true for Connect, including on the
         /// machine already listed, so a refusal the first time is not kept until another machine
-        /// is chosen. A poll asks only about services not on screen yet.
+        /// is chosen. A poll asks only about services not on screen yet. Nothing is asked while
+        /// <see cref="WrappersOnly"/> is off, when nothing uses the answer.
         /// </param>
         private async Task RefreshAsync(bool reclassify)
         {
             string target = this.machine.Trim();
             this.IsBusy = true;
 
-            // A copy: the worker reads it.
+            // Copies: the worker reads them.
+            bool classify = this.wrappersOnly;
             bool sameMachine = string.Equals(target, this.loadedMachine, StringComparison.OrdinalIgnoreCase);
-            var classified = sameMachine && !reclassify
+            var classified = classify && sameMachine && !reclassify
                 ? this.Services.Select(s => s.ServiceName).ToImmutableHashSet(StringComparer.OrdinalIgnoreCase)
                 : ImmutableHashSet<string>.Empty;
 
             try
             {
-                var list = await Task.Run(() => RemoteMonitor.List(target, classified)).ConfigureAwait(true);
+                var list = await Task.Run(() => RemoteMonitor.List(target, classify, classified)).ConfigureAwait(true);
 
                 if (string.Equals(target, this.loadedMachine, StringComparison.OrdinalIgnoreCase))
                 {
@@ -298,7 +323,7 @@ namespace WinSW.Gui.ViewModels
 
                     // The answers may have changed on rows already shown, which the view does
                     // not re-filter on its own.
-                    if (reclassify && this.wrappersOnly)
+                    if (reclassify && classify)
                     {
                         this.ServicesView.Refresh();
                     }
