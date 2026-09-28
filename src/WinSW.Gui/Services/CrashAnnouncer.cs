@@ -16,8 +16,8 @@ namespace WinSW.Gui.Services
         /// <summary>
         /// The service stopped with exit code 0, outside a restart loop. That is how a program
         /// that ends by itself leaves it, and also how an orderly stop looks when it is over
-        /// between two readings, so it is told at once as a stop, not as a crash, and without
-        /// a cause.
+        /// between two readings, so it is told as a stop, not as a crash, and without a cause:
+        /// at the next reading, once the service is seen still stopped rather than starting again.
         /// </summary>
         CleanStop,
 
@@ -151,9 +151,13 @@ namespace WinSW.Gui.Services
     /// with nothing new in it ends the run of notices, and the next crash is told at once again.
     /// </para>
     /// <para>
-    /// A stop with exit code 0 outside a window is told at once and opens none. Windows'
-    /// recovery does not act on it, so nothing is restarting the service in a loop, and a crash
-    /// after someone has started it again is news of its own.
+    /// A stop with exit code 0 outside a window opens none. Windows' recovery does not act on
+    /// it, so nothing is restarting the service in a loop, and a crash after someone has
+    /// started it again is news of its own. It is told a reading late, and not at all when that
+    /// reading finds the service starting or running again: a restart — the scheduled one at
+    /// night runs <c>winsw restart</c> — leaves the service stopped for under a second between
+    /// its stop and its start, and a reading that lands there without having seen it stopping
+    /// would otherwise tell the group that a service which is back a second later has stopped.
     /// </para>
     /// <para>
     /// A window ends by the clock, not at the next stop: the count goes out at the first reading
@@ -236,6 +240,20 @@ namespace WinSW.Gui.Services
 
             if (status is { } current)
             {
+                // A clean stop seen at the last reading: told now that the service is seen to have
+                // stayed stopped, which overtakes a crash told before it — the service did run
+                // again, and this is the latest that was said about it. Dropped as a restart if the
+                // service is on its way back, which leaves a recovery owed to be told as usual.
+                if (track.CleanStopHeld)
+                {
+                    track.CleanStopHeld = false;
+                    if (current is not (ServiceControllerStatus.StartPending or ServiceControllerStatus.Running))
+                    {
+                        Tell(new StopNotice(serviceName, StopNoticeKind.CleanStop, 1, 0));
+                        track.RecoveryOwed = false;
+                    }
+                }
+
                 bool stopped = track.Last == ServiceControllerStatus.Running && current == ServiceControllerStatus.Stopped;
 
                 if (current != ServiceControllerStatus.Running)
@@ -261,10 +279,8 @@ namespace WinSW.Gui.Services
                     else if (exitCode == 0)
                     {
                         // Not a crash: nothing to count on from here, and nothing to recover
-                        // from. A crash told before it has been overtaken by it: the service
-                        // did run again, and this is the latest that was said about it.
-                        Tell(new StopNotice(serviceName, StopNoticeKind.CleanStop, 1, 0));
-                        track.RecoveryOwed = false;
+                        // from. Held for the next reading, which tells it or drops it; see above.
+                        track.CleanStopHeld = true;
                     }
                     else
                     {
@@ -352,6 +368,9 @@ namespace WinSW.Gui.Services
 
             /// <summary>A crash was told, and the notice that it is running again has not been.</summary>
             public bool RecoveryOwed { get; set; }
+
+            /// <summary>A stop with exit code 0 was seen at the last reading and is not told yet: it may be a restart.</summary>
+            public bool CleanStopHeld { get; set; }
         }
     }
 }

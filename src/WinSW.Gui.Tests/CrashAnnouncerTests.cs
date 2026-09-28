@@ -109,16 +109,55 @@ namespace WinSW.Gui.Tests
             Assert.Equal(10, told[2].Count);
         }
 
-        /// <summary>A program that ends by itself with exit code 0 has stopped, not crashed.</summary>
+        /// <summary>
+        /// A program that ends by itself with exit code 0 has stopped, not crashed: told once the
+        /// next reading finds it still stopped.
+        /// </summary>
         [Fact]
         public void AStopWithExitCodeZeroIsToldAsAStop()
         {
             this.Running("api", T0);
 
-            var told = this.Stopped("api", T0.AddSeconds(2), 0);
+            Assert.Empty(this.Stopped("api", T0.AddSeconds(2), 0));
+            var told = this.Stopped("api", T0.AddSeconds(4), 0);
 
             Assert.Equal(new StopNotice("api", StopNoticeKind.CleanStop, 1, 0), Assert.Single(told));
             Assert.Equal(0, this.announcer.CountFor("api"));
+
+            // Once.
+            Assert.Empty(this.Stopped("api", T0.AddSeconds(6), 0));
+        }
+
+        /// <summary>
+        /// The scheduled restart at night: 'winsw restart' leaves the service stopped for under a
+        /// second, and a reading that lands there without having seen it stopping must not tell the
+        /// group that it stopped. The next reading finds it on its way back.
+        /// </summary>
+        [Theory]
+        [InlineData(ServiceControllerStatus.StartPending)]
+        [InlineData(ServiceControllerStatus.Running)]
+        public void ARestartCaughtBetweenItsStopAndItsStartIsNotTold(ServiceControllerStatus next)
+        {
+            this.Running("api", T0);
+            Assert.Empty(this.Stopped("api", T0.AddSeconds(2), 0));
+
+            Assert.Empty(this.announcer.Observe("api", next, 0, held: false, T0.AddSeconds(4)));
+            Assert.Empty(this.Running("api", T0.AddSeconds(6)));
+            Assert.Empty(this.Running("api", T0.AddMinutes(10)));
+            Assert.Equal(0, this.announcer.RecentStopsFor("api"));
+        }
+
+        /// <summary>A reading that could not be made in between says nothing either way: the stop waits for the next.</summary>
+        [Fact]
+        public void AReadingThatCouldNotBeMadeKeepsACleanStopWaiting()
+        {
+            this.Running("api", T0);
+            Assert.Empty(this.Stopped("api", T0.AddSeconds(2), 0));
+            Assert.Empty(this.announcer.Observe("api", null, 0, held: false, T0.AddSeconds(4)));
+
+            var told = this.Stopped("api", T0.AddSeconds(6), 0);
+
+            Assert.Equal(StopNoticeKind.CleanStop, Assert.Single(told).Kind);
         }
 
         /// <summary>
@@ -131,6 +170,7 @@ namespace WinSW.Gui.Tests
         {
             this.Running("api", T0);
             this.Stopped("api", T0.AddSeconds(2), 0);
+            Assert.Equal(StopNoticeKind.CleanStop, Assert.Single(this.Stopped("api", T0.AddSeconds(4), 0)).Kind);
             this.Running("api", T0.AddSeconds(12));
 
             var told = this.Stopped("api", T0.AddSeconds(90), ProcessAborted);
@@ -159,6 +199,7 @@ namespace WinSW.Gui.Tests
         {
             this.Running("api", T0);
             this.Stopped("api", T0.AddSeconds(2), 0);
+            this.Stopped("api", T0.AddSeconds(4), 0);
             this.Running("api", T0.AddSeconds(30));
 
             Assert.Empty(this.Running("api", T0.AddMinutes(10)));
@@ -402,6 +443,7 @@ namespace WinSW.Gui.Tests
         {
             this.Running("api", T0);
             this.Stopped("api", T0.AddSeconds(2), 0);
+            this.Stopped("api", T0.AddSeconds(4), 0);
             Assert.Equal(0, this.announcer.RecentStopsFor("api"));
 
             this.Running("web", T0);
