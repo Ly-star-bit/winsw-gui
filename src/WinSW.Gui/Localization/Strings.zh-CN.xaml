@@ -19,7 +19,6 @@
     <sys:String x:Key="S.AddDownload">添加下载</sys:String>
     <sys:String x:Key="S.AddVariable">添加变量</sys:String>
     <sys:String x:Key="S.AllowBasicAuthOverHTTP">允许通过 HTTP 使用基本认证</sys:String>
-    <sys:String x:Key="S.AllowTheServiceToInteractWith">允许服务与桌面交互</sys:String>
     <sys:String x:Key="S.ApplyConfig">应用配置</sys:String>
     <sys:String x:Key="S.Arguments">启动参数</sys:String>
     <sys:String x:Key="S.Authentication">认证方式</sys:String>
@@ -54,7 +53,6 @@
     <sys:String x:Key="S.FilterByServiceIDDisplayName">按服务 ID、显示名称或配置路径筛选</sys:String>
     <sys:String x:Key="S.Follow">跟随</sys:String>
     <sys:String x:Key="S.ForceTerminateTheServiceProcessTree">强制结束服务进程树 (winsw dev kill)</sys:String>
-    <sys:String x:Key="S.GrantTheAccountTheLogOn">授予该账户“作为服务登录”权限</sys:String>
     <sys:String x:Key="S.HideTheConsoleWindowOfThe">隐藏程序的控制台窗口</sys:String>
     <sys:String x:Key="S.Identity">身份</sys:String>
     <sys:String x:Key="S.Install">安装</sys:String>
@@ -645,6 +643,11 @@
     <sys:String x:Key="M.Dash.UpgradeShared">这个 wrapper 由 {0} 个服务共用。它们会被一起停止，文件替换一次，原本在运行的会重新启动：{1}。</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">有一条失败动作没有选择动作类型；请选择 restart / reboot / none，或者删掉这一行。</sys:String>
+
+    <!-- The service tab: options the wrapper ignores, and the start modes only drivers can have. -->
+    <sys:String x:Key="M.Editor.InteractiveIgnored">这里没有“与桌面交互”选项：包装器不读取 &lt;interactive&gt;，服务的窗口也到不了登录用户的桌面。需要窗口的程序请做成“桌面任务”。</sys:String>
+    <sys:String x:Key="M.Editor.LogonRightGranted">安装时会自动给这个账户授予“作为服务登录”权限，内置账户不需要。包装器不读取 &lt;allowservicelogon&gt;，所以这里没有要勾选的。</sys:String>
+    <sys:String x:Key="M.Warn.DriverStartMode">启动类型“{0}”只用于驱动程序，安装和“保存并应用”时 Windows 都会拒绝（错误 87）。请改成 Automatic、Manual 或 Disabled。</sys:String>
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 没有被替换，仍然是 {0}。可能有其它进程占用着这个文件；服务已按原状态重新启动。</sys:String>
 

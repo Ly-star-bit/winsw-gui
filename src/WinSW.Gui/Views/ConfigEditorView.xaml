@@ -4,6 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:controls="clr-namespace:WinSW.Gui.Controls"
+    xmlns:model="clr-namespace:WinSW.Gui.Model"
     xmlns:vm="clr-namespace:WinSW.Gui.ViewModels"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -251,7 +252,7 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Priority}" />
-                                            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding DataContext.Priorities, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Priority}" />
+                                            <ComboBox HorizontalAlignment="Stretch" ItemsSource="{x:Static model:ServiceConfigModel.Priorities}" SelectedItem="{Binding Priority}" />
                                         </StackPanel>
                                     </Grid>
                                     <CheckBox Margin="0,0,0,10" Content="{DynamicResource S.HideTheConsoleWindowOfThe}" IsChecked="{Binding HideWindow}" />
@@ -283,10 +284,11 @@
                                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.StartMode}" />
                                             <Button Style="{StaticResource HelpButton}" Margin="8,0,0,4" Padding="4,0" Command="{Binding DataContext.OpenHelpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="startmode" />
                                         </StackPanel>
-                                        <ComboBox HorizontalAlignment="Left" MinWidth="220" ItemsSource="{Binding DataContext.StartModes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding StartMode}" />
+                                        <ComboBox HorizontalAlignment="Left" MinWidth="220" ItemsSource="{Binding StartModeChoices}" SelectedItem="{Binding StartMode}" />
                                     </StackPanel>
                                     <CheckBox Margin="0,0,0,10" Content="{DynamicResource S.DelayedAutomaticStart}" IsChecked="{Binding DelayedAutoStart}" IsEnabled="{Binding SupportsDelayedAutoStart}" />
-                                    <CheckBox Margin="0,0,0,10" Content="{DynamicResource S.AllowTheServiceToInteractWith}" IsChecked="{Binding Interactive}" />
+                                    <!-- <interactive> and <allowservicelogon> have no box: the wrapper reads neither. A file that has them keeps them. -->
+                                    <TextBlock Margin="0,0,0,10" Style="{StaticResource FieldHint}" Text="{DynamicResource M.Editor.InteractiveIgnored}" />
                                     <CheckBox Margin="0,0,0,10" Content="{DynamicResource S.AcceptPreShutdownNotifications}" IsChecked="{Binding Preshutdown}" />
                                     <StackPanel Style="{StaticResource Field}" Margin="0,6,0,14">
                                         <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.PreShutdownTimeout}" />
@@ -340,7 +342,7 @@
                                             <ComboBoxItem Content="console" Tag="console" />
                                         </ComboBox>
                                     </StackPanel>
-                                    <CheckBox Content="{DynamicResource S.GrantTheAccountTheLogOn}" IsChecked="{Binding AllowServiceLogon}" />
+                                    <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Editor.LogonRightGranted}" />
 
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Style="{StaticResource Section}" Text="{DynamicResource S.OnFailure}" />
@@ -515,7 +517,7 @@
                                                         <ui:TextBox Grid.Row="0" Grid.Column="0" Margin="0,0,0,6" PlaceholderText="{DynamicResource S.SourceURL}" Text="{Binding From, UpdateSourceTrigger=PropertyChanged}" />
                                                         <ui:TextBox Grid.Row="1" Grid.Column="0" Margin="0,0,0,6" PlaceholderText="{DynamicResource S.DestinationPath}" Text="{Binding To, UpdateSourceTrigger=PropertyChanged}" />
                                                         <WrapPanel Grid.Row="2" Grid.Column="0">
-                                                            <ComboBox Width="90" Margin="0,0,8,0" ItemsSource="{Binding DataContext.AuthTypes, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedItem="{Binding Auth}" ToolTip="{DynamicResource S.Authentication}" />
+                                                            <ComboBox Width="90" Margin="0,0,8,0" ItemsSource="{x:Static model:DownloadItem.AuthTypes}" SelectedItem="{Binding Auth}" ToolTip="{DynamicResource S.Authentication}" />
                                                             <ui:TextBox Width="130" Margin="0,0,8,0" PlaceholderText="{DynamicResource S.UserBasicAuth}" Text="{Binding User, UpdateSourceTrigger=PropertyChanged}" />
                                                             <ToggleButton x:Name="RevealDownloadPassword" Margin="0,0,4,0" Padding="6,0" ToolTip="{DynamicResource M.Reveal}">
                                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE5F2;" />

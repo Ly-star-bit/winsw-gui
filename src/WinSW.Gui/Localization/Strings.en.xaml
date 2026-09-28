@@ -30,7 +30,6 @@
     <sys:String x:Key="S.AddDownload">Add download</sys:String>
     <sys:String x:Key="S.AddVariable">Add variable</sys:String>
     <sys:String x:Key="S.AllowBasicAuthOverHTTP">Allow basic auth over HTTP</sys:String>
-    <sys:String x:Key="S.AllowTheServiceToInteractWith">Allow the service to interact with the desktop</sys:String>
     <sys:String x:Key="S.ApplyConfig">Apply config</sys:String>
     <sys:String x:Key="S.Arguments">Arguments</sys:String>
     <sys:String x:Key="S.Authentication">Authentication</sys:String>
@@ -65,7 +64,6 @@
     <sys:String x:Key="S.FilterByServiceIDDisplayName">Filter by service ID, display name or configuration path</sys:String>
     <sys:String x:Key="S.Follow">Follow</sys:String>
     <sys:String x:Key="S.ForceTerminateTheServiceProcessTree">Force-terminate the service process tree (winsw dev kill)</sys:String>
-    <sys:String x:Key="S.GrantTheAccountTheLogOn">Grant the account the 'Log on as a service' right</sys:String>
     <sys:String x:Key="S.HideTheConsoleWindowOfThe">Hide the console window of the executable</sys:String>
     <sys:String x:Key="S.Identity">Identity</sys:String>
     <sys:String x:Key="S.Install">Install</sys:String>
@@ -656,6 +654,11 @@
     <sys:String x:Key="M.Dash.UpgradeShared">This wrapper is shared by {0} services. All of them are stopped, the file is replaced once, and the ones that were running are started again: {1}.</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">A failure action has no action selected; pick restart, reboot or none, or remove the row.</sys:String>
+
+    <!-- The service tab: options the wrapper ignores, and the start modes only drivers can have. -->
+    <sys:String x:Key="M.Editor.InteractiveIgnored">There is no option to interact with the desktop: the wrapper ignores &lt;interactive&gt;, and a service's windows never reach the signed-in user. A program that needs a window belongs in Desktop tasks.</sys:String>
+    <sys:String x:Key="M.Editor.LogonRightGranted">Install grants the account the 'Log on as a service' right by itself; the built-in accounts need none. The wrapper does not read &lt;allowservicelogon&gt;, so there is nothing to tick.</sys:String>
+    <sys:String x:Key="M.Warn.DriverStartMode">Start mode '{0}' is for drivers. Windows refuses it for this service with error 87, at install and at Save &amp; apply: choose Automatic, Manual or Disabled.</sys:String>
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">The wrapper was not replaced — it is still {0}. Something else is holding the file open; the services were started again as they were.</sys:String>
 

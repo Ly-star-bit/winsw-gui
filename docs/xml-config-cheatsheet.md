@@ -94,7 +94,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `id` | 1 | string | — | Windows service name. Unique per machine, alphanumeric. Cannot be changed without reinstalling. |
 | `name` | ? | string | *empty* | Display name shown in services.msc. May contain spaces. |
 | `description` | ? | string | *empty* | Description shown in services.msc. |
-| `startmode` | ? | `Automatic` \| `Manual` \| `Disabled` \| `Boot` \| `System` | `Automatic` | Case-insensitive. `Boot`/`System` are for driver services only. |
+| `startmode` | ? | `Automatic` \| `Manual` \| `Disabled` | `Automatic` | Case-insensitive. `Disabled` keeps the service from starting at all, the plainest way to park one that keeps failing. `Boot` and `System` parse too, but they are for drivers: Windows refuses them for the service the wrapper installs, with error 87, at install and at refresh. |
 | `delayedAutoStart` | ? | bool | `false` | Only meaningful with `startmode` `Automatic`. |
 | `depend` | * | string | — | Service **id** (not display name) that must start first. One element per dependency. |
 | `serviceaccount` | ? | element | LocalSystem | See section 6. |
@@ -244,7 +244,7 @@ Defaults to LocalSystem when the element is absent.
 | --- | --- |
 | `username` | `DOMAIN\User`, `User@DOMAIN`, or `.\User` for a local account. |
 | `password` | Stored in clear text in the XML — protect the file with NTFS permissions. |
-| `allowservicelogon` | `true` grants the account the *Log on as a service* right during install. |
+| `allowservicelogon` | Ignored: it is parsed and never used. Install grants the account the *Log on as a service* right whatever this says, unless it is one of the built-in accounts below, which need none. |
 | `prompt` | `dialog` or `console` — ask for the credentials at install time instead of storing them. |
 
 Built-in accounts take no password:

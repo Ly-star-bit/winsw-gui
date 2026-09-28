@@ -24,6 +24,13 @@ namespace WinSW.Gui.Model
     /// <summary>A <c>&lt;download /&gt;</c> entry.</summary>
     public sealed class DownloadItem : ObservableObject
     {
+        /// <summary>
+        /// The <c>auth</c> values, in the wrapper's spelling. Static so the editor's box can take
+        /// it with <c>x:Static</c>: a list that is there before any binding runs cannot arrive
+        /// after the selection.
+        /// </summary>
+        public static readonly string[] AuthTypes = { "none", "sspi", "basic" };
+
         private string from = string.Empty;
         private string to = string.Empty;
         private string auth = "none";
@@ -46,10 +53,21 @@ namespace WinSW.Gui.Model
         }
 
         /// <summary>One of <c>none</c>, <c>sspi</c>, <c>basic</c>.</summary>
+        /// <remarks>
+        /// Blank is refused for the same reason the log mode refuses it: a ComboBox whose
+        /// ItemsSource resolves after its SelectedItem binding writes null back into the source.
+        /// A blank drops the attribute, and the download then goes out without its credentials.
+        /// </remarks>
         public string Auth
         {
             get => this.auth;
-            set => this.Set(ref this.auth, value);
+            set
+            {
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    this.Set(ref this.auth, value);
+                }
+            }
         }
 
         /// <summary>

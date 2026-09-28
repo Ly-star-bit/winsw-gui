@@ -374,13 +374,7 @@ namespace WinSW.Gui.ViewModels
             private set => this.Set(ref this.proxyTestFailed, value);
         }
 
-        public string[] StartModes => ServiceConfigModel.StartModes;
-
-        public string[] Priorities => ServiceConfigModel.Priorities;
-
         public string[] LogModes => ServiceConfigModel.LogModes;
-
-        public string[] AuthTypes { get; } = { "none", "sspi", "basic" };
 
         public string[] FailureActionTypes { get; } = { "restart", "reboot", "none" };
 

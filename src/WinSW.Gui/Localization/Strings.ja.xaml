@@ -19,7 +19,6 @@
     <sys:String x:Key="S.AddDownload">ダウンロードを追加</sys:String>
     <sys:String x:Key="S.AddVariable">変数を追加</sys:String>
     <sys:String x:Key="S.AllowBasicAuthOverHTTP">HTTP 経由の Basic 認証を許可</sys:String>
-    <sys:String x:Key="S.AllowTheServiceToInteractWith">サービスにデスクトップとの対話を許可</sys:String>
     <sys:String x:Key="S.ApplyConfig">構成を適用</sys:String>
     <sys:String x:Key="S.Arguments">引数</sys:String>
     <sys:String x:Key="S.Authentication">認証</sys:String>
@@ -54,7 +53,6 @@
     <sys:String x:Key="S.FilterByServiceIDDisplayName">サービス ID、表示名、構成パスで絞り込み</sys:String>
     <sys:String x:Key="S.Follow">追従</sys:String>
     <sys:String x:Key="S.ForceTerminateTheServiceProcessTree">サービスのプロセス ツリーを強制終了 (winsw dev kill)</sys:String>
-    <sys:String x:Key="S.GrantTheAccountTheLogOn">アカウントに「サービスとしてログオン」権限を付与</sys:String>
     <sys:String x:Key="S.HideTheConsoleWindowOfThe">実行ファイルのコンソール ウィンドウを隠す</sys:String>
     <sys:String x:Key="S.Identity">ID</sys:String>
     <sys:String x:Key="S.Install">インストール</sys:String>
@@ -645,6 +643,11 @@
     <sys:String x:Key="M.Dash.UpgradeShared">このラッパーは {0} 個のサービスで共有されています。すべて停止し、ファイルを 1 度置き換え、実行中だったものを再度開始します: {1}。</sys:String>
 
     <sys:String x:Key="M.Val.FailureActionRequired">失敗時のアクションが選択されていない行があります。restart / reboot / none のいずれかを選ぶか、行を削除してください。</sys:String>
+
+    <!-- The service tab: options the wrapper ignores, and the start modes only drivers can have. -->
+    <sys:String x:Key="M.Editor.InteractiveIgnored">デスクトップとの対話オプションはありません。ラッパーは &lt;interactive&gt; を読まず、サービスのウィンドウはサインイン中のユーザーには表示されません。ウィンドウが必要なプログラムは「デスクトップタスク」にしてください。</sys:String>
+    <sys:String x:Key="M.Editor.LogonRightGranted">インストール時に、アカウントへ「サービスとしてログオン」権限が自動で付与されます (組み込みアカウントには不要)。ラッパーは &lt;allowservicelogon&gt; を読まないため、ここにチェック項目はありません。</sys:String>
+    <sys:String x:Key="M.Warn.DriverStartMode">スタートアップの種類 '{0}' はドライバー専用です。このサービスではインストール時にも「保存して適用」時にも Windows に拒否されます (エラー 87)。Automatic、Manual、Disabled のいずれかを選んでください。</sys:String>
 
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">ラッパーは置き換えられず、{0} のままです。他のプロセスがファイルを掴んでいます。サービスは元の状態で再開しました。</sys:String>
 

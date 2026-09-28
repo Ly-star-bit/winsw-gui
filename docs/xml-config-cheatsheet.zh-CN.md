@@ -91,7 +91,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `id` | 1 | 字符串 | — | Windows 服务名。整机唯一，建议只用字母数字。改了就必须重新安装。 |
 | `name` | ? | 字符串 | *空* | services.msc 里显示的名称，可以带空格和中文。 |
 | `description` | ? | 字符串 | *空* | services.msc 里显示的描述。 |
-| `startmode` | ? | `Automatic` \| `Manual` \| `Disabled` \| `Boot` \| `System` | `Automatic` | 不区分大小写。`Boot`/`System` 只对驱动服务有意义。 |
+| `startmode` | ? | `Automatic` \| `Manual` \| `Disabled` | `Automatic` | 不区分大小写。`Disabled` 让服务完全不启动，是先把一个反复失败的服务停住的最简单办法。`Boot` 和 `System` 也能解析，但它们只用于驱动程序：包装器装的是普通服务，安装和 refresh 时 Windows 都会拒绝（错误 87）。 |
 | `delayedAutoStart` | ? | 布尔 | `false` | 只有 `startmode` 为 `Automatic` 时才有效。 |
 | `depend` | * | 字符串 | — | 必须先启动的服务的 **id**（不是显示名）。一个依赖写一个元素。 |
 | `serviceaccount` | ? | 元素 | LocalSystem | 见第 6 节。 |
@@ -239,7 +239,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 | --- | --- |
 | `username` | `DOMAIN\User`、`User@DOMAIN`，本机账户用 `.\User`。 |
 | `password` | 明文存在 XML 里 —— 一定要用 NTFS 权限保护好这个文件。 |
-| `allowservicelogon` | `true` 表示安装时自动给该账户授予“作为服务登录”权限。 |
+| `allowservicelogon` | 无效：解析后没人读。不管这里写什么，安装时都会给该账户授予“作为服务登录”权限；下面的内置账户除外，它们不需要。 |
 | `prompt` | `dialog` 或 `console` —— 安装时弹窗/在控制台询问凭据，而不是把密码写进文件。 |
 
 内置账户不需要密码：

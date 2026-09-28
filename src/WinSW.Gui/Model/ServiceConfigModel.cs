@@ -62,7 +62,14 @@ namespace WinSW.Gui.Model
             "ms", "sec", "secs", "min", "mins", "hr", "hrs", "hour", "hours", "day", "days",
         };
 
-        public static readonly string[] StartModes = { "Automatic", "Manual", "Boot", "System" };
+        /// <summary>The start modes a service installed by the wrapper can have.</summary>
+        /// <remarks>
+        /// The parser also accepts <c>Boot</c> and <c>System</c>, but those are for drivers: the
+        /// wrapper installs an ordinary service, and Windows refuses either for one with error 87,
+        /// at install and at refresh alike. <c>Disabled</c> is the one that matters, the plainest
+        /// way to park a service that keeps failing.
+        /// </remarks>
+        public static readonly string[] StartModes = { "Automatic", "Manual", "Disabled" };
 
         public static readonly string[] Priorities =
         {
@@ -94,6 +101,7 @@ namespace WinSW.Gui.Model
         private string? stopTimeout;
         private bool hideWindow;
         private string startMode = "Automatic";
+        private string[] startModeChoices = StartModes;
         private bool delayedAutoStart;
         private bool interactive;
         private bool beepOnShutdown;
@@ -195,7 +203,16 @@ namespace WinSW.Gui.Model
         public string Priority
         {
             get => this.priority;
-            set => this.Set(ref this.priority, value);
+            set
+            {
+                // Refused blank for the reason the log mode refuses it: a ComboBox whose
+                // ItemsSource resolves after its SelectedItem binding writes null back into the
+                // source. A blank would quietly drop <priority> and put the program back at Normal.
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    this.Set(ref this.priority, value);
+                }
+            }
         }
 
         public string? StopTimeout
@@ -217,12 +234,32 @@ namespace WinSW.Gui.Model
             get => this.startMode;
             set
             {
+                // The same accident as the priority's. Here it does real harm: a blank drops
+                // <startmode> and <delayedAutoStart> from the file, and the next Save & apply
+                // quietly turns a Manual or Disabled service into an Automatic one.
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return;
+                }
+
                 if (this.Set(ref this.startMode, value))
                 {
                     this.Raise(nameof(this.SupportsDelayedAutoStart));
                 }
             }
         }
+
+        /// <summary>
+        /// What the start mode box offers: <see cref="StartModes"/>, plus the file's own mode when
+        /// it is none of them, so a file that says <c>Boot</c> shows <c>Boot</c> rather than an
+        /// empty box, and is written back as it was unless somebody picks another.
+        /// </summary>
+        /// <remarks>
+        /// Fixed when the file is read. Replacing the list under a bound selection is how a
+        /// ComboBox comes to write null into its source, so the file's own mode stays on offer
+        /// after another is chosen.
+        /// </remarks>
+        public string[] StartModeChoices => this.startModeChoices;
 
         /// <summary>
         /// The wrapper only applies <c>delayedAutoStart</c> when the start mode is
@@ -237,6 +274,11 @@ namespace WinSW.Gui.Model
             set => this.Set(ref this.delayedAutoStart, value);
         }
 
+        /// <summary>
+        /// <c>&lt;interactive&gt;</c>, which the wrapper parses and never uses: it installs every
+        /// service as its own process without the interactive flag. The editor has no box for it,
+        /// but a file that says it keeps saying it.
+        /// </summary>
         public bool Interactive
         {
             get => this.interactive;
@@ -289,6 +331,11 @@ namespace WinSW.Gui.Model
             set => this.Set(ref this.serviceAccountPassword, value);
         }
 
+        /// <summary>
+        /// <c>&lt;allowservicelogon&gt;</c>, which the wrapper parses and never uses: install grants
+        /// the 'Log on as a service' right to any account other than the built-in ones whatever
+        /// this says. Kept for the round trip, like <see cref="Interactive"/>.
+        /// </summary>
         public bool AllowServiceLogon
         {
             get => this.allowServiceLogon;
@@ -549,10 +596,15 @@ namespace WinSW.Gui.Model
             this.stopExecutable = Text(root, "stopexecutable");
             this.stopArguments = Text(root, "stoparguments");
             this.workingDirectory = Text(root, "workingdirectory");
-            this.priority = Text(root, "priority") ?? "Normal";
+            this.priority = MatchChoice(Priorities, Text(root, "priority") ?? "Normal");
             this.stopTimeout = Text(root, "stoptimeout");
             this.hideWindow = Bool(root, "hidewindow");
-            this.startMode = Text(root, "startmode") ?? "Automatic";
+            this.startMode = MatchChoice(StartModes, Text(root, "startmode") ?? "Automatic");
+            if (Array.IndexOf(StartModes, this.startMode) < 0)
+            {
+                this.startModeChoices = StartModes.Append(this.startMode).ToArray();
+            }
+
             this.delayedAutoStart = Bool(root, "delayedAutoStart");
             this.interactive = Bool(root, "interactive");
             this.beepOnShutdown = Bool(root, "beeponshutdown");
@@ -624,7 +676,7 @@ namespace WinSW.Gui.Model
                 {
                     From = element.GetAttribute("from"),
                     To = element.GetAttribute("to"),
-                    Auth = NullIfEmpty(element.GetAttribute("auth")) ?? "none",
+                    Auth = MatchChoice(DownloadItem.AuthTypes, NullIfEmpty(element.GetAttribute("auth")) ?? "none"),
                     User = NullIfEmpty(element.GetAttribute("user")),
                     Password = NullIfEmpty(element.GetAttribute("password")),
                     UnsecureAuth = ParseBool(element.GetAttribute("unsecureAuth")),
@@ -750,10 +802,10 @@ namespace WinSW.Gui.Model
             SetText(root, "stopexecutable", this.stopExecutable);
             SetText(root, "stoparguments", this.stopArguments);
             SetText(root, "workingdirectory", this.workingDirectory);
-            SetText(root, "priority", string.Equals(this.priority, "Normal", StringComparison.OrdinalIgnoreCase) ? null : this.priority);
+            SetChoice(root, "priority", string.Equals(this.priority, "Normal", StringComparison.OrdinalIgnoreCase) ? null : this.priority);
             SetText(root, "stoptimeout", this.stopTimeout);
             SetBool(root, "hidewindow", this.hideWindow, false);
-            SetText(root, "startmode", string.Equals(this.startMode, "Automatic", StringComparison.OrdinalIgnoreCase) ? null : this.startMode);
+            SetChoice(root, "startmode", string.Equals(this.startMode, "Automatic", StringComparison.OrdinalIgnoreCase) ? null : this.startMode);
 
             // The wrapper ignores delayedAutoStart unless the start mode is Automatic;
             // writing it in any other mode would only mislead whoever reads the file.
@@ -1221,6 +1273,14 @@ namespace WinSW.Gui.Model
                 }
             }
 
+            // The parser takes a driver's start mode and Windows then refuses it, at install and
+            // at every Save & apply. A warning rather than a problem: the editor no longer offers
+            // either, but a file that says one must still open and save as it is.
+            if (IsDriverStartMode(this.startMode))
+            {
+                warnings.Add(Localizer.Format("M.Warn.DriverStartMode", this.startMode));
+            }
+
             return warnings;
         }
 
@@ -1309,6 +1369,23 @@ namespace WinSW.Gui.Model
             }
         }
 
+        /// <summary>
+        /// <see cref="SetText"/> for an enumeration the wrapper reads without regard to case: an
+        /// element that already names the same member in other letters is left as its author
+        /// wrote it, since the model holds the list's spelling (<see cref="MatchChoice"/>).
+        /// </summary>
+        private static void SetChoice(XmlElement parent, string name, string? value)
+        {
+            if (value != null
+                && parent.SelectSingleNode(name) is XmlElement element
+                && string.Equals(element.InnerText.Trim(), value.Trim(), StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            SetText(parent, name, value);
+        }
+
         private static void SetBool(XmlElement parent, string name, bool value, bool defaultValue)
         {
             SetText(parent, name, value == defaultValue ? null : value ? "true" : "false");
@@ -1365,6 +1442,26 @@ namespace WinSW.Gui.Model
                 anchor = element;
             }
         }
+
+        /// <summary>
+        /// The member of <paramref name="known"/> that <paramref name="value"/> names, spelled as
+        /// the list spells it; the value as written when it names none of them.
+        /// </summary>
+        /// <remarks>
+        /// The wrapper reads these enumerations without regard to case, while a ComboBox matches
+        /// its selection by exact string: a file that says <c>manual</c> would show an empty box,
+        /// and an empty box is one binding accident away from a blank written back.
+        /// </remarks>
+        internal static string MatchChoice(string[] known, string value) =>
+            Array.Find(known, k => string.Equals(k, value.Trim(), StringComparison.OrdinalIgnoreCase)) ?? value;
+
+        /// <summary>
+        /// Whether a start mode is one of the two only drivers can have, which Windows refuses for
+        /// the ordinary service the wrapper installs.
+        /// </summary>
+        internal static bool IsDriverStartMode(string? startMode) =>
+            string.Equals(startMode?.Trim(), "Boot", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(startMode?.Trim(), "System", StringComparison.OrdinalIgnoreCase);
 
         private static bool ParseBool(string? value, bool defaultValue = false) =>
             bool.TryParse(value?.Trim(), out bool result) ? result : defaultValue;
