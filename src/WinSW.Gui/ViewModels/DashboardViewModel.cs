@@ -89,6 +89,12 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private bool pageShown;
 
+        /// <summary>
+        /// The window is in the tray, between <see cref="KeepWatching"/> and <see cref="LeaveTray"/>.
+        /// Nobody sees the page then either, in front or not, and the poll reads states alone.
+        /// </summary>
+        private bool inTray;
+
         private ServiceEntry? selectedService;
         private string searchText = string.Empty;
 
@@ -237,11 +243,12 @@ namespace WinSW.Gui.ViewModels
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
             this.statusTimer.Tick += async (_, _) =>
             {
-                // Behind another page, a reading is taken only while there is someone to tell
-                // about a stop, and it is of states alone; see Deactivate. Decided here, tick by
-                // tick, rather than when the page was left: notifications or a webhook turned on
-                // on the settings page take effect from the next tick.
-                bool shown = this.pageShown;
+                // Behind another page, or with the window in the tray, a reading is taken only
+                // while there is someone to tell about a stop, and it is of states alone; see
+                // Deactivate. Decided here, tick by tick, rather than when the page was left:
+                // notifications or a webhook turned on on the settings page take effect from the
+                // next tick.
+                bool shown = this.pageShown && !this.inTray;
 
                 // A reading that outlasts the interval must not have another started on top of
                 // it. The explicit refreshes elsewhere are deliberately not gated: they are
@@ -1210,8 +1217,8 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private void BurstPolling()
         {
-            // Behind another page there is no row to follow.
-            if (!this.pageShown)
+            // Behind another page, or in the tray, there is no row to follow.
+            if (!this.pageShown || this.inTray)
             {
                 return;
             }
@@ -1228,11 +1235,37 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// Called by the shell when the window goes to the tray, so watching continues. The poll
-        /// runs from the first <see cref="Activate"/> on, so this only makes sure of it; what it
-        /// reads is the page's business: everything while this page is the one in front, states
-        /// alone behind another while a stop would be told. See <see cref="Deactivate"/>.
+        /// runs from the first <see cref="Activate"/> on, so this only makes sure of it. Until
+        /// <see cref="LeaveTray"/> it reads states alone, whichever page is in front, and only
+        /// while a stop would be told, as behind another page; see <see cref="Deactivate"/>. A
+        /// console left in the tray on this page used to take the full reading — a snapshot of
+        /// every process, the counters, the tree, the ports — every two seconds for nobody.
         /// </summary>
-        public void KeepWatching() => this.statusTimer.Start();
+        public void KeepWatching()
+        {
+            this.inTray = true;
+            this.EndBurst();
+            this.statusTimer.Start();
+        }
+
+        /// <summary>
+        /// Called by the shell when the window comes back from the tray. With this page in front,
+        /// what was not read meanwhile is read now, as when the page itself comes back; see
+        /// <see cref="Activate"/>.
+        /// </summary>
+        public void LeaveTray()
+        {
+            if (!this.inTray)
+            {
+                return;
+            }
+
+            this.inTray = false;
+            if (this.pageShown && this.Services.Count > 0 && !this.polling)
+            {
+                ErrorLog.Observe(this.RefreshStatusesAsync(), "service status");
+            }
+        }
 
         /// <summary>
         /// The editor has just written <paramref name="path"/>. The next rescan would see it

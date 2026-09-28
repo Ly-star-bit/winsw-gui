@@ -80,7 +80,8 @@ namespace WinSW.Gui
 
         /// <summary>
         /// Starts with only the tray icon showing: the start at sign-in. The dashboard is the
-        /// page in front, so its polling is already running, and the notifications with it.
+        /// page in front, so its polling is already running, and the notifications with it; it
+        /// reads states alone until the window is first shown.
         /// </summary>
         public void StartInTray()
         {
@@ -256,7 +257,8 @@ namespace WinSW.Gui
                 this.Hide();
                 this.tray.Visible = true;
 
-                // Keep polling while hidden so an unexpected stop still produces a notification.
+                // Keep polling while hidden so an unexpected stop still produces a notification;
+                // states alone, since nobody sees the page. RestoreFromTray undoes it.
                 this.shell.Dashboard.KeepWatching();
             }
         }
@@ -267,6 +269,10 @@ namespace WinSW.Gui
             this.Show();
             this.WindowState = WindowState.Normal;
             this.Activate();
+
+            // Someone is looking again: the Services page, if it is in front, goes back to the
+            // full reading it dropped while the window was in the tray.
+            this.shell.Dashboard.LeaveTray();
         }
 
         /// <summary>
