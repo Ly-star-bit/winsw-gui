@@ -414,6 +414,7 @@
     <sys:String x:Key="M.Alert.UnattendedTaken">There is already a task {0} that this console did not create. Rename or delete it in Task Scheduler first.</sys:String>
     <sys:String x:Key="M.Alert.UnattendedFailed">Not done (exit code {0}). The reason is in the error log of the account that approved the prompt.</sys:String>
     <sys:String x:Key="M.Alert.UnattendedTimedOut">The elevated step did not finish within {0} seconds.</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedNotOneFile">The unattended alert needs a console that is a single executable, as the release page carries it: its task runs a copy of that one file. This console needs the files beside it.</sys:String>
     <sys:String x:Key="M.Alert.Crashed">[WinSW] {0}: service '{1}' stopped unexpectedly (Windows' failure count: {2}).</sys:String>
     <sys:String x:Key="M.Alert.StartFailed">[WinSW] {0}: service '{1}' failed to start: {2}.</sys:String>
     <sys:String x:Key="M.Alert.StartTimedOut">[WinSW] {0}: service '{1}' did not report that it had started within {2} seconds.</sys:String>

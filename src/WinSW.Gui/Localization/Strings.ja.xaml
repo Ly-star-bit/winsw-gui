@@ -403,6 +403,7 @@
     <sys:String x:Key="M.Alert.UnattendedTaken">このコンソールが作成していないタスク {0} が既にあります。先にタスク スケジューラで名前を変更するか削除してください。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedFailed">完了しませんでした（終了コード {0}）。理由は、昇格を承認したアカウントのエラーログに記録されています。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedTimedOut">昇格した手順が {0} 秒以内に完了しませんでした。</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedNotOneFile">無人時アラートには、リリース ページで配布している単一ファイルのコンソールが必要です。タスクはその実行ファイルだけのコピーを実行します。このコンソールは同じフォルダーのほかのファイルがないと動作しません。</sys:String>
     <sys:String x:Key="M.Alert.Crashed">[WinSW] {0}: サービス '{1}' が予期せず停止しました（Windows が記録した失敗回数: {2}）。</sys:String>
     <sys:String x:Key="M.Alert.StartFailed">[WinSW] {0}: サービス '{1}' を開始できませんでした: {2}。</sys:String>
     <sys:String x:Key="M.Alert.StartTimedOut">[WinSW] {0}: サービス '{1}' が {2} 秒以内に開始完了を報告しませんでした。</sys:String>

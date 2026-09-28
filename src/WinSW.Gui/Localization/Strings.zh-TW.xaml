@@ -403,6 +403,7 @@
     <sys:String x:Key="M.Alert.UnattendedTaken">已有一個不是本主控台建立的工作 {0}。請先在工作排程器中將它重新命名或刪除。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedFailed">未完成（結束代碼 {0}）。原因記錄在核准提升權限的帳戶的錯誤記錄中。</sys:String>
     <sys:String x:Key="M.Alert.UnattendedTimedOut">提升權限的步驟在 {0} 秒內未完成。</sys:String>
+    <sys:String x:Key="M.Alert.UnattendedNotOneFile">無人登入告警需要發布頁面提供的單一檔案主控台：排程工作執行的是這一個 exe 的副本。目前這個要靠同一資料夾中的其他檔案才能執行。</sys:String>
     <sys:String x:Key="M.Alert.Crashed">[WinSW] {0}：服務「{1}」意外停止（Windows 記錄的失敗次數：{2}）。</sys:String>
     <sys:String x:Key="M.Alert.StartFailed">[WinSW] {0}：服務「{1}」啟動失敗：{2}。</sys:String>
     <sys:String x:Key="M.Alert.StartTimedOut">[WinSW] {0}：服務「{1}」未在 {2} 秒內回報啟動完成。</sys:String>

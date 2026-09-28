@@ -44,6 +44,14 @@ namespace WinSW.Gui.Services
         /// <param name="sealedCopy">The webhook, sealed to the machine and in Base64, as the console hands it on.</param>
         public static int SetUp(string? sealedCopy)
         {
+            // The console refuses before the prompt; this is for a run started some other way.
+            // The copy would be this executable without the assemblies beside it.
+            if (!SelfUpdate.IsSingleFile())
+            {
+                ErrorLog.Record("unattended alert, set up", new InvalidOperationException("This console is not a single executable, and a copy of it alone cannot run."));
+                return UnattendedAlert.ExitNotOneFile;
+            }
+
             byte[] copyBytes;
             try
             {

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using WinSW.Gui.Services;
 using Xunit;
 
@@ -71,6 +72,20 @@ namespace WinSW.Gui.Tests
 
             Assert.False(UnattendedAlertRun.MayUse(folder));
             Assert.False(Directory.Exists(folder));
+        }
+
+        /// <summary>
+        /// A console built from source is an executable beside its assemblies; the task's copy
+        /// of it alone could never run. Refused before the elevation prompt, and so testable.
+        /// </summary>
+        [Fact]
+        public async Task ABuildThatIsNotOneExecutableIsNotTurnedOn()
+        {
+            var result = await UnattendedAlert.TurnOnAsync("https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=k", string.Empty, "zh-CN");
+
+            Assert.False(result.Succeeded);
+            Assert.False(result.Cancelled);
+            Assert.Equal("M.Alert.UnattendedNotOneFile", result.Error);
         }
 
         private static string Format(string key, object?[] args) => string.Join("|", new object?[] { key }.Concat(args));

@@ -143,6 +143,7 @@ namespace WinSW.Gui.Services
         internal const int ExitNameTaken = 3;
         internal const int ExitFiles = 4;
         internal const int ExitScheduler = 5;
+        internal const int ExitNotOneFile = 6;
 
         /// <summary>The value the task passes; the name is the event's own element.</summary>
         internal const string RecordValue = "EventRecordID";
@@ -261,6 +262,15 @@ namespace WinSW.Gui.Services
         /// <param name="language">The language the messages are to be written in.</param>
         public static Task<CommandResult> TurnOnAsync(string url, string secret, string language)
         {
+            // Before anything else, and before the prompt: the task runs a copy of this
+            // executable alone, and a console built from source is an executable beside its
+            // assemblies, which the copy would be without. Every run would fail, with the
+            // settings page saying the alert is on.
+            if (!SelfUpdate.IsSingleFile())
+            {
+                return Task.FromResult(CommandResult.Failed(Localizer.Get("M.Alert.UnattendedNotOneFile")));
+            }
+
             // Checked here, where the address can still be shown to the person who typed it:
             // a failure in the task's run goes to a log every signed-in account can read.
             try
@@ -644,6 +654,7 @@ namespace WinSW.Gui.Services
                 {
                     ExitDone => CommandResult.Ok(),
                     ExitNameTaken => new CommandResult(ExitNameTaken, false, false, Localizer.Format("M.Alert.UnattendedTaken", TaskPath)),
+                    ExitNotOneFile => new CommandResult(ExitNotOneFile, false, false, Localizer.Get("M.Alert.UnattendedNotOneFile")),
                     int code => new CommandResult(code, false, false, Localizer.Format("M.Alert.UnattendedFailed", code)),
                 };
             }

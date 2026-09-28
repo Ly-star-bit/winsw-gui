@@ -424,10 +424,11 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// Whether the application's own assembly is inside its executable. Its location is
-        /// empty then, which is what is asked here.
+        /// empty then, which is what is asked here. Also asked by <see cref="UnattendedAlert"/>,
+        /// whose task runs a copy of the executable alone.
         /// </summary>
         [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "An empty location is the answer being looked for.")]
-        private static bool IsSingleFile() => string.IsNullOrEmpty(typeof(SelfUpdate).Assembly.Location);
+        internal static bool IsSingleFile() => string.IsNullOrEmpty(typeof(SelfUpdate).Assembly.Location);
 
         [UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "An empty location is the answer being looked for.")]
         private static string CoreLibraryLocation() => typeof(object).Assembly.Location;
