@@ -448,6 +448,9 @@
                                 VerticalScrollBarVisibility="Auto" />
                         </Border>
 
+                        <!-- What the new service does with what it started when its wrapper ends; a copy's follows its source. -->
+                        <TextBlock Margin="0,10,0,0" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.EndProcessesWithWrapper}" Visibility="{Binding EndsProcessesWithWrapper, Converter={StaticResource BoolToVisibility}}" />
+
                         <!-- Windows will not start a Disabled service: the box is unticked and greyed out while that mode is picked. -->
                         <StackPanel Margin="0,16,0,0" Visibility="{Binding IsService, Converter={StaticResource BoolToVisibility}}">
                             <CheckBox Content="{DynamicResource S.StartTheServiceAfterInstalling}" IsChecked="{Binding StartServiceAfterInstall}" IsEnabled="{Binding CanStartServiceAfterInstall}" />

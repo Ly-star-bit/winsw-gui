@@ -583,6 +583,7 @@
     <sys:String x:Key="M.Wiz.CloneRebased">“{0}”是按自己的文件夹 {1} 找文件的。副本直接写明了这个文件夹，运行的还是同一份文件：{2}。程序往那里写的东西，两个服务会共用。</sys:String>
     <sys:String x:Key="M.Wiz.RecoveryHintCopied">复制自“{0}”，每一步前的等待：{1}。一直失败就一直重复最后一步；{2} 内没再失败，就从第一步重新算。改了延迟，就换成向导自己的等待时间。</sys:String>
     <sys:String x:Key="M.Wiz.RollPatternCopied">复制自“{0}”：日期格式 {1} 每进到下一段就换一个新文件，不一定是每天。文件多于这个数时删掉最旧的；留空则全部保留。</sys:String>
+    <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">包装器一退出（哪怕是崩溃或在任务管理器里被结束），Windows 就会结束这个服务启动的所有进程，不会留下进程占着端口。旧版包装器会忽略这一项。</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">启动类型是 Disabled，Windows 不会启动被禁用的服务，所以只安装、不启动。</sys:String>
     <sys:String x:Key="M.Port.InUse">端口 {0} 已被 {1}（PID {2}）占用，程序在这个端口上监听会失败。先结束这个进程，或者换一个端口。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">品牌化 wrapper：复制为 &lt;服务ID&gt;.exe 并设置公司名</sys:String>

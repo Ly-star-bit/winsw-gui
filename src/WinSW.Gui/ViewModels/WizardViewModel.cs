@@ -64,6 +64,7 @@ namespace WinSW.Gui.ViewModels
         private string statusMessage = string.Empty;
         private bool isBusy;
         private string configPreview = string.Empty;
+        private bool endsProcessesWithWrapper;
         private bool brandWrapper;
 
         /// <summary>Set in the constructor, which knows whether this machine can run it; see <see cref="PrefersBundledWrapper"/>.</summary>
@@ -944,6 +945,16 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
+        /// The service being written ends its processes with its wrapper, as a new one does and a
+        /// copy does when its source did; the review step says so. Set with the preview.
+        /// </summary>
+        public bool EndsProcessesWithWrapper
+        {
+            get => this.endsProcessesWithWrapper;
+            private set => this.Set(ref this.endsProcessesWithWrapper, value);
+        }
+
+        /// <summary>
         /// The configuration is written next to the wrapper, named after the service ID.
         /// That is the layout <c>winsw install</c> expects and the one the dashboard
         /// resolves back from the registry.
@@ -1709,6 +1720,16 @@ namespace WinSW.Gui.ViewModels
             // no field for comes along: the account, stop settings, hooks, dependencies. What
             // it does have a field for is written over it below.
             var model = this.clone?.NewModel() ?? ServiceConfigModel.CreateNew();
+
+            // A new service ends everything it started when its wrapper ends, a crash or End task
+            // included, rather than leave the program running unsupervised on its port; see
+            // ServiceConfigModel.EndProcessesWithWrapper. A copy says what its source said. A
+            // desktop task runs the wrapper as a console, where the element does nothing.
+            if (this.clone is null && !this.desktopTask)
+            {
+                model.EndProcessesWithWrapper = true;
+            }
+
             model.Id = this.serviceId.Trim();
             model.DisplayName = NullIfBlank(this.displayName);
             model.Description = NullIfBlank(this.description);
@@ -1853,6 +1874,8 @@ namespace WinSW.Gui.ViewModels
             {
                 this.Warnings.Add(note);
             }
+
+            this.EndsProcessesWithWrapper = !this.desktopTask && model.EndProcessesWithWrapper;
 
             try
             {
