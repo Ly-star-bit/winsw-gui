@@ -10,6 +10,19 @@ using WinSW.Gui.Localization;
 
 namespace WinSW.Gui.Services
 {
+    /// <summary>What a process runs under, as <see cref="StrayProcesses.OwnerOf"/> finds it.</summary>
+    internal enum ProcessOwner
+    {
+        /// <summary>Neither a wrapper nor this console is among its ancestors.</summary>
+        None,
+
+        /// <summary>A WinSW wrapper comes first: a service's, or a desktop task's.</summary>
+        Wrapper,
+
+        /// <summary>This console comes first, with no wrapper between: a try run.</summary>
+        Console,
+    }
+
     /// <summary>One process, told apart from a later one given the same ID by its start time.</summary>
     public readonly record struct ProcessMark(int ProcessId, DateTime? StartedAt, string Name)
     {
@@ -31,7 +44,12 @@ namespace WinSW.Gui.Services
     /// Found while the service runs, or is stopping, as what an earlier run of it left: the service
     /// has a program of its own again, and this one runs beside it. See <see cref="StrayWatch"/>.
     /// </param>
-    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent, int Port = 0, bool EarlierRun = false)
+    /// <param name="TryRun">
+    /// Holding the port as part of a try run from this console's editor: named, since the service
+    /// cannot start while it runs, but stopped where it was started rather than ended from here. See
+    /// <see cref="StrayProcesses.FindPortHolder"/>.
+    /// </param>
+    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent, int Port = 0, bool EarlierRun = false, bool TryRun = false)
     {
         /// <summary>Found holding the service's port rather than as its program.</summary>
         public bool HoldsPort => this.Port != 0;
@@ -55,6 +73,16 @@ namespace WinSW.Gui.Services
                         ? format("M.Dash.StrayParent", new object?[] { parent.Name, parent.ProcessId })
                         : format("M.Dash.StrayOrphan", Array.Empty<object?>()),
                     format(this.EarlierRun ? "M.Dash.StrayEarlierRunHint" : "M.Dash.StrayHint", Array.Empty<object?>()));
+            }
+
+            // The console's own try run: where to stop it, in place of who started it, which would
+            // be this console. It is stopped where it was started, beside its output.
+            if (this.TryRun)
+            {
+                return new StrayText(
+                    format("M.Dash.PortHeldByTryRun", new object?[] { this.Port, process.Name, process.ProcessId }),
+                    format("M.Dash.PortTryRunStop", Array.Empty<object?>()),
+                    format("M.Dash.PortHint", new object?[] { serviceName }));
             }
 
             string banner = this.Parent is { } starter
@@ -235,11 +263,20 @@ namespace WinSW.Gui.Services
         /// <see cref="PortWatch"/> for when they are looked for.
         /// </summary>
         /// <remarks>
-        /// A holder under a wrapper — another service, a desktop task, a try run from this console —
-        /// is left alone, as <see cref="Find"/> leaves it: it is somebody's, and ending it from this
-        /// service's banner would be the wrong place. The kernel is never a holder to name by PID 0;
-        /// PID 4 is named, since HTTP.sys takes its ports in System's name, but is not offered for
-        /// ending, which <see cref="MayEnd"/> sees to.
+        /// <para>
+        /// A holder under a wrapper — another service, a desktop task — is left alone, as
+        /// <see cref="Find"/> leaves it: it is somebody's, and ending it from this service's banner
+        /// would be the wrong place. The kernel is never a holder to name by PID 0; PID 4 is named,
+        /// since HTTP.sys takes its ports in System's name, but is not offered for ending, which
+        /// <see cref="MayEnd"/> sees to.
+        /// </para>
+        /// <para>
+        /// A holder under this console, with no wrapper between, is a try run from the editor, which
+        /// runs the program straight under the console: forgetting to stop one before starting the
+        /// service is the likeliest way for a port to be taken. It is named, marked
+        /// <see cref="StrayFinding.TryRun"/>, with no parent — that would be this console — and is
+        /// stopped in the editor rather than ended from the banner.
+        /// </para>
         /// </remarks>
         /// <param name="ports">The machine's listeners, read once for the poll.</param>
         /// <param name="remembered">The ports the service listened on in its last run, lowest first.</param>
@@ -260,10 +297,20 @@ namespace WinSW.Gui.Services
                     if (holder <= 0
                         || holder == consoleProcessId
                         || !snapshot.TryGet(holder, out var record)
-                        || wrapperNames.Contains(record.Name)
-                        || IsOwned(snapshot, record, wrapperNames, consoleProcessId))
+                        || wrapperNames.Contains(record.Name))
                     {
                         continue;
+                    }
+
+                    var owner = OwnerOf(snapshot, record, wrapperNames, consoleProcessId);
+                    if (owner == ProcessOwner.Wrapper)
+                    {
+                        continue;
+                    }
+
+                    if (owner == ProcessOwner.Console)
+                    {
+                        return new StrayFinding(new ProcessMark(record.ProcessId, record.StartedAt, record.Name), null, port, TryRun: true);
                     }
 
                     // System's parent is Idle, and nothing is "started by Idle".
@@ -298,7 +345,15 @@ namespace WinSW.Gui.Services
         /// parent that is gone, or that started after its child — a process ID the system has
         /// since given to something else.
         /// </summary>
-        internal static bool IsOwned(ProcessSnapshot snapshot, ProcessRecord record, ISet<string> wrapperNames, int consoleProcessId)
+        internal static bool IsOwned(ProcessSnapshot snapshot, ProcessRecord record, ISet<string> wrapperNames, int consoleProcessId) =>
+            OwnerOf(snapshot, record, wrapperNames, consoleProcessId) != ProcessOwner.None;
+
+        /// <summary>
+        /// Which of a wrapper and this console comes first among the process's ancestors, if either
+        /// does: what <see cref="IsOwned"/> asks, with the answer told apart, so that a try run from
+        /// this console is not taken for what runs under a wrapper.
+        /// </summary>
+        internal static ProcessOwner OwnerOf(ProcessSnapshot snapshot, ProcessRecord record, ISet<string> wrapperNames, int consoleProcessId)
         {
             var current = record;
             for (int depth = 0; depth < 64; depth++)
@@ -307,18 +362,23 @@ namespace WinSW.Gui.Services
                     || !snapshot.TryGet(current.ParentProcessId, out var parent)
                     || (parent.StartedAt is DateTime parentStart && current.StartedAt is DateTime childStart && parentStart > childStart))
                 {
-                    return false;
+                    return ProcessOwner.None;
                 }
 
-                if (parent.ProcessId == consoleProcessId || wrapperNames.Contains(parent.Name))
+                if (parent.ProcessId == consoleProcessId)
                 {
-                    return true;
+                    return ProcessOwner.Console;
+                }
+
+                if (wrapperNames.Contains(parent.Name))
+                {
+                    return ProcessOwner.Wrapper;
                 }
 
                 current = parent;
             }
 
-            return false;
+            return ProcessOwner.None;
         }
 
         /// <summary>

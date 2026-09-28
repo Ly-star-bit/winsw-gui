@@ -699,11 +699,12 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// Asks before ending the process on the selected service's banner. Never for one of
-        /// Windows' own or the kernel, which a port can be held by as readily as by a leftover.
+        /// Windows' own or the kernel, which a port can be held by as readily as by a leftover, nor
+        /// for this console's own try run, which the editor stops.
         /// </summary>
         private void AskTerminateStray()
         {
-            if (this.selectedService is not { StrayProcess: { Process: var stray } finding } entry || !StrayProcesses.MayEnd(stray))
+            if (this.selectedService is not { StrayProcess: { Process: var stray, TryRun: false } finding } entry || !StrayProcesses.MayEnd(stray))
             {
                 return;
             }

@@ -986,8 +986,9 @@ namespace WinSW.Gui.Model
         /// <summary>
         /// The process may be offered for ending: not one of Windows' own, and not the kernel, which
         /// is what a port taken through HTTP.sys shows as held by. See <see cref="Services.StrayProcesses.MayEnd"/>.
+        /// Nor this console's own try run, which the editor stops, and which the banner points to.
         /// </summary>
-        public bool CanEndStray => this.strayProcess is { } stray && Services.StrayProcesses.MayEnd(stray.Process);
+        public bool CanEndStray => this.strayProcess is { TryRun: false } stray && Services.StrayProcesses.MayEnd(stray.Process);
 
         /// <summary>What was found: "api.exe is still running, outside the service", or "port 8000 is held by …".</summary>
         public string StrayProcessText => this.DescribeStray()?.Banner ?? string.Empty;

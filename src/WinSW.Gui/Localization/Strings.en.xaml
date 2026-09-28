@@ -534,6 +534,9 @@
     <sys:String x:Key="M.Dash.PortParent">{0} (PID {1}) is still running: if {2} comes back after being ended, that is what starts it again.</sys:String>
     <sys:String x:Key="M.Dash.PortHeldBySystem">System holds ports for HTTP.sys, on behalf of IIS or a program using HttpListener, and is not ended from here. 'netsh http show servicestate' names the program; or move the service to another port.</sys:String>
     <sys:String x:Key="M.Dash.PortHeldByWindows">{0} is part of Windows and is not ended from here: stop the Windows service that holds the port, or move this service to another port.</sys:String>
+    <!-- A port held by this console's own try run, which the editor stops rather than the banner ending it. PortHeldByTryRun: {0} the port, {1} {2} the process and its PID. -->
+    <sys:String x:Key="M.Dash.PortHeldByTryRun">Port {0} is held by this console's try run ({1}, PID {2}).</sys:String>
+    <sys:String x:Key="M.Dash.PortTryRunStop">Stop it on the Configuration page, under Try run: it is this console's own, and is not ended from here.</sys:String>
     <sys:String x:Key="M.Dash.PortHint">'{0}' listened on this port when it last ran. While something else holds it, the service fails to start, or keeps restarting.</sys:String>
     <sys:String x:Key="M.Dash.PortEndTitle">End the process holding the port?</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">{0} (PID {1}) and every process it started will be ended without a graceful shutdown, which frees port {2}. Start '{3}' afterwards.</sys:String>

@@ -523,6 +523,9 @@
     <sys:String x:Key="M.Dash.PortParent">{0}（PID {1}）仍在執行：如果 {2} 結束後又反覆出現，就是它在重新拉起。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldBySystem">System 是在替 HTTP.sys 佔用連接埠（IIS，或使用 HttpListener 的程式），無法在這裡結束。執行 netsh http show servicestate 可查出是哪個程式；或替服務換一個連接埠。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldByWindows">{0} 是 Windows 本身的處理程序，無法在這裡結束：請停止佔用這個連接埠的 Windows 服務，或替這個服務換一個連接埠。</sys:String>
+    <!-- A port held by this console's own try run, which the editor stops rather than the banner ending it. PortHeldByTryRun: {0} the port, {1} {2} the process and its PID. -->
+    <sys:String x:Key="M.Dash.PortHeldByTryRun">連接埠 {0} 被本主控台的試執行佔用（{1}，PID {2}）。</sys:String>
+    <sys:String x:Key="M.Dash.PortTryRunStop">請到「設定」頁的「試執行」中停止它：它是本主控台自己啟動的，不在這裡結束。</sys:String>
     <sys:String x:Key="M.Dash.PortHint">「{0}」上次執行時監聽的就是這個連接埠。連接埠被其他程式佔用時，服務就會啟動失敗或反覆重新啟動。</sys:String>
     <sys:String x:Key="M.Dash.PortEndTitle">結束佔用連接埠的處理程序？</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序，不做正常關閉，連接埠 {2} 隨之釋放。之後再啟動「{3}」。</sys:String>

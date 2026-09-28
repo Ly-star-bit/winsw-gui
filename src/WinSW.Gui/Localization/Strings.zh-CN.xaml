@@ -523,6 +523,9 @@
     <sys:String x:Key="M.Dash.PortParent">{0}（PID {1}）仍在运行：如果 {2} 结束后又反复出现，就是它在重新拉起。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldBySystem">System 是在替 HTTP.sys 占用端口（IIS，或用 HttpListener 的程序），不能在这里结束。运行 netsh http show servicestate 可以查到是哪个程序；或者给服务换一个端口。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldByWindows">{0} 是 Windows 自己的进程，不能在这里结束：停掉占用这个端口的 Windows 服务，或者给这个服务换一个端口。</sys:String>
+    <!-- A port held by this console's own try run, which the editor stops rather than the banner ending it. PortHeldByTryRun: {0} the port, {1} {2} the process and its PID. -->
+    <sys:String x:Key="M.Dash.PortHeldByTryRun">端口 {0} 被本控制台的试运行占用（{1}，PID {2}）。</sys:String>
+    <sys:String x:Key="M.Dash.PortTryRunStop">到“配置”页的“试运行”里停止它：它是本控制台自己启动的，不在这里结束。</sys:String>
     <sys:String x:Key="M.Dash.PortHint">“{0}”上次运行时监听的就是这个端口。端口被别的程序占着，服务就会启动失败或反复重启。</sys:String>
     <sys:String x:Key="M.Dash.PortEndTitle">结束占用端口的进程？</sys:String>
     <sys:String x:Key="M.Dash.PortEndBody">将强制结束 {0}（PID {1}）及其启动的所有进程，不做正常关闭，端口 {2} 随之释放。之后再启动“{3}”。</sys:String>

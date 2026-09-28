@@ -46,12 +46,56 @@ namespace WinSW.Gui.Tests
             Assert.Null(StrayProcesses.FindPortHolder(snapshot, Table((8000, 4312)), Port8000, Wrappers, Console));
         }
 
+        /// <summary>
+        /// A try run left running in the editor is the likeliest thing on the port: named, and marked
+        /// as the console's own, with no parent — that would be the console — and nothing to end here.
+        /// </summary>
         [Fact]
-        public void ATryRunFromThisConsoleIsItsOwn()
+        public void ATryRunFromThisConsoleIsNamedButNotOfferedForEnding()
         {
             var snapshot = Snapshot(P(Console, 1, "WinSW.Gui.exe", 0), P(4312, Console, "python.exe", 1));
 
+            var holder = StrayProcesses.FindPortHolder(snapshot, Table((8000, 4312)), Port8000, Wrappers, Console);
+
+            Assert.Equal(4312, holder?.Process.ProcessId);
+            Assert.Equal(8000, holder?.Port);
+            Assert.True(holder?.TryRun);
+            Assert.Null(holder?.Parent);
+
+            var entry = Shown(holder!.Value);
+            Assert.True(entry.HasStrayProcess);
+            Assert.False(entry.CanEndStray);
+            Assert.False(entry.CanEndStrayParent);
+        }
+
+        /// <summary>A worker the try run's program started is the try run's all the same.</summary>
+        [Fact]
+        public void WhatATryRunStartedIsTheTryRunsToo()
+        {
+            var snapshot = Snapshot(P(Console, 1, "WinSW.Gui.exe", 0), P(4312, Console, "python.exe", 1), P(4400, 4312, "python.exe", 2));
+
+            var holder = StrayProcesses.FindPortHolder(snapshot, Table((8000, 4400)), Port8000, Wrappers, Console);
+
+            Assert.Equal(4400, holder?.Process.ProcessId);
+            Assert.True(holder?.TryRun);
+        }
+
+        /// <summary>The nearest owner decides: a wrapper between the holder and this console makes it that wrapper's.</summary>
+        [Fact]
+        public void AWrapperBetweenTheHolderAndThisConsoleMakesItTheWrappers()
+        {
+            var snapshot = Snapshot(P(Console, 1, "WinSW.Gui.exe", 0), P(20, Console, "WinSW.exe", 1), P(4312, 20, "python.exe", 2));
+
             Assert.Null(StrayProcesses.FindPortHolder(snapshot, Table((8000, 4312)), Port8000, Wrappers, Console));
+        }
+
+        /// <summary>A copy started by hand is not a try run, and is offered for ending as before.</summary>
+        [Fact]
+        public void AHolderOutsideThisConsoleIsNotATryRun()
+        {
+            var snapshot = Snapshot(P(3000, 1, "cmd.exe", 0), P(4312, 3000, "python.exe", 1));
+
+            Assert.False(StrayProcesses.FindPortHolder(snapshot, Table((8000, 4312)), Port8000, Wrappers, Console)?.TryRun);
         }
 
         /// <summary>
@@ -203,6 +247,23 @@ namespace WinSW.Gui.Tests
             Assert.Equal(string.Format(CultureInfo.InvariantCulture, values["M.Dash.PortHeldByWindows"], "svchost.exe"), windows.Parent);
         }
 
+        /// <summary>A try run says whose it is and where to stop it, in place of who started it.</summary>
+        [Fact]
+        public void ATryRunOnThePortSaysWhereToStopIt()
+        {
+            var finding = new StrayFinding(Mark(4312, 1, "python.exe"), null, 8000, TryRun: true);
+
+            var zh = finding.Describe("api", FormatIn("zh-CN"));
+            Assert.Equal("端口 8000 被本控制台的试运行占用（python.exe，PID 4312）。", zh.Banner);
+            Assert.Contains("试运行", zh.Parent, StringComparison.Ordinal);
+            Assert.Contains("“api”", zh.Hint, StringComparison.Ordinal);
+
+            var values = StringDictionaries.ValuesOf("en");
+            var en = finding.Describe("api", FormatIn("en"));
+            Assert.Equal("Port 8000 is held by this console's try run (python.exe, PID 4312).", en.Banner);
+            Assert.Equal(values["M.Dash.PortTryRunStop"], en.Parent);
+        }
+
         /// <summary>The service's own program, found as it always was, keeps its own words.</summary>
         [Fact]
         public void AProgramLeftRunningKeepsItsBanner()
@@ -230,6 +291,7 @@ namespace WinSW.Gui.Tests
                 new StrayFinding(Mark(1200, 0, "svchost.exe"), null, 8000),
                 new StrayFinding(Mark(4312, 1, "server.exe"), Mark(3000, 0, "cmd.exe")),
                 new StrayFinding(Mark(4312, 1, "server.exe"), null),
+                new StrayFinding(Mark(4312, 1, "python.exe"), null, 8000, TryRun: true),
             };
 
             foreach (string code in new[] { "en", "zh-CN", "zh-TW", "ja" })
