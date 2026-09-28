@@ -8,7 +8,12 @@ namespace WinSW.Gui.Services
     /// <param name="Port">The port the configuration names.</param>
     /// <param name="ProcessName">The listening process's image name, such as <c>python.exe</c>.</param>
     /// <param name="ProcessId">Its PID, as Task Manager shows it.</param>
-    public readonly record struct PortInUse(int Port, string ProcessName, int ProcessId);
+    /// <param name="Service">
+    /// The service the process runs under, when it is the one the check was asked about (see
+    /// <see cref="PortCheck.Find"/>): its own program, which is not a process to end but a service
+    /// to stop. Null for any other holder.
+    /// </param>
+    public readonly record struct PortInUse(int Port, string ProcessName, int ProcessId, string? Service = null);
 
     /// <summary>
     /// Whether the ports a configuration names are free, asked once before it runs: on the
@@ -31,7 +36,10 @@ namespace WinSW.Gui.Services
     /// </remarks>
     public static class PortCheck
     {
-        /// <summary>Wrapper image names; none here, so that only this console counts as an owner.</summary>
+        /// <summary>
+        /// Wrapper image names; none here, so that only the one process <see cref="StrayProcesses.IsOwned"/>
+        /// is given, this console or a service's wrapper, counts as an owner.
+        /// </summary>
         private static readonly ISet<string> NoWrappers = new HashSet<string>();
 
         /// <summary>
@@ -54,11 +62,33 @@ namespace WinSW.Gui.Services
         /// This console, when its own try run is not to count: the editor's Install, which has
         /// asked for the try run to be ended already. Null to count every listener.
         /// </param>
-        public static IReadOnlyList<PortInUse> Find(IReadOnlyList<int> ports, int? consoleProcessId)
+        /// <param name="serviceName">
+        /// The installed service the configuration belongs to, when there is one: the editor's
+        /// Try run of a service's own file. A holder running under that service's wrapper is
+        /// named as the service's (see <see cref="PortInUse.Service"/>) rather than as a process
+        /// to end. Null when the configuration is no service's yet.
+        /// </param>
+        public static IReadOnlyList<PortInUse> Find(IReadOnlyList<int> ports, int? consoleProcessId, string? serviceName = null)
         {
             if (ports.Count == 0)
             {
                 return Array.Empty<PortInUse>();
+            }
+
+            // The service's wrapper as it runs now, asked of the service control manager rather
+            // than taken from the editor's entry for it, which after an Install is a copy made
+            // once and keeps the PID of that moment. Read first: a wrapper that restarts after
+            // this is not the one the snapshot finds above the holder, and the holder is named
+            // plainly, which is no worse than before.
+            (string Name, int WrapperProcessId)? service = null;
+            if (serviceName is not null)
+            {
+                using var reading = new StatusReading(withProcesses: false);
+                int wrapper = reading.Sample(serviceName).ProcessId;
+                if (wrapper > 0)
+                {
+                    service = (serviceName, wrapper);
+                }
             }
 
             // The snapshot is taken after the table, so that a listener missing from it has
@@ -68,14 +98,20 @@ namespace WinSW.Gui.Services
                 return Array.Empty<PortInUse>();
             }
 
-            return Holders(ports, table, snapshot, consoleProcessId);
+            return Holders(ports, table, snapshot, consoleProcessId, service);
         }
 
         /// <summary>
         /// <see cref="Find"/> over a table and a snapshot already read: every process listening on
         /// each port, port by port in the order given and lowest PID first.
         /// </summary>
-        internal static IReadOnlyList<PortInUse> Holders(IReadOnlyList<int> ports, PortTable table, ProcessSnapshot snapshot, int? consoleProcessId)
+        /// <param name="service">The service asked about and its wrapper's PID, as <see cref="Find"/> read them; null for none.</param>
+        internal static IReadOnlyList<PortInUse> Holders(
+            IReadOnlyList<int> ports,
+            PortTable table,
+            ProcessSnapshot snapshot,
+            int? consoleProcessId,
+            (string Name, int WrapperProcessId)? service = null)
         {
             var found = new List<PortInUse>();
             foreach (int port in ports)
@@ -95,7 +131,15 @@ namespace WinSW.Gui.Services
                         continue;
                     }
 
-                    found.Add(new PortInUse(port, record.Name, holder));
+                    // Under the service's own wrapper: the service is running, and a try run of its
+                    // file cannot have the port while it does. Asked the same way as for this
+                    // console, with the wrapper's PID as the one ancestor that counts.
+                    string? owner = service is { } asked
+                        && (holder == asked.WrapperProcessId || StrayProcesses.IsOwned(snapshot, record, NoWrappers, asked.WrapperProcessId))
+                        ? asked.Name
+                        : null;
+
+                    found.Add(new PortInUse(port, record.Name, holder, owner));
                 }
             }
 

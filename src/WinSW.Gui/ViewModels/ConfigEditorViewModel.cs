@@ -382,9 +382,15 @@ namespace WinSW.Gui.ViewModels
         /// Try run found it, a line a port; empty when nothing does. A warning, never a refusal:
         /// see <see cref="PortCheck"/>. Cleared by the next edit, which may well be the fix.
         /// </summary>
+        /// <remarks>
+        /// The service's own program, found before a try run of its file, is not a process to
+        /// end: it is the service, running, and the line says to stop that instead.
+        /// </remarks>
         public string PortWarning => string.Join(
             Environment.NewLine,
-            this.portsInUse.Select(port => Localizer.Format("M.Port.InUse", port.Port, port.ProcessName, port.ProcessId)));
+            this.portsInUse.Select(port => port.Service is { } service
+                ? Localizer.Format("M.Port.InUseByService", port.Port, port.ProcessName, port.ProcessId, service)
+                : Localizer.Format("M.Port.InUse", port.Port, port.ProcessName, port.ProcessId)));
 
         // Raw XML mode ---------------------------------------------------------
 
@@ -1098,7 +1104,8 @@ namespace WinSW.Gui.ViewModels
         /// otherwise every process on the machine is, which takes a moment on a busy server.
         /// </summary>
         /// <param name="consoleProcessId">This console, when its try run is not to count; see <see cref="PortCheck.Find"/>.</param>
-        private async Task CheckPortsAsync(int? consoleProcessId)
+        /// <param name="serviceName">The service the configuration is, whose own program is named as such; see <see cref="PortCheck.Find"/>.</param>
+        private async Task CheckPortsAsync(int? consoleProcessId, string? serviceName = null)
         {
             var model = this.Model;
             int editsBefore = this.edits;
@@ -1112,7 +1119,7 @@ namespace WinSW.Gui.ViewModels
             IReadOnlyList<PortInUse> held;
             try
             {
-                held = await Task.Run(() => PortCheck.Find(ports, consoleProcessId)).ConfigureAwait(true);
+                held = await Task.Run(() => PortCheck.Find(ports, consoleProcessId, serviceName)).ConfigureAwait(true);
             }
             catch (Exception)
             {
@@ -1406,9 +1413,10 @@ namespace WinSW.Gui.ViewModels
 
             // Looked for before the program starts, while nothing of this run can hold the port.
             // A program that cannot listen says so in words that name neither the port nor who
-            // has it — when it says anything before it exits.
+            // has it — when it says anything before it exits. For an installed service's file,
+            // the likeliest holder is that service itself, running; it is named as the service.
             var model = this.Model;
-            await this.CheckPortsAsync(consoleProcessId: null).ConfigureAwait(true);
+            await this.CheckPortsAsync(consoleProcessId: null, this.installedService?.ServiceName).ConfigureAwait(true);
             if (!ReferenceEquals(model, this.Model))
             {
                 // Another configuration was opened meanwhile; this one is no longer on screen.

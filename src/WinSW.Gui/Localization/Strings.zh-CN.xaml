@@ -603,6 +603,8 @@
     <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">包装器一退出（哪怕是崩溃或在任务管理器里被结束），Windows 就会结束这个服务启动的所有进程，不会留下进程占着端口。旧版包装器会忽略这一项。</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">启动类型是 Disabled，Windows 不会启动被禁用的服务，所以只安装、不启动。</sys:String>
     <sys:String x:Key="M.Port.InUse">端口 {0} 已被 {1}（PID {2}）占用，程序在这个端口上监听会失败。先结束这个进程，或者换一个端口。</sys:String>
+    <!-- The same, before a try run of an installed service's own file, when what holds the port is that service's program: {0} the port, {1} {2} the process and its PID, {3} the service. -->
+    <sys:String x:Key="M.Port.InUseByService">端口 {0} 被服务“{3}”自己的程序 {1}（PID {2}）占用，服务正在运行。试运行会监听失败：先停止这个服务再试运行。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">品牌化 wrapper：复制为 &lt;服务ID&gt;.exe 并设置公司名</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">公司名</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">注册为：</sys:String>

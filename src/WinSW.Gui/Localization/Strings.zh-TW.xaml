@@ -603,6 +603,8 @@
     <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">包裝器一結束（即使是當機或在工作管理員中被結束），Windows 就會結束這個服務啟動的所有處理程序，不會留下處理程序佔用連接埠。舊版包裝器會忽略這一項。</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">啟動類型是 Disabled，Windows 不會啟動已停用的服務，所以只安裝、不啟動。</sys:String>
     <sys:String x:Key="M.Port.InUse">連接埠 {0} 已被 {1}（PID {2}）佔用，程式在這個連接埠上監聽會失敗。請先結束該處理程序，或改用其他連接埠。</sys:String>
+    <!-- The same, before a try run of an installed service's own file, when what holds the port is that service's program: {0} the port, {1} {2} the process and its PID, {3} the service. -->
+    <sys:String x:Key="M.Port.InUseByService">連接埠 {0} 被服務「{3}」自己的程式 {1}（PID {2}）佔用，服務正在執行。試執行會監聽失敗：請先停止這個服務再試執行。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">品牌化 wrapper：複製為 &lt;服務ID&gt;.exe 並設定公司名稱</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">公司名稱</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">註冊為：</sys:String>

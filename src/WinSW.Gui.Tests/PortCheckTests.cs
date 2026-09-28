@@ -112,6 +112,48 @@ namespace WinSW.Gui.Tests
             Assert.Equal(4400, Assert.Single(PortCheck.Holders(new[] { 8000 }, table, snapshot, consoleProcessId: null)).ProcessId);
         }
 
+        /// <summary>
+        /// Before a try run of an installed service's file, that service's own program, running,
+        /// is named as the service's: it is not a process to end but a service to stop. Anything
+        /// else holding a port, another service's program included, is named as before.
+        /// </summary>
+        [Fact]
+        public void TheServicesOwnProgramIsNamedAsTheService()
+        {
+            var snapshot = Snapshot(
+                P(20, 1, "WinSW.exe"),
+                P(30, 20, "cmd.exe"),
+                P(4312, 30, "python.exe"),
+                P(40, 1, "WinSW.exe"),
+                P(4400, 40, "python.exe"));
+            var table = Table((8000, 4312), (8001, 4400));
+
+            var held = PortCheck.Holders(new[] { 8000, 8001 }, table, snapshot, consoleProcessId: null, service: ("api", 20));
+
+            Assert.Equal(
+                new[] { new PortInUse(8000, "python.exe", 4312, "api"), new PortInUse(8001, "python.exe", 4400) },
+                held);
+
+            // Asked about no service, or about one whose wrapper is not above the holder.
+            Assert.All(PortCheck.Holders(new[] { 8000 }, table, snapshot, consoleProcessId: null), p => Assert.Null(p.Service));
+            Assert.All(PortCheck.Holders(new[] { 8000 }, table, snapshot, consoleProcessId: null, service: ("api", 40)), p => Assert.Null(p.Service));
+        }
+
+        /// <summary>
+        /// A wrapper whose PID now belongs to a process started after the holder is not its
+        /// ancestor: the service restarted, and the ID came round again.
+        /// </summary>
+        [Fact]
+        public void AReusedWrapperPidIsNotTheServices()
+        {
+            // The holder's parent chain stops at 20, which started after it.
+            var snapshot = Snapshot(P(4312, 20, "python.exe"), new ProcessRecord(20, 1, "WinSW.exe", T0.AddHours(1), TimeSpan.Zero, 0, 0));
+
+            var held = PortCheck.Holders(new[] { 8000 }, Table((8000, 4312)), snapshot, consoleProcessId: null, service: ("api", 20));
+
+            Assert.Null(Assert.Single(held).Service);
+        }
+
         /// <summary>Every process listening on the port is named, port by port, lowest PID first.</summary>
         [Fact]
         public void EveryHolderIsNamedInOrder()

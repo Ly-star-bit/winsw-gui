@@ -603,6 +603,8 @@
     <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">ラッパーが終了すると (クラッシュやタスク マネージャーでの終了を含む)、このサービスが起動したすべてのプロセスを Windows が終了するため、ポートを使い続けるプロセスは残りません。古いラッパーはこの設定を無視します。</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">スタートアップの種類が Disabled です。Windows は無効なサービスを開始しないため、インストールだけ行い、開始はしません。</sys:String>
     <sys:String x:Key="M.Port.InUse">ポート {0} は既に {1}（PID {2}）が使用しているため、プログラムはこのポートで待ち受けできません。そのプロセスを終了するか、別のポートを使ってください。</sys:String>
+    <!-- The same, before a try run of an installed service's own file, when what holds the port is that service's program: {0} the port, {1} {2} the process and its PID, {3} the service. -->
+    <sys:String x:Key="M.Port.InUseByService">ポート {0} はサービス '{3}' 自身のプログラム {1}（PID {2}）が使用中で、サービスは実行中です。このままでは試行実行はこのポートで待ち受けできません。先にサービスを停止してください。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">ラッパーをブランド化: &lt;サービス ID&gt;.exe としてコピーし、会社名を設定</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">会社名</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">登録名:</sys:String>

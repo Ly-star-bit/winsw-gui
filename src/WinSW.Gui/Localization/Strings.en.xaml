@@ -614,6 +614,8 @@
     <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">When the wrapper exits, even by crashing or being ended in Task Manager, Windows ends every process the service started, so nothing is left behind holding the port. An older wrapper ignores this.</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">The start mode is Disabled, and Windows does not start a disabled service: it is installed without being started.</sys:String>
     <sys:String x:Key="M.Port.InUse">Port {0} is already in use by {1} (PID {2}), so the program will fail to listen on it. End that process, or give the program another port.</sys:String>
+    <!-- The same, before a try run of an installed service's own file, when what holds the port is that service's program: {0} the port, {1} {2} the process and its PID, {3} the service. -->
+    <sys:String x:Key="M.Port.InUseByService">Port {0} is held by {1} (PID {2}), the program of the service '{3}', which is running. The try run will fail to listen on it: stop the service first.</sys:String>
     <sys:String x:Key="M.Wiz.Brand">Brand the wrapper: copy it as &lt;service id&gt;.exe with a custom company name</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">Company name</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">Registered as:</sys:String>
