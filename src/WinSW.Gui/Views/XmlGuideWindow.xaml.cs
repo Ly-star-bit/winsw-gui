@@ -19,9 +19,11 @@ namespace WinSW.Gui.Views
     /// </summary>
     public partial class XmlGuideWindow
     {
+        private static readonly TimeSpan ToastDuration = TimeSpan.FromSeconds(1.8);
+
         private static XmlGuideWindow? open;
 
-        private readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(1.8) };
+        private readonly DispatcherTimer toastTimer = new() { Interval = ToastDuration };
         private IReadOnlyList<GuideHeading> headings = Array.Empty<GuideHeading>();
         private string? currentXml;
         private bool resizeBorderAttached;
@@ -118,8 +120,23 @@ namespace WinSW.Gui.Views
         private void OnCopyAll(object sender, RoutedEventArgs e) =>
             this.CopyAndReport(XmlGuide.Markdown, "G.CopiedGuide");
 
-        private void OnCopyPrompt(object sender, RoutedEventArgs e) =>
-            this.CopyAndReport(XmlGuide.BuildPrompt(this.currentXml), "G.CopiedPrompt");
+        // The configuration goes into the prompt with its secrets masked. The toast says so and
+        // stays up long enough to be read, so ******** in the assistant's answer is no surprise.
+        private void OnCopyPrompt(object sender, RoutedEventArgs e)
+        {
+            string prompt = XmlGuide.BuildPrompt(this.currentXml, out var masked);
+            if (masked.Count == 0)
+            {
+                this.CopyAndReport(prompt, "G.CopiedPrompt");
+                return;
+            }
+
+            this.ShowToast(
+                SystemShell.TryCopy(prompt)
+                    ? Localizer.Format("G.CopiedPromptMasked", prompt.Length, masked.Count)
+                    : Localizer.Get("G.CopyFailed"),
+                TimeSpan.FromSeconds(4));
+        }
 
         private void OnOpenOnline(object sender, RoutedEventArgs e) => SystemShell.OpenUrl(XmlGuide.OnlineUrl);
 
@@ -152,11 +169,12 @@ namespace WinSW.Gui.Views
                 : Localizer.Get("G.CopyFailed"));
         }
 
-        private void ShowToast(string message)
+        private void ShowToast(string message, TimeSpan? duration = null)
         {
             this.ToastText.Text = message;
             this.Toast.BeginAnimation(OpacityProperty, Fade(1, 140));
             this.toastTimer.Stop();
+            this.toastTimer.Interval = duration ?? ToastDuration;
             this.toastTimer.Start();
         }
 

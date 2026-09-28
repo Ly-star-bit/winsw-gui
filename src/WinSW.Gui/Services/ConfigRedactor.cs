@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -10,10 +11,11 @@ namespace WinSW.Gui.Services
     /// </summary>
     /// <remarks>
     /// <para>
-    /// A diagnostics bundle exists to be handed to somebody else, and a WinSW configuration
-    /// is allowed to hold the password of the account the service runs as, the credentials of
-    /// a <c>&lt;download&gt;</c>, and whatever a <c>&lt;env&gt;</c> entry was given. Sending
-    /// the file verbatim publishes all of it.
+    /// A diagnostics bundle exists to be handed to somebody else, and so does the XML guide's
+    /// AI prompt, which goes to a third-party assistant. A WinSW configuration is allowed to
+    /// hold the password of the account the service runs as, the credentials of a
+    /// <c>&lt;download&gt;</c>, and whatever a <c>&lt;env&gt;</c> entry was given. Sending the
+    /// file verbatim publishes all of it.
     /// </para>
     /// <para>
     /// The redaction works on the XML rather than on <see cref="Model.ServiceConfigModel"/>
@@ -95,8 +97,158 @@ namespace WinSW.Gui.Services
         /// </returns>
         public static string Redact(string xml, out IReadOnlyList<string> removed)
         {
+            if (TryRedact(xml, out removed, out var error) is { } redacted)
+            {
+                return redacted;
+            }
+
+            // Only where it failed, never what it read there: an XmlException message can
+            // quote the text that confused the parser, and this code exists precisely
+            // because that text may be a password.
+            removed = new[] { "(whole file: it does not parse)" };
+            return "<!-- The configuration could not be parsed, so it could not be checked for\n"
+                + "     secrets and has been left out of this bundle. Attach it by hand if\n"
+                + "     it holds nothing sensitive.\n\n"
+                + $"     The parser stopped at line {error!.LineNumber}, position {error.LinePosition}. -->";
+        }
+
+        /// <summary>
+        /// Returns <paramref name="xml"/> with its secrets masked, or null when it does not
+        /// parse, for a caller that would rather leave the configuration out than explain why.
+        /// </summary>
+        /// <param name="xml">The configuration file's text.</param>
+        /// <param name="removed">What was masked, as <see cref="Redact"/> reports it; empty when the text does not parse.</param>
+        public static string? TryRedact(string xml, out IReadOnlyList<string> removed) =>
+            TryRedact(xml, out removed, out _);
+
+        /// <summary>
+        /// <paramref name="earlier"/> when <paramref name="pasted"/> is nothing but the mask and
+        /// there is a real earlier value to give back; otherwise <paramref name="pasted"/> as it is.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// The way back from an assistant: the configuration went into the prompt masked, and
+        /// the answer comes back with the mask where each secret was. Applied as written, the
+        /// answer would set the service account's password to eight asterisks. These methods
+        /// give each masked value back from the configuration the answer replaces.
+        /// </para>
+        /// <para>
+        /// Which earlier value belongs to which place is the caller's to decide (it knows the
+        /// fields); what these methods decide is how much of the value was the secret. A mask
+        /// that has nothing to be given back from stays a mask, for the caller to count.
+        /// </para>
+        /// </remarks>
+        [return: NotNullIfNotNull(nameof(pasted))]
+        public static string? Unmask(string? pasted, string? earlier) =>
+            pasted?.Trim() == Mask && !string.IsNullOrEmpty(earlier) && !earlier.Contains(Mask, StringComparison.Ordinal)
+                ? earlier
+                : pasted;
+
+        /// <summary>
+        /// <paramref name="pasted"/> with the <c>user:password@</c> of <paramref name="earlier"/>
+        /// back in place of the mask, when both name the same scheme, host and port.
+        /// </summary>
+        /// <remarks>
+        /// Only in front of the same host: credentials go back to the server they were for, never
+        /// to another address the answer put in the same place. The path may differ.
+        /// </remarks>
+        [return: NotNullIfNotNull(nameof(pasted))]
+        public static string? UnmaskUrl(string? pasted, string? earlier)
+        {
+            if (pasted is null || earlier is null)
+            {
+                return pasted;
+            }
+
+            string masked = "//" + Mask + "@";
+            int at = pasted.IndexOf(masked, StringComparison.Ordinal);
+            var credentials = UserInfo.Match(earlier);
+            if (at < 0 || !credentials.Success || credentials.Value.Contains(Mask, StringComparison.Ordinal))
+            {
+                return pasted;
+            }
+
+            string earlierMasked = StripUserInfo(earlier) ?? earlier;
+            if (!string.Equals(Authority(pasted), Authority(earlierMasked), StringComparison.OrdinalIgnoreCase))
+            {
+                return pasted;
+            }
+
+            return pasted.Substring(0, at + 2) + credentials.Value + pasted.Substring(at + masked.Length);
+        }
+
+        /// <summary>
+        /// <paramref name="pasted"/> with each argument masked as <c>-Dpassword=********</c> given
+        /// back the value the same argument has in <paramref name="earlier"/>.
+        /// </summary>
+        /// <remarks>
+        /// Argument by argument rather than the whole line: the line is where an assistant is
+        /// most likely to have changed something, and that change is what was asked for. The
+        /// argument is known by everything in front of its value (<c>-Ddb.password=</c>, not
+        /// just <c>password=</c>), so two passwords on one line cannot swap; when the same
+        /// argument appears twice, the values go back in order.
+        /// </remarks>
+        [return: NotNullIfNotNull(nameof(pasted))]
+        public static string? UnmaskCommandLine(string? pasted, string? earlier)
+        {
+            if (pasted is null || earlier is null || !pasted.Contains(Mask, StringComparison.Ordinal))
+            {
+                return pasted;
+            }
+
+            var values = new Dictionary<string, Queue<string>>(StringComparer.Ordinal);
+            foreach (Match match in CommandLineSecret.Matches(earlier))
+            {
+                string key = ArgumentKey(earlier, match);
+                if (!values.TryGetValue(key, out var queue))
+                {
+                    values[key] = queue = new Queue<string>();
+                }
+
+                queue.Enqueue(match.Groups["value"].Value);
+            }
+
+            return CommandLineSecret.Replace(pasted, match =>
+            {
+                if (match.Groups["value"].Value.Trim('"', '\'') != Mask
+                    || !values.TryGetValue(ArgumentKey(pasted, match), out var queue)
+                    || queue.Count == 0)
+                {
+                    return match.Value;
+                }
+
+                string value = queue.Dequeue();
+                return value.Contains(Mask, StringComparison.Ordinal) ? match.Value : match.Groups["name"].Value + value;
+            });
+        }
+
+        /// <summary>
+        /// Masks the <c>user:password@</c> of a URL the way <see cref="Redact"/> does, so a URL
+        /// from the form and the same URL from a masked answer can be compared.
+        /// </summary>
+        [return: NotNullIfNotNull(nameof(value))]
+        public static string? MaskUrl(string? value) =>
+            value is null ? null : StripUserInfo(value) ?? value;
+
+        /// <summary>How many times the mask appears in <paramref name="value"/>.</summary>
+        public static int CountMasks(string? value)
+        {
+            int count = 0;
+            int at = value?.IndexOf(Mask, StringComparison.Ordinal) ?? -1;
+            while (at >= 0)
+            {
+                count++;
+                at = value!.IndexOf(Mask, at + Mask.Length, StringComparison.Ordinal);
+            }
+
+            return count;
+        }
+
+        private static string? TryRedact(string xml, out IReadOnlyList<string> removed, out XmlException? error)
+        {
             var report = new List<string>();
             removed = report;
+            error = null;
 
             var document = new XmlDocument { PreserveWhitespace = true };
             try
@@ -105,14 +257,8 @@ namespace WinSW.Gui.Services
             }
             catch (XmlException e)
             {
-                // Only where it failed, never what it read there: an XmlException message can
-                // quote the text that confused the parser, and this code exists precisely
-                // because that text may be a password.
-                report.Add("(whole file: it does not parse)");
-                return "<!-- The configuration could not be parsed, so it could not be checked for\n"
-                    + "     secrets and has been left out of this bundle. Attach it by hand if\n"
-                    + "     it holds nothing sensitive.\n\n"
-                    + $"     The parser stopped at line {e.LineNumber}, position {e.LinePosition}. -->";
+                error = e;
+                return null;
             }
 
             if (document.DocumentElement is { } root)
@@ -206,6 +352,38 @@ namespace WinSW.Gui.Services
             }
 
             return CommandLineSecret.Replace(value, m => m.Groups["name"].Value + Mask);
+        }
+
+        /// <summary>
+        /// A secret argument's name as it stands on its command line: the argument from its
+        /// first character up to its value, spaces closed up and case ignored.
+        /// </summary>
+        private static string ArgumentKey(string line, Match match)
+        {
+            int start = match.Index;
+            while (start > 0 && !char.IsWhiteSpace(line[start - 1]))
+            {
+                start--;
+            }
+
+            string name = line.Substring(start, match.Groups["value"].Index - start);
+            return string.Join(" ", name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+        }
+
+        /// <summary>
+        /// A URL up to the end of its host and port, <c>http://host:8080</c>, or the whole of
+        /// it when it has no <c>//</c>.
+        /// </summary>
+        private static string Authority(string url)
+        {
+            int start = url.IndexOf("//", StringComparison.Ordinal);
+            if (start < 0)
+            {
+                return url;
+            }
+
+            int end = url.IndexOfAny(new[] { '/', '?', '#' }, start + 2);
+            return end < 0 ? url : url.Substring(0, end);
         }
 
         /// <summary>Removes <c>user:password@</c> from a URL, or null if there is none.</summary>

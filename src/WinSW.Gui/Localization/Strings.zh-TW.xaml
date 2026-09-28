@@ -455,6 +455,8 @@
     <sys:String x:Key="M.Editor.ApplyXml">套用</sys:String>
     <sys:String x:Key="M.Editor.XmlApplied">XML 已套用到表單，儲存後寫入檔案。</sys:String>
     <sys:String x:Key="M.Editor.XmlInvalid">XML 無法套用：{0}</sys:String>
+    <sys:String x:Key="M.Editor.XmlAppliedMaskKept">XML 已套用到表單，其中 {0} 處 ******** 沿用了表單中原本的值。儲存後寫入檔案。</sys:String>
+    <sys:String x:Key="M.Editor.XmlAppliedMaskLeft">XML 已套用到表單，但還有 {0} 處值是 ********，表單中沒有原值可以沿用。請在 XML 預覽裡找到它們，儲存前在表單或「編輯 XML」裡填上真實的值。</sys:String>
     <sys:String x:Key="M.History.Button">歷史版本</sys:String>
     <sys:String x:Key="M.History.Tip">這個檔案的早期版本：每次從本主控台儲存前自動留一份，保留最近 20 份。選一個可以先看它與目前檔案的差別，再從那裡還原。</sys:String>
     <sys:String x:Key="M.History.None">還沒有早期版本</sys:String>
@@ -601,7 +603,7 @@
     <sys:String x:Key="G.Subtitle">把這份規範交給 AI，讓它依你的需求產生設定檔。</sys:String>
     <sys:String x:Key="G.CopyAll">複製全文</sys:String>
     <sys:String x:Key="G.CopyPrompt">複製為 AI 提示詞</sys:String>
-    <sys:String x:Key="G.CopyPromptHint">複製規範 + 編輯器中目前的設定 + 任務說明，貼給 AI 就能直接拿到寫好的 XML。</sys:String>
+    <sys:String x:Key="G.CopyPromptHint">複製規範 + 編輯器中目前的設定 + 任務說明，貼給 AI 就能直接拿到寫好的 XML。設定裡的密碼等敏感值會換成 ********；把 AI 的回答貼到「編輯 XML」裡套用，編輯器會自動填回原值。</sys:String>
     <sys:String x:Key="G.Online">線上文件</sys:String>
     <sys:String x:Key="G.SearchToc">搜尋章節…</sys:String>
     <sys:String x:Key="G.CopyCode">複製</sys:String>
@@ -617,6 +619,8 @@
     <sys:String x:Key="G.Prompt.Task">以上是 WinSW 3.x 設定檔的完整規範。請嚴格依照它，為下面描述的程式產生一份完整的 &lt;service&gt; XML 文件。只輸出 XML，然後附一段簡短的自我檢查，逐條核對第 9 節的檢查清單。</sys:String>
     <sys:String x:Key="G.Prompt.Current">這是我目前的設定，請在它的基礎上修改，不要從零重寫：</sys:String>
     <sys:String x:Key="G.Prompt.Describe">我的程式：&#10;  - 是什麼：&#10;  - 命令列：&#10;  - 安裝目錄：&#10;  - 執行帳戶：&#10;  - 啟動類型：&#10;  - 當機後：&#10;  - 日誌：&#10;  - 其他需求：</sys:String>
+    <sys:String x:Key="G.CopiedPromptMasked">提示詞已複製（{0} 個字元），其中 {1} 處密碼等敏感值已換成 ********</sys:String>
+    <sys:String x:Key="G.Prompt.Masked">顯示為 ******** 的是傳送前隱去的密碼等敏感值。請在回答裡原樣保留每一個 ********，位置不變，不要替它們編造值。</sys:String>
 
     <sys:String x:Key="M.Wiz.UseBundled">使用本程式內建的 WinSW</sys:String>
     <sys:String x:Key="M.Wiz.BundledHint">本程式內建了 WinSW {0}，安裝時會寫入下面的安裝目錄。不用下載，也不用去找檔案。</sys:String>

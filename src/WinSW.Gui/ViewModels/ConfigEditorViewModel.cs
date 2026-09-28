@@ -1221,12 +1221,19 @@ namespace WinSW.Gui.ViewModels
                 // same, and must still be written as "none" rather than as nothing.
                 replacement.KeepDeclaredFailureActions(this.Model);
 
+                // An assistant's answer to "Copy as AI prompt" comes back with ******** where
+                // the prompt had a secret masked. Where the form still has the real value, it
+                // stays: applied as written, the answer would set the password to the mask.
+                var (kept, left) = replacement.KeepMaskedValues(this.Model);
+
                 this.Detach(this.Model);
                 this.Attach(replacement);
                 this.Model = replacement;
                 this.IsDirty = true;
                 this.IsXmlEditing = false;
-                this.StatusMessage = Localizer.Get("M.Editor.XmlApplied");
+                this.StatusMessage = left > 0 ? Localizer.Format("M.Editor.XmlAppliedMaskLeft", left)
+                    : kept > 0 ? Localizer.Format("M.Editor.XmlAppliedMaskKept", kept)
+                    : Localizer.Get("M.Editor.XmlApplied");
                 this.Recompute();
             }
             catch (InvalidDataException e)

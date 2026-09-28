@@ -118,10 +118,11 @@
                         VerticalScrollBarVisibility="Auto"
                         HorizontalScrollBarVisibility="Disabled" />
 
-                    <!-- Transient confirmation for the copy buttons. -->
+                    <!-- Transient confirmation for the copy buttons. It wraps rather than clips: the
+                         note about masked secrets is wider than the narrowest document column. -->
                     <Border
                         x:Name="Toast"
-                        Margin="0,0,0,22"
+                        Margin="24,0,24,22"
                         Padding="16,9"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Bottom"
@@ -129,7 +130,7 @@
                         CornerRadius="18"
                         Opacity="0"
                         IsHitTestVisible="False">
-                        <TextBlock x:Name="ToastText" FontWeight="SemiBold" Foreground="White" />
+                        <TextBlock x:Name="ToastText" FontWeight="SemiBold" Foreground="White" TextAlignment="Center" TextWrapping="Wrap" />
                     </Border>
                 </Grid>
             </Border>

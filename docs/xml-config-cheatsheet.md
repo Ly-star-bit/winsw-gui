@@ -74,7 +74,7 @@ log files are named after the configuration (`myapp.xml` → `myapp.out.log`).
 | Case sensitivity | Element and attribute names are matched with XPath, i.e. **case-sensitively**. `<delayedautostart>` does nothing; `<delayedAutoStart>` works. See the exact spelling of every name in section 4. |
 | Unknown elements | Ignored without a warning. A typo therefore fails silently — this is the single most common mistake. |
 | `%VAR%` expansion | Every element's text and every `<env value="…">` is passed through Windows environment-variable expansion. Undefined variables are left as-is. There is no escape for a literal `%`. |
-| Injected variables | `%BASE%` — folder holding the wrapper executable. `%SERVICE_ID%` and `%WINSW_SERVICE_ID%` — the value of `<id>`. `%WINSW_EXECUTABLE%` — full path of the wrapper executable. |
+| Injected variables | `%BASE%` — folder holding the configuration file, wherever the wrapper executable is. `%SERVICE_ID%` and `%WINSW_SERVICE_ID%` — the value of `<id>`. `%WINSW_EXECUTABLE%` — full path of the wrapper executable. |
 | Relative paths | Resolved against the working directory, which defaults to the folder holding the configuration file. Prefer `%BASE%\…` over bare relative paths. |
 | Booleans | Parsed by .NET `bool.Parse`: only `true` / `false` (any casing). `1`, `0`, `yes`, `on` throw. |
 | Durations | Integer + optional unit suffix: `ms`, `sec`, `secs`, `min`, `mins`, `hr`, `hrs`, `hour`, `hours`, `day`, `days`. Space before the unit is optional. No suffix means **milliseconds**. Fractions (`1.5 min`) are rejected — write `90 sec`. |
@@ -95,7 +95,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `name` | ? | string | *empty* | Display name shown in services.msc. May contain spaces. |
 | `description` | ? | string | *empty* | Description shown in services.msc. |
 | `startmode` | ? | `Automatic` \| `Manual` \| `Disabled` | `Automatic` | Case-insensitive. `Disabled` keeps the service from starting at all, the plainest way to park one that keeps failing. `Boot` and `System` parse too, but they are for drivers: Windows refuses them for the service the wrapper installs, with error 87, at install and at refresh. |
-| `delayedAutoStart` | ? | bool | `false` | Only meaningful with `startmode` `Automatic`. |
+| `delayedAutoStart` | ? | bool | `false` | Only meaningful with `startmode` `Automatic`. `refresh` applies `false` too, so removing the element turns delayed start off; a wrapper older than the one the console bundles only ever turns it on. |
 | `depend` | * | string | — | Service **id** (not display name) that must start first. One element per dependency. |
 | `serviceaccount` | ? | element | LocalSystem | See section 6. |
 | `onfailure` | * | element | — | See section 7. |
@@ -104,9 +104,25 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `preshutdown` | ? | bool | `false` | Register for pre-shutdown notification, giving the service extra time at system shutdown. |
 | `preshutdownTimeout` | ? | duration | system default (3 min) | Only used with `preshutdown`. |
 
-> Elements in this group are applied by `install` / `refresh`. Editing them and merely
-> restarting the service changes nothing — run `winsw refresh myapp.xml` (or *Save & apply*
-> in the console) afterwards.
+> `install` writes the elements in this group into the service's Windows configuration, and
+> `refresh` writes them again after an edit — all but `id` and `serviceaccount` (see below).
+> Restarting the service alone changes nothing, so run `winsw refresh myapp.xml` (or
+> *Save & apply* in the console) after editing them. `preshutdown` is the exception: the
+> wrapper registers for it each time the service starts, so a restart is what applies it.
+
+`refresh` writes what the file says. It does not undo what the file has stopped saying:
+
+- `<serviceaccount>`: refresh never changes the account or its password. Only `install` sets
+  them, so uninstall and install again (or change the account in services.msc).
+- `<onfailure>`: with none left in the file, the service keeps the failure actions it has, and
+  `<resetfailure>` is only written together with them. To clear them, write
+  `<onfailure action="none" />` (section 7).
+- `<depend>`: with none left in the file, the service keeps the dependencies it has. Removing
+  some of them works.
+- `<securityDescriptor>`, `<preshutdownTimeout>`: removing the element leaves the service with
+  the value it has.
+- Where the wrapper and the configuration file are: the service keeps the paths `install`
+  recorded, so moving either means installing again.
 
 ### Process
 
@@ -124,7 +140,7 @@ Cardinality: `1` required once, `?` optional once, `*` repeatable.
 | `proxy` | ? | text + attributes | — | `<proxy noProxy="localhost,.corp" java="true">http://proxy.example.com:8080</proxy>`. Sets `HTTP_PROXY`, `HTTPS_PROXY` and `NO_PROXY` for the child process. `java="true"` also puts `-Dhttp.proxyHost` and its companions in front of `JAVA_TOOL_OPTIONS`, since the JVM ignores the variables. The scheme is required. An `env` entry of the same name wins. |
 | `download` | * | attributes | — | See section 8. |
 | `sharedDirectoryMapping` | ? | element | — | Maps UNC paths to drive letters before start. `<map label="N:" uncpath="\\server\share" />`, repeatable. Both attributes required. |
-| `autoRefresh` | ? | bool | `true` | Re-applies install-time settings from the XML whenever the service starts, stops or restarts. |
+| `autoRefresh` | ? | bool | `true` | When `true`, `winsw start`, `stop`, `restart` and `restart!` run from the command line — as the console's Start, Stop and Restart buttons do — first `refresh` the service if the file was saved after the service was last configured. Nothing is refreshed when Windows starts the service itself: at boot, from services.msc or `sc start`, or for an `<onfailure>` restart. The wrapper then only writes a warning, so run `refresh` (the console's *Save & apply*) after an edit. |
 
 ### Stopping
 
@@ -177,7 +193,7 @@ The mode itself lives on `<log mode="…">` (the legacy spelling `<logmode>` sti
 | `append` *(default)* | Append forever to `<logname>.out.log` / `.err.log`. Grows without bound. | — |
 | `reset` | Truncate both files at every start. | — |
 | `none` | Discard output; no files created. | — |
-| `roll` | Like `append`, plus the previous file is moved to `*.old.log` at start. | — |
+| `roll` | Like `append`, but at every start the previous files are renamed to `<logname>.out.log.old` and `<logname>.err.log.old`, replacing the ones before. | — |
 | `roll-by-size` | Roll to `myapp.1.out.log`, `myapp.2.out.log`… once the file exceeds a size. | `sizeThreshold` (KB, default `10240`), `keepFiles` (default `8`) |
 | `roll-by-time` | One file per period, named by a timestamp pattern. | `pattern` **(required)**, `period` (days, default `1`), `keepFiles` (default: keep everything) |
 | `roll-by-size-time` | Roll on size, name by timestamp, optionally also roll at a fixed clock time and zip old files. | `sizeThreshold` (KB, default `10240`), `pattern` **(required)**, `autoRollAtTime` (`HH:mm:ss`), `zipOlderThanNumDays` (int), `zipDateFormat` (default `yyyyMM`) |
@@ -329,7 +345,8 @@ transfer on `304 Not Modified`.
 1. Root element is `<service>`; the document is well-formed XML.
 2. `<id>` is unique on the machine and contains no spaces.
 3. `<executable>` is an absolute path (or `%BASE%`-based), and the file exists.
-4. Every path that lives inside the installation folder is written as `%BASE%\…`.
+4. Every path inside the folder that holds the configuration file is written as `%BASE%\…`;
+   anything elsewhere is an absolute path.
 5. `&`, `<`, `>` inside `<arguments>` are escaped.
 6. Element names match section 4 **exactly**, including camelCase
    (`delayedAutoStart`, `preshutdownTimeout`, `securityDescriptor`, `autoRefresh`,
@@ -342,6 +359,8 @@ transfer on `304 Not Modified`.
 11. `<depend>` names service ids, not display names.
 12. A `<serviceaccount>` with a password is only used on a file with restricted NTFS ACLs.
 13. Install-time settings are applied with `winsw refresh` after an edit, not just a restart.
+    A changed `<serviceaccount>` needs a reinstall, and removing the last `<onfailure>` or
+    `<depend>` needs what section 4 describes.
 
 ---
 

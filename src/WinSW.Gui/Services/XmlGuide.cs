@@ -42,22 +42,57 @@ namespace WinSW.Gui.Services
         /// The whole specification plus the instructions that turn it into a prompt: paste
         /// the result into an assistant, describe the program, and get a configuration back.
         /// </summary>
-        public static string BuildPrompt(string? currentXml)
+        public static string BuildPrompt(string? currentXml) => BuildPrompt(currentXml, out _);
+
+        /// <summary>
+        /// The prompt, and what had to be masked in the configuration to send it.
+        /// </summary>
+        /// <param name="currentXml">The configuration being edited, which goes in with its secrets masked.</param>
+        /// <param name="masked">What was masked in it, as <see cref="ConfigRedactor.Redact"/> reports it.</param>
+        public static string BuildPrompt(string? currentXml, out IReadOnlyList<string> masked)
         {
             var builder = new StringBuilder(Markdown.TrimEnd());
 
             builder.Append("\n\n---\n\n");
             builder.Append(Localizer.Get("G.Prompt.Task")).Append("\n\n");
 
-            if (!string.IsNullOrWhiteSpace(currentXml))
+            if (ConfigurationForPrompt(currentXml, out masked) is { } configuration)
             {
                 builder.Append(Localizer.Get("G.Prompt.Current")).Append("\n\n```xml\n");
-                builder.Append(currentXml.Trim()).Append("\n```\n\n");
+                builder.Append(configuration).Append("\n```\n\n");
+
+                // The mask is only any use on the way back if the answer keeps it where it was:
+                // the editor gives the real value back to whatever still reads ********.
+                if (masked.Count > 0)
+                {
+                    builder.Append(Localizer.Get("G.Prompt.Masked")).Append("\n\n");
+                }
             }
 
             builder.Append(Localizer.Get("G.Prompt.Describe")).Append('\n');
 
             return builder.ToString();
+        }
+
+        /// <summary>
+        /// The configuration as it may go into a prompt, or null when there is none to include.
+        /// </summary>
+        /// <remarks>
+        /// The prompt is pasted into a third-party assistant, so the configuration goes through
+        /// the same redaction as a diagnostics bundle: the service account's password, download
+        /// credentials, <c>user:password@</c> in a URL and secret-looking variables and
+        /// arguments are masked. Text that is not XML at all — the preview's "could not be
+        /// rendered" note — is left out rather than passed on unread.
+        /// </remarks>
+        internal static string? ConfigurationForPrompt(string? currentXml, out IReadOnlyList<string> masked)
+        {
+            masked = Array.Empty<string>();
+            if (string.IsNullOrWhiteSpace(currentXml))
+            {
+                return null;
+            }
+
+            return ConfigRedactor.TryRedact(currentXml, out masked)?.Trim();
         }
 
         private static string ResourceFor(string languageCode) =>

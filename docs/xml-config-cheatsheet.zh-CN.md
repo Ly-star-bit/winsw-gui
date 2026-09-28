@@ -71,7 +71,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | 大小写 | 元素名和属性名用 XPath 匹配，**区分大小写**。`<delayedautostart>` 不起作用，`<delayedAutoStart>` 才对。准确拼写见第 4 节。 |
 | 未知元素 | 直接忽略，不报错。所以拼错元素名是静默失效的 —— 这是最常见的坑。 |
 | `%VAR%` 展开 | 每个元素的文本、每个 `<env value="…">` 都会做一次 Windows 环境变量展开。未定义的变量原样保留。没有转义写法可以输出字面的 `%`。 |
-| 内置变量 | `%BASE%` —— 包装器可执行文件所在目录；`%SERVICE_ID%` 和 `%WINSW_SERVICE_ID%` —— `<id>` 的值；`%WINSW_EXECUTABLE%` —— 包装器可执行文件的完整路径。 |
+| 内置变量 | `%BASE%` —— 配置文件所在目录，与包装器可执行文件放在哪里无关；`%SERVICE_ID%` 和 `%WINSW_SERVICE_ID%` —— `<id>` 的值；`%WINSW_EXECUTABLE%` —— 包装器可执行文件的完整路径。 |
 | 相对路径 | 相对于工作目录解析，而工作目录默认是配置文件所在目录。建议一律写成 `%BASE%\…`。 |
 | 布尔值 | 用 .NET `bool.Parse` 解析：只接受 `true` / `false`（大小写随意）。`1`、`0`、`yes`、`on` 会抛异常。 |
 | 时长 | 整数 + 可选单位后缀：`ms`、`sec`、`secs`、`min`、`mins`、`hr`、`hrs`、`hour`、`hours`、`day`、`days`。单位前的空格可有可无。不写单位表示**毫秒**。小数（`1.5 min`）不接受，要写 `90 sec`。 |
@@ -92,7 +92,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `name` | ? | 字符串 | *空* | services.msc 里显示的名称，可以带空格和中文。 |
 | `description` | ? | 字符串 | *空* | services.msc 里显示的描述。 |
 | `startmode` | ? | `Automatic` \| `Manual` \| `Disabled` | `Automatic` | 不区分大小写。`Disabled` 让服务完全不启动，是先把一个反复失败的服务停住的最简单办法。`Boot` 和 `System` 也能解析，但它们只用于驱动程序：包装器装的是普通服务，安装和 refresh 时 Windows 都会拒绝（错误 87）。 |
-| `delayedAutoStart` | ? | 布尔 | `false` | 只有 `startmode` 为 `Automatic` 时才有效。 |
+| `delayedAutoStart` | ? | 布尔 | `false` | 只有 `startmode` 为 `Automatic` 时才有效。`refresh` 也会写入 `false`，所以删掉这个元素就会关掉延迟启动；比控制台自带版本旧的包装器只会打开、不会关掉。 |
 | `depend` | * | 字符串 | — | 必须先启动的服务的 **id**（不是显示名）。一个依赖写一个元素。 |
 | `serviceaccount` | ? | 元素 | LocalSystem | 见第 6 节。 |
 | `onfailure` | * | 元素 | — | 见第 7 节。 |
@@ -101,8 +101,15 @@ WinSW 3.x 配置文件的单页完整规范。
 | `preshutdown` | ? | 布尔 | `false` | 注册预关机通知，让服务在系统关机时能多拿到一段时间。 |
 | `preshutdownTimeout` | ? | 时长 | 系统默认（3 分钟） | 只配合 `preshutdown` 使用。 |
 
-> 这一组是 `install` / `refresh` 时写进 SCM 的。改了之后光重启服务没有任何效果，必须再执行
-> `winsw refresh myapp.xml`（或在图形控制台点“保存并应用”）。
+> 这一组由 `install` 写进 Windows 的服务配置，改完之后由 `refresh` 重新写入 —— `id` 和 `serviceaccount` 除外（见下）。光重启服务没有任何效果，改完必须再执行 `winsw refresh myapp.xml`（或在图形控制台点“保存并应用”）。`preshutdown` 是例外：包装器每次启动服务时才注册它，所以重启一下就生效。
+
+`refresh` 只写入文件里写了的内容，不会撤销文件里已经删掉的内容：
+
+- `<serviceaccount>`：`refresh` 从不改服务的账户和密码，只有 `install` 会设置。要换账户就卸载后重新安装（或在 services.msc 里改）。
+- `<onfailure>`：文件里一个都不剩时，服务保留原有的失败动作；`<resetfailure>` 也只和它们一起写入。要清掉，就写 `<onfailure action="none" />`（见第 7 节）。
+- `<depend>`：文件里一个都不剩时，服务保留原有的依赖。只删掉其中几个是生效的。
+- `<securityDescriptor>`、`<preshutdownTimeout>`：删掉元素后，服务保留原来的值。
+- 包装器和配置文件放在哪：服务记的是 `install` 时的路径，挪动其中任何一个都要重新安装。
 
 ### 进程
 
@@ -120,7 +127,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `proxy` | ? | 文本 + 属性 | — | `<proxy noProxy="localhost,.corp" java="true">http://proxy.example.com:8080</proxy>`。给子进程设置 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY`。JVM 不认这几个变量，所以 `java="true"` 会再把 `-Dhttp.proxyHost` 等选项放到 `JAVA_TOOL_OPTIONS` 最前面。协议头必须写。同名的 `env` 优先。 |
 | `download` | * | 属性 | — | 见第 8 节。 |
 | `sharedDirectoryMapping` | ? | 元素 | — | 启动前把 UNC 路径映射成盘符：`<map label="N:" uncpath="\\server\share" />`，可重复，两个属性都必填。 |
-| `autoRefresh` | ? | 布尔 | `true` | 服务每次启动/停止/重启时，自动把 XML 里的安装期设置重新应用一遍。 |
+| `autoRefresh` | ? | 布尔 | `true` | 为 `true` 时，从命令行执行 `winsw start`、`stop`、`restart`、`restart!`（控制台的启动、停止、重启按钮就是这么做的），如果文件在服务上次配置之后保存过，会先自动 `refresh` 一次。Windows 自己启动服务时（开机、services.msc 或 `sc start`、失败动作触发的重启）不会 refresh，包装器只写一条警告，所以改完配置请执行 `refresh`（控制台里的“保存并应用”）。 |
 
 ### 停止
 
@@ -173,7 +180,7 @@ WinSW 3.x 配置文件的单页完整规范。
 | `append` *(默认)* | 一直追加到 `<logname>.out.log` / `.err.log`，文件会无限增长。 | — |
 | `reset` | 每次启动清空两个文件。 | — |
 | `none` | 丢弃输出，不产生日志文件。 | — |
-| `roll` | 类似 `append`，但启动时把上一份改名为 `*.old.log`。 | — |
+| `roll` | 类似 `append`，但每次启动时把上一份改名为 `<logname>.out.log.old` 和 `<logname>.err.log.old`，覆盖更早的那份。 | — |
 | `roll-by-size` | 超过指定大小就滚动为 `myapp.1.out.log`、`myapp.2.out.log`…… | `sizeThreshold`（KB，默认 `10240`）、`keepFiles`（默认 `8`） |
 | `roll-by-time` | 按时间周期切分，文件名用时间戳格式。 | `pattern` **（必填）**、`period`（天，默认 `1`）、`keepFiles`（默认全部保留） |
 | `roll-by-size-time` | 按大小滚动 + 时间戳命名，还可以在固定时刻滚动并压缩旧文件。 | `sizeThreshold`（KB，默认 `10240`）、`pattern` **（必填）**、`autoRollAtTime`（`HH:mm:ss`）、`zipOlderThanNumDays`（整数）、`zipDateFormat`（默认 `yyyyMM`） |
@@ -323,7 +330,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 1. 根元素是 `<service>`，整个文档是合法 XML。
 2. `<id>` 在这台机器上唯一，且不含空格。
 3. `<executable>` 是绝对路径（或基于 `%BASE%`），并且文件确实存在。
-4. 凡是位于安装目录里的路径，都写成 `%BASE%\…`。
+4. 凡是位于配置文件所在目录里的路径，都写成 `%BASE%\…`；其它位置写绝对路径。
 5. `<arguments>` 里的 `&`、`<`、`>` 已经转义。
 6. 元素名和第 4 节**完全一致**，包括驼峰拼写
    （`delayedAutoStart`、`preshutdownTimeout`、`securityDescriptor`、`autoRefresh`、
@@ -335,7 +342,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 10. `<outfilepattern>` / `<errfilepattern>` 只在支持它们的模式下才写。
 11. `<depend>` 里写的是服务 id，不是显示名。
 12. 含明文密码的 `<serviceaccount>` 只用在已经限制了 NTFS 权限的文件上。
-13. 改完安装期设置后执行 `winsw refresh`，光重启服务是不生效的。
+13. 改完安装期设置后执行 `winsw refresh`，光重启服务是不生效的；改了 `<serviceaccount>` 要重新安装，删掉最后一个 `<onfailure>` 或 `<depend>` 要按第 4 节的说明处理。
 
 ---
 

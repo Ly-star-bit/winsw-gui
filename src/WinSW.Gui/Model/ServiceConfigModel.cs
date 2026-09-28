@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -9,6 +10,7 @@ using System.Xml;
 using WinSW.Configuration;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Localization;
+using WinSW.Gui.Services;
 
 namespace WinSW.Gui.Model
 {
@@ -425,6 +427,95 @@ namespace WinSW.Gui.Model
         /// </summary>
         internal void KeepDeclaredFailureActions(ServiceConfigModel earlier) =>
             this.declaredFailureActions |= earlier.declaredFailureActions;
+
+        /// <summary>
+        /// Gives back the secrets an AI prompt masked: wherever this model, read from an
+        /// assistant's answer, holds <see cref="ConfigRedactor.Mask"/> and
+        /// <paramref name="earlier"/>, the configuration the answer replaces, has the real
+        /// value, the real value is kept.
+        /// </summary>
+        /// <remarks>
+        /// The fields are the ones <see cref="ConfigRedactor"/> masks. A variable is matched
+        /// to the earlier one by name and a download by where it is saved to: not by position,
+        /// because an answer may add or reorder them and a password must not move to another
+        /// server, and not by the source URL, whose credentials may be the very part that was
+        /// masked.
+        /// </remarks>
+        /// <returns>
+        /// How many masked values were given back, and how many still read as the mask because
+        /// the earlier configuration had nothing to give back for them.
+        /// </returns>
+        internal (int Kept, int Left) KeepMaskedValues(ServiceConfigModel earlier)
+        {
+            int kept = 0;
+            int left = 0;
+
+            this.serviceAccountPassword = Keep(this.serviceAccountPassword, earlier.serviceAccountPassword, ConfigRedactor.Unmask);
+            this.proxyAddress = Keep(this.proxyAddress, earlier.proxyAddress, ConfigRedactor.UnmaskUrl);
+            this.arguments = Keep(this.arguments, earlier.arguments, ConfigRedactor.UnmaskCommandLine);
+            this.startArguments = Keep(this.startArguments, earlier.startArguments, ConfigRedactor.UnmaskCommandLine);
+            this.stopArguments = Keep(this.stopArguments, earlier.stopArguments, ConfigRedactor.UnmaskCommandLine);
+            this.Prestart.Arguments = Keep(this.Prestart.Arguments, earlier.Prestart.Arguments, ConfigRedactor.UnmaskCommandLine);
+            this.Poststart.Arguments = Keep(this.Poststart.Arguments, earlier.Poststart.Arguments, ConfigRedactor.UnmaskCommandLine);
+            this.Prestop.Arguments = Keep(this.Prestop.Arguments, earlier.Prestop.Arguments, ConfigRedactor.UnmaskCommandLine);
+            this.Poststop.Arguments = Keep(this.Poststop.Arguments, earlier.Poststop.Arguments, ConfigRedactor.UnmaskCommandLine);
+
+            foreach (var (variable, twin) in Pair(this.EnvironmentVariables, earlier.EnvironmentVariables, v => v.Name.Trim()))
+            {
+                variable.Value = Keep(variable.Value, twin?.Value, ConfigRedactor.Unmask);
+            }
+
+            foreach (var (download, twin) in Pair(this.Downloads, earlier.Downloads, d => ConfigRedactor.MaskUrl(d.To.Trim())))
+            {
+                download.Password = Keep(download.Password, twin?.Password, ConfigRedactor.Unmask);
+                download.From = Keep(download.From, twin?.From, ConfigRedactor.UnmaskUrl);
+                download.To = Keep(download.To, twin?.To, ConfigRedactor.UnmaskUrl);
+                download.Proxy = Keep(download.Proxy, twin?.Proxy, ConfigRedactor.UnmaskUrl);
+            }
+
+            // The extensions are written back as the text they are, with no field to match a
+            // value to, so a mask in them can only be reported.
+            left += ConfigRedactor.CountMasks(this.extensionsXml);
+
+            return (kept, left);
+
+            [return: NotNullIfNotNull(nameof(pasted))]
+            string? Keep(string? pasted, string? before, Func<string?, string?, string?> unmask)
+            {
+                if (pasted is null)
+                {
+                    return null;
+                }
+
+                string value = unmask(pasted, before) ?? pasted;
+                int masks = ConfigRedactor.CountMasks(value);
+                kept += ConfigRedactor.CountMasks(pasted) - masks;
+                left += masks;
+                return value;
+            }
+
+            // Each item with the earlier item of the same key: the first with the first, the
+            // second with the second, and nothing for an item the earlier list has no match for.
+            static IEnumerable<(T Item, T? Earlier)> Pair<T>(IEnumerable<T> items, IEnumerable<T> earlierItems, Func<T, string> key)
+                where T : class
+            {
+                var byKey = new Dictionary<string, Queue<T>>(StringComparer.OrdinalIgnoreCase);
+                foreach (var item in earlierItems)
+                {
+                    if (!byKey.TryGetValue(key(item), out var queue))
+                    {
+                        byKey[key(item)] = queue = new Queue<T>();
+                    }
+
+                    queue.Enqueue(item);
+                }
+
+                foreach (var item in items)
+                {
+                    yield return (item, byKey.TryGetValue(key(item), out var queue) && queue.Count > 0 ? queue.Dequeue() : null);
+                }
+            }
+        }
 
         // Logging ------------------------------------------------------------
 
