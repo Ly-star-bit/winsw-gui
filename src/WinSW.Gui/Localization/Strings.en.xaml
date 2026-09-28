@@ -703,6 +703,19 @@
     <sys:String x:Key="M.Editor.PromptDialogOnly">'console' is not offered: Install from this console runs the wrapper in a hidden window, where a console prompt waits for typing nobody can see until Install times out. 'dialog' asks in a Windows sign-in box instead.</sys:String>
     <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; is 'console'. Install from this console runs the wrapper in a hidden window, where it would wait for a user name and password nobody can see until Install times out, and the elevated wrapper stays stuck behind it. Choose 'dialog', which asks in a Windows sign-in box.</sys:String>
 
+    <!-- What a service will actually find, checked before install: a program named without a path, drives mapped at sign-in, user profiles under LocalSystem, a venv whose Python is gone. -->
+    <sys:String x:Key="M.Warn.OnMachinePath">'{0}' is not a full path. A service finds it through the machine's PATH, here as {1}; but a service sees a change to PATH only after Windows restarts, and an update can put another copy first. Use the full path.</sys:String>
+    <sys:String x:Key="M.Warn.OnUserPathOnly">'{0}' is found only through your own PATH, as {1}. A service gets the machine's PATH, not yours, and would fail to start with 'file not found'. Use the full path.</sys:String>
+    <sys:String x:Key="M.Warn.ScriptByName">'{0}' is the batch file {1} here. For a name without an extension a service looks only for {0}.exe, so it would not start. Use the full path.</sys:String>
+    <sys:String x:Key="M.Warn.NotFoundForService">'{0}' is not a full path, and a service would not find it: it is not beside the wrapper, in the working directory, in the Windows folders or on the machine's PATH.</sys:String>
+    <sys:String x:Key="M.Warn.MappedDrive">{0} is on {1}, a network drive mapped for your sign-in only. A service does not see that drive: use the UNC path (\\server\share\…) instead, or map the drive for the service under Network drives.</sys:String>
+    <sys:String x:Key="M.Warn.NetworkShare">{0} is on a network share. The service reaches it as the account it runs under, not as you (LocalSystem goes out as this computer's account), and cannot start while the share is unreachable. A copy on a local disk is safer.</sys:String>
+    <sys:String x:Key="M.Warn.WrapperOnMappedDrive">{0} is on {1}, a network drive mapped for your sign-in only, and Windows cannot start a service's wrapper from there. Put the wrapper and its configuration on a local disk.</sys:String>
+    <sys:String x:Key="M.Warn.UserProfile">{0} is inside the user folder {1}, but the service runs as {2}. It does not get that user's environment variables, per-user installs or packages installed with pip --user, and it stops working when the folder is cleaned up. Move it out of the user folder, or run the service as that user.</sys:String>
+    <sys:String x:Key="M.Warn.VenvHomeMissing">{0} runs in the virtual environment {1}, and the Python it was made from ({2}, 'home' in pyvenv.cfg) is gone, probably upgraded or removed. The service would not start: create the environment again with the Python installed now.</sys:String>
+    <sys:String x:Key="M.Editor.FullPathFound">Full path:</sys:String>
+    <sys:String x:Key="M.Editor.UseFullPath">Use full path</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">The wrapper was not replaced — it is still {0}. Something else is holding the file open; the services were started again as they were.</sys:String>
 
 

@@ -76,6 +76,8 @@ namespace WinSW.Gui.ViewModels
         private bool proxyTestFailed;
         private string recoverySummary = string.Empty;
         private string recoveryWarning = string.Empty;
+        private string fullExecutablePath = string.Empty;
+        private (ServiceConfigModel Model, EnvironmentCheck Check)? executableOffer;
         private bool confirmVisible;
         private string confirmTitle = string.Empty;
         private string confirmMessage = string.Empty;
@@ -111,6 +113,19 @@ namespace WinSW.Gui.ViewModels
                     {
                         this.Model.WorkingDirectory = this.Relativize(Path.GetDirectoryName(path) ?? string.Empty);
                     }
+                }
+            });
+
+            this.UseFullExecutablePathCommand = new RelayCommand(() =>
+            {
+                // Only in place of the name it was found for, in the configuration it was found
+                // in: anything typed since has its own check coming.
+                if (this.executableOffer is { } offer
+                    && ReferenceEquals(offer.Model, this.Model)
+                    && string.Equals(offer.Check.Executable, this.Model.Executable, StringComparison.Ordinal)
+                    && offer.Check.FullExecutablePath is { } path)
+                {
+                    this.Model.Executable = this.Relativize(path);
                 }
             });
 
@@ -243,6 +258,9 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand BrowseExecutableCommand { get; }
 
+        /// <summary>Puts <see cref="FullExecutablePath"/> in place of the bare name it was found for.</summary>
+        public RelayCommand UseFullExecutablePathCommand { get; }
+
         public RelayCommand OpenHelpCommand { get; }
 
         /// <summary>Raised after a save or apply, for a transient on-screen notice.</summary>
@@ -327,6 +345,17 @@ namespace WinSW.Gui.ViewModels
         public ObservableCollection<string> Warnings { get; } = new();
 
         public bool HasWarnings => this.Warnings.Count > 0;
+
+        /// <summary>
+        /// Where the bare name in <c>&lt;executable&gt;</c> is found on this machine, when a
+        /// service would lose it or never find it by that name; empty otherwise. Offered under
+        /// the field, with <see cref="UseFullExecutablePathCommand"/> to take it.
+        /// </summary>
+        public string FullExecutablePath
+        {
+            get => this.fullExecutablePath;
+            private set => this.Set(ref this.fullExecutablePath, value);
+        }
 
         public ObservableCollection<string> TrialOutput { get; } = new();
 
@@ -1186,11 +1215,14 @@ namespace WinSW.Gui.ViewModels
                 this.XmlPreview = Localizer.Format("M.Editor.RenderFailed", e.Message);
             }
 
-            // Account lookups can stall on an unreachable domain; keep them off the UI thread
-            // and discard results that a later edit has made stale.
+            // Account lookups can stall on an unreachable domain, and a path on a share that is
+            // gone takes as long to be found missing; keep them off the UI thread and discard
+            // results that a later edit has made stale. The wrapper of an installed service is
+            // where a service looks for a bare name first, and it need not sit beside the file.
             int generation = ++this.recomputeGeneration;
             var model = this.Model;
-            _ = Task.Run(() => model.ValidateEnvironment()).ContinueWith(
+            string? wrapperPath = this.installedService?.WrapperPath;
+            _ = Task.Run(() => model.CheckEnvironment(wrapperPath)).ContinueWith(
                 task =>
                 {
                     if (generation != this.recomputeGeneration || task.IsFaulted)
@@ -1199,12 +1231,14 @@ namespace WinSW.Gui.ViewModels
                     }
 
                     this.Warnings.Clear();
-                    foreach (string warning in task.Result)
+                    foreach (var finding in task.Result.Findings)
                     {
-                        this.Warnings.Add(warning);
+                        this.Warnings.Add(finding.Describe(Localizer.Get));
                     }
 
                     this.Raise(nameof(this.HasWarnings));
+                    this.executableOffer = (model, task.Result);
+                    this.FullExecutablePath = task.Result.FullExecutablePath ?? string.Empty;
                 },
                 System.Threading.CancellationToken.None,
                 TaskContinuationOptions.None,

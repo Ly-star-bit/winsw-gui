@@ -692,6 +692,19 @@
     <sys:String x:Key="M.Editor.PromptDialogOnly">console は選べません。このコンソールからのインストールではラッパーが非表示のウィンドウで動くため、console 方式は誰にも見えない入力をインストールがタイムアウトするまで待ち続けます。dialog なら Windows の資格情報ダイアログで尋ねます。</sys:String>
     <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; が console です。このコンソールからのインストールではラッパーが非表示のウィンドウで動くため、誰にも見えないユーザー名とパスワードの入力をタイムアウトまで待ち続け、管理者権限のラッパーもバックグラウンドで止まったままになります。Windows の資格情報ダイアログで尋ねる dialog に変えてください。</sys:String>
 
+    <!-- What a service will actually find, checked before install: a program named without a path, drives mapped at sign-in, user profiles under LocalSystem, a venv whose Python is gone. -->
+    <sys:String x:Key="M.Warn.OnMachinePath">'{0}' はフルパスではありません。サービスはシステムの PATH からこれを探し、このマシンでは {1} が見つかります。ただし、サービスが PATH の変更を反映するのは Windows の再起動後で、更新によって別のコピーが先に見つかることもあります。フルパスを指定してください。</sys:String>
+    <sys:String x:Key="M.Warn.OnUserPathOnly">'{0}' はあなた自身のユーザー PATH からしか見つかりません ({1})。サービスにはシステムの PATH しかなく、あなたの PATH はないため、「ファイルが見つかりません」で起動に失敗します。フルパスを指定してください。</sys:String>
+    <sys:String x:Key="M.Warn.ScriptByName">'{0}' はこのマシンではバッチ ファイル {1} です。拡張子のない名前では、サービスは {0}.exe しか探さないため起動できません。フルパスを指定してください。</sys:String>
+    <sys:String x:Key="M.Warn.NotFoundForService">'{0}' はフルパスではなく、サービスからも見つかりません。ラッパーのフォルダー、作業ディレクトリ、Windows のフォルダー、システムの PATH のどこにもありません。</sys:String>
+    <sys:String x:Key="M.Warn.MappedDrive">{0} は {1} 上にあります。これはあなたのサインイン中だけ割り当てられたネットワーク ドライブで、サービスからは見えません。UNC パス (\\server\share\…) を使うか、「ネットワーク ドライブ」でサービス用にドライブを割り当ててください。</sys:String>
+    <sys:String x:Key="M.Warn.NetworkShare">{0} はネットワーク共有上にあります。サービスはあなたではなく自分の実行アカウントでアクセスし (LocalSystem はネットワーク上ではこのコンピューターのアカウントになります)、共有に接続できないと起動できません。ローカル ディスクにコピーを置くほうが安全です。</sys:String>
+    <sys:String x:Key="M.Warn.WrapperOnMappedDrive">{0} は {1} 上にあります。これはあなたのサインイン中だけ割り当てられたネットワーク ドライブで、Windows はそこからサービスのラッパーを開始できません。ラッパーと構成ファイルをローカル ディスクに置いてください。</sys:String>
+    <sys:String x:Key="M.Warn.UserProfile">{0} はユーザー フォルダー {1} の中にありますが、サービスは {2} で動きます。そのユーザーの環境変数、ユーザー単位のインストールや pip --user で入れたパッケージは使えず、フォルダーが整理されると動かなくなります。ユーザー フォルダーの外に移すか、サービスをそのユーザーで実行してください。</sys:String>
+    <sys:String x:Key="M.Warn.VenvHomeMissing">{0} は仮想環境 {1} で動きますが、その作成元の Python ({2}、pyvenv.cfg の home) がありません。おそらくアップグレードまたは削除されています。このままではサービスは起動しません。今インストールされている Python で仮想環境を作り直してください。</sys:String>
+    <sys:String x:Key="M.Editor.FullPathFound">フルパス:</sys:String>
+    <sys:String x:Key="M.Editor.UseFullPath">フルパスを使う</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">ラッパーは置き換えられず、{0} のままです。他のプロセスがファイルを掴んでいます。サービスは元の状態で再開しました。</sys:String>
 
 

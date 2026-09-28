@@ -111,18 +111,31 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
-        /// A warning, not a problem: the file must still open and save. Windows only:
-        /// <c>ValidateEnvironment</c> reads its messages through WPF.
+        /// A warning, not a problem: the file must still open and save. Checked against a machine
+        /// where the program sits beside the configuration, so that nothing else is found.
         /// </summary>
         [Fact]
         public void ValidateEnvironmentWarnsAboutAConsolePromptOnly()
         {
-            var model = ServiceConfigModel.FromXml(Xml("console"), null);
-            Assert.Single(model.ValidateEnvironment());
-            Assert.Empty(model.Validate());
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(@"C:\svc\demo.exe");
+            var model = ServiceConfigModel.FromXml(Xml("console"), @"C:\svc\demo.xml");
+
+            var finding = Assert.Single(model.CheckEnvironment(machine, null).Findings);
+            Assert.Equal("M.Warn.ConsolePrompt", finding.Key);
 
             model.ServiceAccountPrompt = "dialog";
-            Assert.Empty(model.ValidateEnvironment());
+            Assert.Empty(model.CheckEnvironment(machine, null).Findings);
+        }
+
+        /// <summary>
+        /// The other half of the above: the file saves. Windows only: <c>Validate</c> reads its
+        /// messages through WPF.
+        /// </summary>
+        [Fact]
+        public void AConsolePromptIsNotAProblem()
+        {
+            Assert.Empty(ServiceConfigModel.FromXml(Xml("console"), null).Validate());
         }
 
         // No user name: an account the machine does not know would add a warning of its own.

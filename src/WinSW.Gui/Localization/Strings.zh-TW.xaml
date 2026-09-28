@@ -692,6 +692,19 @@
     <sys:String x:Key="M.Editor.PromptDialogOnly">這裡不提供 console：從本主控台安裝時，包裝器在隱藏視窗中執行，console 方式會一直等待沒人看得到的輸入，直到安裝逾時。dialog 會跳出 Windows 的認證對話方塊來詢問。</sys:String>
     <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; 為 console。從本主控台安裝時，包裝器在隱藏視窗中執行，會一直等待沒人看得到的使用者名稱與密碼，直到安裝逾時，而已提升權限的包裝器還會卡在背景。請改成 dialog，它會跳出 Windows 的認證對話方塊。</sys:String>
 
+    <!-- What a service will actually find, checked before install: a program named without a path, drives mapped at sign-in, user profiles under LocalSystem, a venv whose Python is gone. -->
+    <sys:String x:Key="M.Warn.OnMachinePath">「{0}」不是完整路徑。服務會透過系統 PATH 找到它，本機上是 {1}；但服務要等 Windows 重新開機後才看得到 PATH 的變更，更新後排在前面的也可能換成另一個版本。建議改用完整路徑。</sys:String>
+    <sys:String x:Key="M.Warn.OnUserPathOnly">「{0}」只能透過你自己的使用者 PATH 找到（{1}）。服務只有系統 PATH，沒有你的使用者 PATH，啟動時會出現「找不到檔案」。請改用完整路徑。</sys:String>
+    <sys:String x:Key="M.Warn.ScriptByName">「{0}」在本機上是批次檔 {1}。名稱不含副檔名時，服務只會尋找 {0}.exe，所以無法啟動。請改用完整路徑。</sys:String>
+    <sys:String x:Key="M.Warn.NotFoundForService">「{0}」不是完整路徑，服務也找不到它：包裝器所在資料夾、工作目錄、Windows 系統資料夾和系統 PATH 中都沒有。</sys:String>
+    <sys:String x:Key="M.Warn.MappedDrive">{0} 位於 {1}，這是只在你的登入工作階段中對應的網路磁碟機，服務看不到它。請改用 UNC 路徑（\\server\share\…），或在「網路磁碟機」中為服務對應這個磁碟機代號。</sys:String>
+    <sys:String x:Key="M.Warn.NetworkShare">{0} 位於網路共用資料夾。服務會以它自己的執行帳戶存取，而不是你的身分（LocalSystem 在網路上是這台電腦的帳戶），共用資料夾連不上時服務就無法啟動。放一份到本機磁碟比較穩妥。</sys:String>
+    <sys:String x:Key="M.Warn.WrapperOnMappedDrive">{0} 位於 {1}，這是只在你的登入工作階段中對應的網路磁碟機，Windows 無法從這裡啟動服務的包裝器。請把包裝器和設定檔放到本機磁碟。</sys:String>
+    <sys:String x:Key="M.Warn.UserProfile">{0} 位於使用者資料夾 {1} 之下，但服務以 {2} 身分執行。它取得不到這位使用者的環境變數、只為該使用者安裝的軟體和 pip --user 安裝的套件，使用者資料夾被清理後也會失效。請把它移出使用者資料夾，或讓服務以該使用者身分執行。</sys:String>
+    <sys:String x:Key="M.Warn.VenvHomeMissing">{0} 使用的是虛擬環境 {1}，但建立它的 Python（{2}，即 pyvenv.cfg 中的 home）已經不在了，多半是升級或解除安裝了。服務會無法啟動：請用目前安裝的 Python 重新建立這個虛擬環境。</sys:String>
+    <sys:String x:Key="M.Editor.FullPathFound">完整路徑：</sys:String>
+    <sys:String x:Key="M.Editor.UseFullPath">改用完整路徑</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 沒有被替換，仍然是 {0}。可能有其他行程占用著這個檔案；服務已依原狀態重新啟動。</sys:String>
 
 

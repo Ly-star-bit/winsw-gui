@@ -238,6 +238,14 @@
                                             <TextBox Style="{StaticResource ValidatedTextBox}" Tag="{Binding FieldErrors[Executable]}" Text="{Binding Executable, UpdateSourceTrigger=PropertyChanged}" />
                                         </DockPanel>
                                         <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource S.BASEExpandsToTheDirectoryContaining}" />
+                                        <!-- A bare name a service would lose or never find: where it is here, and a button to write that instead. The warning says why. -->
+                                        <DockPanel Margin="0,6,0,0" Visibility="{Binding DataContext.FullExecutablePath, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource StringToVisibility}}">
+                                            <Button DockPanel.Dock="Right" Style="{StaticResource RemoveButton}" Content="{DynamicResource M.Editor.UseFullPath}" Command="{Binding DataContext.UseFullExecutablePathCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                            <TextBlock Margin="0" VerticalAlignment="Center" Style="{StaticResource FieldHint}" Foreground="{DynamicResource HealthPendingBrush}">
+                                                <Run Text="{DynamicResource M.Editor.FullPathFound}" />
+                                                <Run Text="{Binding DataContext.FullExecutablePath, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </DockPanel>
                                     </StackPanel>
                                     <StackPanel Style="{StaticResource Field}">
                                         <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.Arguments}" />

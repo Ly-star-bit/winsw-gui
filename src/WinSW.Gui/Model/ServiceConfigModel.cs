@@ -1446,9 +1446,62 @@ namespace WinSW.Gui.Model
         /// syntactically but that will fail at start. Warnings, not errors; the file can be
         /// saved for another machine where the paths exist.
         /// </summary>
-        public IReadOnlyList<string> ValidateEnvironment()
+        public IReadOnlyList<string> ValidateEnvironment() =>
+            this.CheckEnvironment().Findings.Select(finding => finding.Describe(Localizer.Get)).ToArray();
+
+        /// <summary>
+        /// <see cref="ValidateEnvironment"/> as findings, together with the full path to offer in
+        /// place of a bare <c>&lt;executable&gt;</c>.
+        /// </summary>
+        /// <param name="wrapperPath">
+        /// The wrapper that runs this configuration, when it is known. A service looks for a bare
+        /// name in the wrapper's folder first; without it, that is taken to be the configuration's
+        /// own folder, where the wrapper usually sits.
+        /// </param>
+        public EnvironmentCheck CheckEnvironment(string? wrapperPath = null) =>
+            this.CheckEnvironment(ServiceMachine.Local, wrapperPath);
+
+        /// <summary>
+        /// Whether an account is one of those Windows has built in, which a user name lookup
+        /// cannot resolve and which have no profile of any user's.
+        /// </summary>
+        internal static bool IsBuiltInAccount(string user) =>
+            user.StartsWith("NT AUTHORITY\\", StringComparison.OrdinalIgnoreCase)
+            || user.StartsWith("NT SERVICE\\", StringComparison.OrdinalIgnoreCase)
+            || user.Equals("LocalSystem", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The <c>home</c> of a <c>pyvenv.cfg</c>: the folder of the Python the environment was
+        /// made from, which its <c>Scripts\python.exe</c> runs. Read as Python reads it, as
+        /// <c>key = value</c> lines with the key in any case.
+        /// </summary>
+        internal static string? PyvenvHome(string text)
         {
-            var warnings = new List<string>();
+            foreach (string line in text.Split('\n'))
+            {
+                int equals = line.IndexOf('=');
+                if (equals > 0 && line.Substring(0, equals).Trim().Equals("home", StringComparison.OrdinalIgnoreCase))
+                {
+                    string home = line.Substring(equals + 1).Trim();
+                    return home.Length == 0 ? null : home;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// The check itself, with the machine to ask passed in: the tests hand it one made up
+        /// for the purpose.
+        /// </summary>
+        /// <remarks>
+        /// A path gets one warning at most, the first that applies of: missing, on a network
+        /// drive, in a user's profile. The first is the one to fix, and a path that is not there
+        /// has nothing more to be said about it.
+        /// </remarks>
+        internal EnvironmentCheck CheckEnvironment(IServiceMachine machine, string? wrapperPath)
+        {
+            var findings = new List<EnvironmentFinding>();
             string? basePath = this.FilePath;
 
             string? Expand(string? value)
@@ -1469,56 +1522,86 @@ namespace WinSW.Gui.Model
                     : Services.ConfigPaths.Expand(value!, basePath);
             }
 
-            if (Expand(this.executable) is { } exe && Path.IsPathRooted(exe) && !File.Exists(exe))
+            // The wrapper makes the working directory its current directory, and CreateProcess
+            // looks there for a bare name and resolves a relative path against it. A relative
+            // working directory is itself relative to system32 in a service, which the search
+            // covers next in any case.
+            string? configFolder = basePath is null ? null : WindowsPath.Parent(basePath);
+            string? wrapperFolder = string.IsNullOrWhiteSpace(wrapperPath) ? configFolder : WindowsPath.Parent(wrapperPath!);
+            string? workDir = Expand(this.workingDirectory);
+            string? currentFolder = string.IsNullOrWhiteSpace(this.workingDirectory)
+                ? configFolder
+                : workDir is not null && WindowsPath.IsRooted(workDir) ? workDir : null;
+
+            var search = new ProgramSearch(machine, wrapperFolder, currentFolder, ServicePath());
+
+            // A file not saved yet has no folder, and a name that is nowhere else may be meant to
+            // sit beside the wrapper there: "a service would not find it" cannot be said yet.
+            bool searchComplete = wrapperFolder is not null && (currentFolder is not null || workDir is not null);
+
+            // The built-in accounts have nobody's profile, and nobody's PATH or pip --user.
+            string account = this.serviceAccountUser?.Trim() ?? string.Empty;
+            bool builtIn = account.Length == 0 || IsBuiltInAccount(account);
+
+            // Drive letters the wrapper maps for the service itself before it starts anything.
+            var mappedForService = new HashSet<char>(this.SharedDirectories
+                .Select(mapping => WindowsPath.DriveLetter(mapping.Label.Trim()))
+                .OfType<char>());
+            var venvs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            string? fullExecutablePath = null;
+            if (Expand(this.executable) is { } exe)
             {
-                warnings.Add(Localizer.Format("M.Warn.ExecutableMissing", exe));
+                fullExecutablePath = CheckProgram(exe, "M.Warn.ExecutableMissing");
             }
 
-            if (Expand(this.stopExecutable) is { } stopExe && Path.IsPathRooted(stopExe) && !File.Exists(stopExe))
+            if (Expand(this.stopExecutable) is { } stopExe)
             {
-                warnings.Add(Localizer.Format("M.Warn.StopExecutableMissing", stopExe));
+                CheckProgram(stopExe, "M.Warn.StopExecutableMissing");
             }
 
-            if (Expand(this.workingDirectory) is { } workDir && !Directory.Exists(workDir))
+            if (workDir is not null)
             {
-                warnings.Add(Localizer.Format("M.Warn.WorkingDirectoryMissing", workDir));
+                if (!machine.DirectoryExists(workDir))
+                {
+                    findings.Add(new EnvironmentFinding("M.Warn.WorkingDirectoryMissing", workDir));
+                }
+                else
+                {
+                    CheckPlace(workDir, profileMatters: true);
+                }
             }
 
-            if (Expand(this.logPath) is { } logDir && !Directory.Exists(logDir))
+            if (Expand(this.logPath) is { } logDir)
             {
-                warnings.Add(Localizer.Format("M.Warn.LogDirectoryMissing", logDir));
+                if (!machine.DirectoryExists(logDir))
+                {
+                    findings.Add(new EnvironmentFinding("M.Warn.LogDirectoryMissing", logDir));
+                }
+                else
+                {
+                    CheckPlace(logDir, profileMatters: false);
+                }
+            }
+
+            // The service control manager starts the wrapper itself as the service's account, in
+            // a session where a drive mapped at somebody's sign-in does not exist.
+            if (wrapperFolder is not null && WindowsPath.DriveLetter(wrapperFolder) is { } wrapperDrive && machine.IsNetworkDrive(wrapperDrive))
+            {
+                findings.Add(new EnvironmentFinding("M.Warn.WrapperOnMappedDrive", wrapperFolder, wrapperDrive + ":"));
             }
 
             foreach (var hook in new[] { this.Prestart, this.Poststart, this.Prestop, this.Poststop })
             {
-                if (Expand(hook.Executable) is { } hookExe && Path.IsPathRooted(hookExe) && !File.Exists(hookExe))
+                if (Expand(hook.Executable) is { } hookExe)
                 {
-                    warnings.Add(Localizer.Format("M.Warn.ExecutableMissing", hookExe));
+                    CheckProgram(hookExe, "M.Warn.ExecutableMissing");
                 }
             }
 
-            if (!string.IsNullOrWhiteSpace(this.serviceAccountUser))
+            if (account.Length > 0 && !IsBuiltInAccount(account) && machine.AccountExists(account) == false)
             {
-                string user = this.serviceAccountUser!.Trim();
-                bool builtIn = user.StartsWith("NT AUTHORITY\\", StringComparison.OrdinalIgnoreCase)
-                    || user.StartsWith("NT SERVICE\\", StringComparison.OrdinalIgnoreCase)
-                    || user.Equals("LocalSystem", StringComparison.OrdinalIgnoreCase);
-
-                if (!builtIn)
-                {
-                    try
-                    {
-                        new System.Security.Principal.NTAccount(user).Translate(typeof(System.Security.Principal.SecurityIdentifier));
-                    }
-                    catch (System.Security.Principal.IdentityNotMappedException)
-                    {
-                        warnings.Add(Localizer.Format("M.Warn.AccountUnknown", user));
-                    }
-                    catch (SystemException)
-                    {
-                        // Domain unreachable: cannot tell either way.
-                    }
-                }
+                findings.Add(new EnvironmentFinding("M.Warn.AccountUnknown", account));
             }
 
             // The parser takes a driver's start mode and Windows then refuses it, at install and
@@ -1526,16 +1609,162 @@ namespace WinSW.Gui.Model
             // either, but a file that says one must still open and save as it is.
             if (IsDriverStartMode(this.startMode))
             {
-                warnings.Add(Localizer.Format("M.Warn.DriverStartMode", this.startMode));
+                findings.Add(new EnvironmentFinding("M.Warn.DriverStartMode", this.startMode));
             }
 
             // Likewise a console prompt: the box offers it only to a file that already has it.
             if (IsConsolePrompt(this.serviceAccountPrompt))
             {
-                warnings.Add(Localizer.Get("M.Warn.ConsolePrompt"));
+                findings.Add(new EnvironmentFinding("M.Warn.ConsolePrompt"));
             }
 
-            return warnings;
+            return new EnvironmentCheck(findings, this.executable, fullExecutablePath);
+
+            // The PATH the wrapper starts programs with. The service gets the machine's; an
+            // <env name="PATH"> then replaces it in the wrapper's own process, where it is what
+            // CreateProcess searches, with %PATH% in it standing for the machine's.
+            string ServicePath()
+            {
+                string path = machine.MachinePath;
+                foreach (var variable in this.EnvironmentVariables)
+                {
+                    if (string.Equals(variable.Name.Trim(), "PATH", StringComparison.OrdinalIgnoreCase)
+                        && Expand(variable.Value.Replace("%PATH%", path, StringComparison.OrdinalIgnoreCase)) is { } value)
+                    {
+                        path = value;
+                    }
+                }
+
+                return path;
+            }
+
+            // Checks a program the wrapper starts, and returns the full path to offer in place of
+            // a bare name, if there is one to offer.
+            string? CheckProgram(string value, string missingKey)
+            {
+                // Process.Start trims the name and takes one already in quotes as it is.
+                value = value.Trim();
+                if (value.Length > 2 && value[0] == '"' && value[value.Length - 1] == '"')
+                {
+                    value = value.Substring(1, value.Length - 2);
+                }
+
+                string? program = null;
+                string? offer = null;
+                if (WindowsPath.IsBare(value))
+                {
+                    // A name alone passes the try run, which has this user's PATH, and then fails
+                    // or changes under the service, which has the machine's as it was at boot.
+                    var (source, found) = search.Find(value);
+                    switch (source)
+                    {
+                        case ProgramSource.Fixed:
+                            program = found;
+                            break;
+                        case ProgramSource.MachinePath:
+                            findings.Add(new EnvironmentFinding("M.Warn.OnMachinePath", value, found!));
+                            program = offer = found;
+                            break;
+                        case ProgramSource.UserPath:
+                            findings.Add(new EnvironmentFinding("M.Warn.OnUserPathOnly", value, found!));
+                            offer = found;
+                            break;
+                        case ProgramSource.Script:
+                            findings.Add(new EnvironmentFinding("M.Warn.ScriptByName", value, found!));
+                            offer = found;
+                            break;
+                        default:
+                            if (searchComplete)
+                            {
+                                findings.Add(new EnvironmentFinding("M.Warn.NotFoundForService", value));
+                            }
+
+                            break;
+                    }
+                }
+                else
+                {
+                    // A path with a folder in it is not searched for: it is taken as it is, or
+                    // against the current directory, with .exe added when it has no extension.
+                    string? path = WindowsPath.IsRooted(value) ? value
+                        : currentFolder is null ? null
+                        : WindowsPath.Join(currentFolder, value);
+                    if (path is null)
+                    {
+                        return null;
+                    }
+
+                    path = WindowsPath.HasExtension(path) ? path : path + ".exe";
+                    if (machine.FileExists(path))
+                    {
+                        program = path;
+                    }
+                    else
+                    {
+                        findings.Add(new EnvironmentFinding(missingKey, path));
+                    }
+                }
+
+                if (program is not null)
+                {
+                    CheckPlace(program, profileMatters: true);
+                    CheckVirtualEnvironment(program);
+                }
+
+                return offer;
+            }
+
+            // A path the service reaches through the network, or finds in a user's profile.
+            void CheckPlace(string path, bool profileMatters)
+            {
+                if (WindowsPath.DriveLetter(path) is { } drive)
+                {
+                    if (machine.IsNetworkDrive(drive) && !mappedForService.Contains(drive))
+                    {
+                        findings.Add(new EnvironmentFinding("M.Warn.MappedDrive", path, drive + ":"));
+                        return;
+                    }
+                }
+                else if (WindowsPath.IsUnc(path))
+                {
+                    findings.Add(new EnvironmentFinding("M.Warn.NetworkShare", path));
+                    return;
+                }
+
+                // Per-user installs, pip --user and the user's own variables are all where
+                // LocalSystem never looks; the program starts and then cannot find its parts.
+                if (profileMatters
+                    && builtIn
+                    && machine.ProfilesDirectory is { } profiles
+                    && WindowsPath.ProfileFolder(path, profiles) is { } profile)
+                {
+                    findings.Add(new EnvironmentFinding("M.Warn.UserProfile", path, profile, account.Length == 0 ? "LocalSystem" : account));
+                }
+            }
+
+            // A venv's Scripts\python.exe, and every launcher pip puts beside it, runs the Python
+            // named by 'home' in the pyvenv.cfg one folder up. Upgrade or remove that Python and
+            // the environment still looks whole, but nothing in it starts.
+            void CheckVirtualEnvironment(string program)
+            {
+                string? folder = WindowsPath.Parent(program);
+                foreach (string? root in new[] { folder, folder is null ? null : WindowsPath.Parent(folder) })
+                {
+                    if (root is null || machine.ReadText(WindowsPath.Join(root, "pyvenv.cfg")) is not { } text)
+                    {
+                        continue;
+                    }
+
+                    if (venvs.Add(root)
+                        && PyvenvHome(text) is { } home
+                        && !machine.FileExists(WindowsPath.Join(home, "python.exe")))
+                    {
+                        findings.Add(new EnvironmentFinding("M.Warn.VenvHomeMissing", program, root, home));
+                    }
+
+                    return;
+                }
+            }
         }
 
         /// <summary>Mirrors <c>XmlServiceConfig.ParseTimeSpan</c>.</summary>

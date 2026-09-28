@@ -692,6 +692,19 @@
     <sys:String x:Key="M.Editor.PromptDialogOnly">这里不提供 console：从本控制台安装时，包装器在隐藏窗口里运行，console 方式会一直等着没人看得见的输入，直到安装超时。dialog 会弹出 Windows 的凭据框来询问。</sys:String>
     <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; 是 console。从本控制台安装时，包装器在隐藏窗口里运行，会一直等着没人看得见的用户名和密码，直到安装超时，提权后的包装器进程还会卡在后台。请改成 dialog，它会弹出 Windows 的凭据框。</sys:String>
 
+    <!-- What a service will actually find, checked before install: a program named without a path, drives mapped at sign-in, user profiles under LocalSystem, a venv whose Python is gone. -->
+    <sys:String x:Key="M.Warn.OnMachinePath">“{0}”不是完整路径。服务会通过系统 PATH 找到它，本机上是 {1}；但服务要等 Windows 重启后才看得到 PATH 的改动，升级后排在前面的也可能换成另一个版本。建议改用完整路径。</sys:String>
+    <sys:String x:Key="M.Warn.OnUserPathOnly">“{0}”只能通过你自己的用户 PATH 找到（{1}）。服务只有系统 PATH，没有你的用户 PATH，启动时会报“找不到文件”。请改用完整路径。</sys:String>
+    <sys:String x:Key="M.Warn.ScriptByName">“{0}”在本机上是批处理文件 {1}。名字不带扩展名时，服务只会找 {0}.exe，所以启动不了。请改用完整路径。</sys:String>
+    <sys:String x:Key="M.Warn.NotFoundForService">“{0}”不是完整路径，服务也找不到它：包装器所在目录、工作目录、Windows 系统目录和系统 PATH 里都没有。</sys:String>
+    <sys:String x:Key="M.Warn.MappedDrive">{0} 在 {1} 上，这是只在你的登录会话里映射的网络驱动器，服务看不到它。请改用 UNC 路径（\\server\share\…），或者在“网络驱动器”里为服务映射这个盘符。</sys:String>
+    <sys:String x:Key="M.Warn.NetworkShare">{0} 在网络共享上。服务是用它自己的运行账户去访问，而不是你的身份（LocalSystem 在网络上是这台计算机的账户），共享连不上时服务就起不来。放一份到本地磁盘更稳妥。</sys:String>
+    <sys:String x:Key="M.Warn.WrapperOnMappedDrive">{0} 在 {1} 上，这是只在你的登录会话里映射的网络驱动器，Windows 无法从这里启动服务的包装器。请把包装器和配置文件放到本地磁盘。</sys:String>
+    <sys:String x:Key="M.Warn.UserProfile">{0} 在用户目录 {1} 下，但服务以 {2} 身份运行。它拿不到这个用户的环境变量、只装给该用户的软件和 pip --user 装的包，用户目录被清理后也会失效。请把它移出用户目录，或者让服务以该用户身份运行。</sys:String>
+    <sys:String x:Key="M.Warn.VenvHomeMissing">{0} 用的是虚拟环境 {1}，但创建它的 Python（{2}，即 pyvenv.cfg 里的 home）已经不在了，多半是升级或卸载了。服务会起不来：请用现在装的 Python 重新创建这个虚拟环境。</sys:String>
+    <sys:String x:Key="M.Editor.FullPathFound">完整路径：</sys:String>
+    <sys:String x:Key="M.Editor.UseFullPath">改用完整路径</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 没有被替换，仍然是 {0}。可能有其它进程占用着这个文件；服务已按原状态重新启动。</sys:String>
 
 
