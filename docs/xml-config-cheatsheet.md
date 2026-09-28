@@ -199,7 +199,11 @@ The mode itself lives on `<log mode="…">` (the legacy spelling `<logmode>` sti
 | `roll-by-size-time` | Roll on size, name by timestamp, optionally also roll at a fixed clock time and zip old files. | `sizeThreshold` (KB, default `10240`), `pattern` **(required)**, `autoRollAtTime` (`HH:mm:ss`), `zipOlderThanNumDays` (int), `zipDateFormat` (default `yyyyMM`) |
 | `rotate` | Deprecated alias of `roll-by-size` with its defaults. Use `roll-by-size`. | — |
 
-`pattern` uses .NET `DateTime.ToString` format strings, e.g. `yyyyMMdd`.
+`pattern` uses .NET `DateTime.ToString` format strings, e.g. `yyyyMMdd`. The result becomes part of the
+file name, so it must not produce `/`, `\`, `:` or any other character a file name cannot hold: write
+`yyyy-MM-dd`, not `yyyy/MM/dd` or `HH:mm`. For `roll-by-time` it must also change at least once a day:
+the wrapper refuses `yyyyMM` only once the service runs, then stops reading the program's output, and the
+program hangs while the service still shows Running.
 `zipOlderThanNumDays` and `zipDateFormat` only take effect together with `autoRollAtTime`.
 
 ```xml
@@ -261,7 +265,7 @@ Defaults to LocalSystem when the element is absent.
 | `username` | `DOMAIN\User`, `User@DOMAIN`, or `.\User` for a local account. |
 | `password` | Stored in clear text in the XML — protect the file with NTFS permissions. |
 | `allowservicelogon` | Ignored: it is parsed and never used. Install grants the account the *Log on as a service* right whatever this says, unless it is one of the built-in accounts below, which need none. |
-| `prompt` | `dialog` or `console` — ask for the credentials at install time instead of storing them. |
+| `prompt` | `dialog` or `console` — ask for the credentials at install time instead of storing them. Use `dialog`: the WinSW console installs in a hidden window, where `console` waits for input nobody can see until the install times out. |
 
 Built-in accounts take no password:
 
@@ -354,7 +358,8 @@ transfer on `304 Not Modified`.
    `autoRollAtTime`, `zipOlderThanNumDays`, `zipDateFormat`).
 7. Booleans are `true`/`false`; durations are integer + a lowercase unit.
 8. If `<stoparguments>` is present, `<startarguments>` is used instead of `<arguments>`.
-9. If the log mode is `roll-by-time` or `roll-by-size-time`, `<pattern>` is present.
+9. If the log mode is `roll-by-time` or `roll-by-size-time`, `<pattern>` is present and formats to a valid
+   file name; for `roll-by-time` it changes at least daily (`yyyyMMdd`, not `yyyyMM`).
 10. `<outfilepattern>` / `<errfilepattern>` are only used with a mode that honours them.
 11. `<depend>` names service ids, not display names.
 12. A `<serviceaccount>` with a password is only used on a file with restricted NTFS ACLs.

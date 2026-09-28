@@ -121,6 +121,14 @@
       on ServiceConfigModel. The file is written to stand alone for this reason.
     -->
     <Compile Include="..\WinSW.Core\Configuration\ProxyConfig.cs" Link="Model\ProxyConfig.cs" />
+
+    <!--
+      The same for a roll-by-time <pattern>: the wrapper decides from this class how often a
+      pattern rolls, and refuses one that never does only once the service is running, where
+      its log task dies and the program's output is never read again. The editor asks the
+      class itself, so that it refuses exactly the patterns the wrapper would.
+    -->
+    <Compile Include="..\WinSW.Core\PeriodicRollingCalendar.cs" Link="Model\PeriodicRollingCalendar.cs" />
   </ItemGroup>
 
   <ItemGroup>

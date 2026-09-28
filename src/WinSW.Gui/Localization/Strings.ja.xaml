@@ -685,6 +685,13 @@
     <sys:String x:Key="M.Editor.LogonRightGranted">インストール時に、アカウントへ「サービスとしてログオン」権限が自動で付与されます (組み込みアカウントには不要)。ラッパーは &lt;allowservicelogon&gt; を読まないため、ここにチェック項目はありません。</sys:String>
     <sys:String x:Key="M.Warn.DriverStartMode">スタートアップの種類 '{0}' はドライバー専用です。このサービスではインストール時にも「保存して適用」時にも Windows に拒否されます (エラー 87)。Automatic、Manual、Disabled のいずれかを選んでください。</sys:String>
 
+    <!-- Date patterns the wrapper cannot name its log files with, and the console prompt an install from here can never answer. -->
+    <sys:String x:Key="M.Val.PatternNotAFormat">日付パターン '{0}' は、ラッパーが使える .NET の日付書式ではありません。</sys:String>
+    <sys:String x:Key="M.Val.PatternNotAFileName">日付パターン '{0}' ではログ ファイル名が '{1}' のようになりますが、ファイル名には / \ : * ? " &lt; &gt; | を使えません。yyyy-MM-dd のように - か _ で区切ってください。</sys:String>
+    <sys:String x:Key="M.Val.PatternTooCoarse">roll-by-time の日付パターンは、yyyyMMdd のように少なくとも 1 日に 1 回変わる必要がありますが、'{0}' は変わりません。サービスの起動時にラッパーがプログラムの出力を読まなくなり、サービスが「実行中」と表示されたままプログラムが止まります。</sys:String>
+    <sys:String x:Key="M.Editor.PromptDialogOnly">console は選べません。このコンソールからのインストールではラッパーが非表示のウィンドウで動くため、console 方式は誰にも見えない入力をインストールがタイムアウトするまで待ち続けます。dialog なら Windows の資格情報ダイアログで尋ねます。</sys:String>
+    <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; が console です。このコンソールからのインストールではラッパーが非表示のウィンドウで動くため、誰にも見えないユーザー名とパスワードの入力をタイムアウトまで待ち続け、管理者権限のラッパーもバックグラウンドで止まったままになります。Windows の資格情報ダイアログで尋ねる dialog に変えてください。</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">ラッパーは置き換えられず、{0} のままです。他のプロセスがファイルを掴んでいます。サービスは元の状態で再開しました。</sys:String>
 
 

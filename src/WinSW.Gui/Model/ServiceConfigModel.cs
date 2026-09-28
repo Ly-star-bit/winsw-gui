@@ -56,6 +56,21 @@ namespace WinSW.Gui.Model
         }
     }
 
+    /// <summary>What <see cref="ServiceConfigModel.CheckRollPattern"/> found wrong with a date pattern.</summary>
+    internal enum RollPatternFault
+    {
+        None,
+
+        /// <summary>Not a .NET date format at all: applying it throws.</summary>
+        NotADateFormat,
+
+        /// <summary>Applied, it gives a character no file name can have, such as '/' or ':'.</summary>
+        NotAFileName,
+
+        /// <summary>Changes less than daily, which roll-by-time refuses: <c>yyyyMM</c>.</summary>
+        ChangesTooRarely,
+    }
+
     public sealed class ServiceConfigModel : ObservableObject
     {
         /// <summary>Time suffixes accepted by <c>XmlServiceConfig.ParseTimeSpan</c>.</summary>
@@ -82,6 +97,21 @@ namespace WinSW.Gui.Model
         {
             "append", "none", "reset", "roll", "roll-by-time", "roll-by-size", "roll-by-size-time", "rotate",
         };
+
+        /// <summary>The two ways the wrapper can ask for the account's credentials at install.</summary>
+        /// <remarks>
+        /// The editor offers only <c>dialog</c>: see <see cref="OffersConsolePrompt"/>. The list is
+        /// what the wrapper understands, for reading a file that says either.
+        /// </remarks>
+        public static readonly string[] Prompts = { "dialog", "console" };
+
+        /// <summary>
+        /// The characters Windows refuses in a file name, as <c>Path.GetInvalidFileNameChars</c>
+        /// returns them there. Spelled out, because the rule that counts is that of the server
+        /// where the wrapper names its log files.
+        /// </summary>
+        private static readonly char[] InvalidFileNameChars =
+            "\"<>|:*?\\/".Concat(Enumerable.Range(0, 32).Select(c => (char)c)).ToArray();
 
         /// <summary>
         /// The document the model was loaded from, kept so that saving rewrites the user's
@@ -115,6 +145,7 @@ namespace WinSW.Gui.Model
         private string? serviceAccountPassword;
         private bool allowServiceLogon;
         private string? serviceAccountPrompt;
+        private bool offersConsolePrompt;
         private bool declaredFailureActions;
         private string? resetFailureAfter;
         private string? logPath;
@@ -345,12 +376,36 @@ namespace WinSW.Gui.Model
             set => this.Set(ref this.allowServiceLogon, value);
         }
 
-        /// <summary>One of <c>dialog</c>, <c>console</c>, or null.</summary>
+        /// <summary>
+        /// One of <see cref="Prompts"/>, spelled as the list spells it, or null for none. A value
+        /// the wrapper does not know is kept as the file wrote it.
+        /// </summary>
         public string? ServiceAccountPrompt
         {
             get => this.serviceAccountPrompt;
             set => this.Set(ref this.serviceAccountPrompt, value);
         }
+
+        /// <summary>
+        /// Whether the prompt box still offers <c>console</c>, which it does only when the file
+        /// said <c>console</c>: it shows what the file says rather than an empty box, and saves
+        /// as it was unless somebody picks another.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Install from this console runs the wrapper elevated in a hidden window
+        /// (<c>WinSwCli</c>), where a console prompt waits for typing nobody can see. The install
+        /// times out after a minute or three and leaves the elevated wrapper blocked behind it, so
+        /// the editor does not offer the option, and <see cref="ValidateEnvironment"/> warns about
+        /// a file that has it.
+        /// </para>
+        /// <para>
+        /// Fixed when the file is read, like <see cref="StartModeChoices"/>: an item that vanished
+        /// under a bound selection would leave the box empty, a blank away from dropping the
+        /// element.
+        /// </para>
+        /// </remarks>
+        public bool OffersConsolePrompt => this.offersConsolePrompt;
 
         // Failure actions ----------------------------------------------------
 
@@ -804,7 +859,10 @@ namespace WinSW.Gui.Model
                 this.serviceAccountUser = Text(account, "username");
                 this.serviceAccountPassword = Text(account, "password");
                 this.allowServiceLogon = Bool(account, "allowservicelogon");
-                this.serviceAccountPrompt = Text(account, "prompt");
+                // The wrapper lower-cases the prompt before it compares, and the box matches its
+                // items by exact string: 'Console' is still the console prompt, and has to show.
+                this.serviceAccountPrompt = Text(account, "prompt") is { } prompt ? MatchChoice(Prompts, prompt) : null;
+                this.offersConsolePrompt = IsConsolePrompt(this.serviceAccountPrompt);
             }
 
             foreach (XmlElement element in root.SelectNodes("depend")!.OfType<XmlElement>())
@@ -1202,7 +1260,7 @@ namespace WinSW.Gui.Model
 
             SetText(element, "username", this.serviceAccountUser);
             SetText(element, "password", this.serviceAccountPassword);
-            SetText(element, "prompt", this.serviceAccountPrompt);
+            SetChoice(element, "prompt", this.serviceAccountPrompt);
             SetBool(element, "allowservicelogon", this.allowServiceLogon, false);
         }
 
@@ -1257,6 +1315,23 @@ namespace WinSW.Gui.Model
             if (this.UsesTimePattern && string.IsNullOrWhiteSpace(this.rollPattern))
             {
                 Add(nameof(this.RollPattern), Localizer.Format("M.Val.PatternRequired", this.logMode));
+            }
+            else if (this.UsesTimePattern)
+            {
+                switch (CheckRollPattern(this.rollPattern!, this.logMode == "roll-by-time", out string? name))
+                {
+                    case RollPatternFault.NotADateFormat:
+                        Add(nameof(this.RollPattern), Localizer.Format("M.Val.PatternNotAFormat", this.rollPattern));
+                        break;
+
+                    case RollPatternFault.NotAFileName:
+                        Add(nameof(this.RollPattern), Localizer.Format("M.Val.PatternNotAFileName", this.rollPattern, name));
+                        break;
+
+                    case RollPatternFault.ChangesTooRarely:
+                        Add(nameof(this.RollPattern), Localizer.Format("M.Val.PatternTooCoarse", this.rollPattern));
+                        break;
+                }
             }
 
             CheckInt(nameof(this.RollPeriod), this.rollPeriod, Localizer.Get("M.Val.RollPeriod"));
@@ -1454,6 +1529,12 @@ namespace WinSW.Gui.Model
                 warnings.Add(Localizer.Format("M.Warn.DriverStartMode", this.startMode));
             }
 
+            // Likewise a console prompt: the box offers it only to a file that already has it.
+            if (IsConsolePrompt(this.serviceAccountPrompt))
+            {
+                warnings.Add(Localizer.Get("M.Warn.ConsolePrompt"));
+            }
+
             return warnings;
         }
 
@@ -1635,6 +1716,73 @@ namespace WinSW.Gui.Model
         internal static bool IsDriverStartMode(string? startMode) =>
             string.Equals(startMode?.Trim(), "Boot", StringComparison.OrdinalIgnoreCase)
             || string.Equals(startMode?.Trim(), "System", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Whether a <c>&lt;prompt&gt;</c> asks at the console, which an install from this console
+        /// can never answer: see <see cref="OffersConsolePrompt"/>.
+        /// </summary>
+        internal static bool IsConsolePrompt(string? prompt) =>
+            string.Equals(prompt?.Trim(), "console", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// What stops the wrapper from naming its log files with a date <c>&lt;pattern&gt;</c>, or
+        /// <see cref="RollPatternFault.None"/> when nothing does.
+        /// </summary>
+        /// <param name="pattern">The pattern as the file will say it.</param>
+        /// <param name="rollsByTime">
+        /// True for <c>roll-by-time</c>, which rolls when the formatted date changes and so needs a
+        /// pattern that does. <c>roll-by-size-time</c> rolls on size and only names files with it,
+        /// so <c>yyyyMM</c> is a fine pattern there.
+        /// </param>
+        /// <param name="name">The pattern applied to the present moment, when it could be applied.</param>
+        /// <remarks>
+        /// The wrapper reads the pattern without looking at it. Roll-by-time applies it only when
+        /// the service starts, in the task that copies the program's output into the log: an
+        /// exception there ends that task with one event log entry, nothing reads the output any
+        /// more, and the program blocks on a full pipe while the service still shows Running.
+        /// </remarks>
+        internal static RollPatternFault CheckRollPattern(string pattern, bool rollsByTime, out string? name)
+        {
+            name = null;
+            try
+            {
+                // In a custom format '/' and ':' stand for the culture's own separators, which are
+                // '.' or '-' in some cultures. The wrapper formats in the service account's culture,
+                // not this desktop's, so the separators are judged as they are written.
+                name = DateTime.Now.ToString(pattern, CultureInfo.InvariantCulture);
+            }
+            catch (FormatException)
+            {
+                return RollPatternFault.NotADateFormat;
+            }
+
+            if (name.IndexOfAny(InvalidFileNameChars) >= 0)
+            {
+                return RollPatternFault.NotAFileName;
+            }
+
+            if (rollsByTime)
+            {
+                // The wrapper's own calendar decides how often the pattern changes, trying a step
+                // of a millisecond, a second, a minute, an hour and a day in turn, and throws from
+                // Init when none of them changes it: yyyyMM, or no date in the pattern at all.
+                var calendar = new PeriodicRollingCalendar(pattern, 1);
+                try
+                {
+                    calendar.Init();
+                }
+                catch (FormatException)
+                {
+                    return RollPatternFault.NotADateFormat;
+                }
+                catch (Exception) when (calendar.Periodicity == PeriodicRollingCalendar.PeriodicityType.ERRONEOUS)
+                {
+                    return RollPatternFault.ChangesTooRarely;
+                }
+            }
+
+            return RollPatternFault.None;
+        }
 
         private static bool ParseBool(string? value, bool defaultValue = false) =>
             bool.TryParse(value?.Trim(), out bool result) ? result : defaultValue;

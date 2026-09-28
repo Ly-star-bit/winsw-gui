@@ -376,8 +376,14 @@
                                         <ComboBox HorizontalAlignment="Left" MinWidth="180" SelectedValue="{Binding ServiceAccountPrompt}" SelectedValuePath="Tag">
                                             <ComboBoxItem Content="{DynamicResource S.None}" Tag="{x:Null}" />
                                             <ComboBoxItem Content="dialog" Tag="dialog" />
-                                            <ComboBoxItem Content="console" Tag="console" />
+                                            <!--
+                                              Install runs the wrapper in a hidden window, where a console prompt waits forever. The item stays for a file that
+                                              says console, since an item missing under the selection is how the box comes to write null back; otherwise it is
+                                              hidden, and disabled as well, because the arrow keys on a closed box step onto any enabled item, seen or not.
+                                            -->
+                                            <ComboBoxItem Content="console" Tag="console" IsEnabled="{Binding OffersConsolePrompt}" Visibility="{Binding OffersConsolePrompt, Converter={StaticResource BoolToVisibility}}" />
                                         </ComboBox>
+                                        <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Editor.PromptDialogOnly}" />
                                     </StackPanel>
                                     <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.Editor.LogonRightGranted}" />
 

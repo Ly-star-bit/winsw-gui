@@ -86,6 +86,38 @@ namespace WinSW.Gui.Tests
             }
         }
 
+        /// <summary>
+        /// The console installs in a hidden window, where <c>console</c> waits for typing nobody
+        /// can see; an assistant reading "dialog or console" would pick either.
+        /// </summary>
+        [Theory]
+        [InlineData("en", "Use `dialog`")]
+        [InlineData("zh-CN", "请用 `dialog`")]
+        public void ThePromptRowSaysToUseDialog(string language, string advice)
+        {
+            Assert.Contains(advice, Row(Guide(language), "| `prompt` |"), StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// Roll-by-time refuses a pattern that changes less than daily, and only once the service
+        /// runs (<c>PeriodicRollingCalendar</c>); the pattern is also part of a file name.
+        /// </summary>
+        [Theory]
+        [InlineData("en", "`pattern` uses .NET")]
+        [InlineData("zh-CN", "`pattern` 用 .NET")]
+        public void ThePatternParagraphNamesWhatTheWrapperRefuses(string language, string start)
+        {
+            string paragraph = string.Join(
+                " ",
+                Guide(language).Replace("\r\n", "\n").Split('\n')
+                    .SkipWhile(l => !l.StartsWith(start, StringComparison.Ordinal))
+                    .TakeWhile(l => l.Length > 0));
+
+            Assert.Contains("`yyyyMM`", paragraph, StringComparison.Ordinal);
+            Assert.Contains("`yyyy/MM/dd`", paragraph, StringComparison.Ordinal);
+            Assert.Contains("`yyyy-MM-dd`", paragraph, StringComparison.Ordinal);
+        }
+
         private static string Row(string document, string start)
         {
             var rows = document.Replace("\r\n", "\n").Split('\n').Where(l => l.StartsWith(start, StringComparison.Ordinal)).ToList();

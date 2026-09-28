@@ -186,7 +186,10 @@ WinSW 3.x 配置文件的单页完整规范。
 | `roll-by-size-time` | 按大小滚动 + 时间戳命名，还可以在固定时刻滚动并压缩旧文件。 | `sizeThreshold`（KB，默认 `10240`）、`pattern` **（必填）**、`autoRollAtTime`（`HH:mm:ss`）、`zipOlderThanNumDays`（整数）、`zipDateFormat`（默认 `yyyyMM`） |
 | `rotate` | `roll-by-size` 的废弃别名，直接用 `roll-by-size`。 | — |
 
-`pattern` 用 .NET `DateTime.ToString` 的格式串，例如 `yyyyMMdd`。
+`pattern` 用 .NET `DateTime.ToString` 的格式串，例如 `yyyyMMdd`。格式化的结果会成为文件名的一部分，
+所以不能出现 `/`、`\`、`:` 这类文件名里不允许的字符：写 `yyyy-MM-dd`，不要写 `yyyy/MM/dd` 或 `HH:mm`。
+`roll-by-time` 还要求它至少每天变一次：`yyyyMM` 这种格式包装器要到服务运行时才拒绝，随后不再读取程序输出，
+程序卡住，而服务仍显示“运行中”。
 `zipOlderThanNumDays` 和 `zipDateFormat` 必须和 `autoRollAtTime` 一起用才有效。
 
 ```xml
@@ -247,7 +250,7 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
 | `username` | `DOMAIN\User`、`User@DOMAIN`，本机账户用 `.\User`。 |
 | `password` | 明文存在 XML 里 —— 一定要用 NTFS 权限保护好这个文件。 |
 | `allowservicelogon` | 无效：解析后没人读。不管这里写什么，安装时都会给该账户授予“作为服务登录”权限；下面的内置账户除外，它们不需要。 |
-| `prompt` | `dialog` 或 `console` —— 安装时弹窗/在控制台询问凭据，而不是把密码写进文件。 |
+| `prompt` | `dialog` 或 `console` —— 安装时弹窗/在控制台询问凭据，而不是把密码写进文件。请用 `dialog`：WinSW 控制台在隐藏窗口里执行安装，`console` 会一直等着没人看得见的输入，直到安装超时。 |
 
 内置账户不需要密码：
 
@@ -338,7 +341,8 @@ WinSW 3.x 没有内置扩展，共享目录映射已经变成顶层的 `<sharedD
    `autoRollAtTime`、`zipOlderThanNumDays`、`zipDateFormat`）。
 7. 布尔值是 `true`/`false`；时长是整数 + 小写单位。
 8. 写了 `<stoparguments>` 就要用 `<startarguments>` 而不是 `<arguments>`。
-9. 日志模式是 `roll-by-time` 或 `roll-by-size-time` 时，`<pattern>` 必须存在。
+9. 日志模式是 `roll-by-time` 或 `roll-by-size-time` 时，`<pattern>` 必须存在，格式化后是合法的文件名；
+   `roll-by-time` 的还要至少每天变一次（`yyyyMMdd`，不要 `yyyyMM`）。
 10. `<outfilepattern>` / `<errfilepattern>` 只在支持它们的模式下才写。
 11. `<depend>` 里写的是服务 id，不是显示名。
 12. 含明文密码的 `<serviceaccount>` 只用在已经限制了 NTFS 权限的文件上。

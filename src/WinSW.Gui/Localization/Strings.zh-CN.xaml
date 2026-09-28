@@ -685,6 +685,13 @@
     <sys:String x:Key="M.Editor.LogonRightGranted">安装时会自动给这个账户授予“作为服务登录”权限，内置账户不需要。包装器不读取 &lt;allowservicelogon&gt;，所以这里没有要勾选的。</sys:String>
     <sys:String x:Key="M.Warn.DriverStartMode">启动类型“{0}”只用于驱动程序，安装和“保存并应用”时 Windows 都会拒绝（错误 87）。请改成 Automatic、Manual 或 Disabled。</sys:String>
 
+    <!-- Date patterns the wrapper cannot name its log files with, and the console prompt an install from here can never answer. -->
+    <sys:String x:Key="M.Val.PatternNotAFormat">日期格式“{0}”不是包装器能用的 .NET 日期格式。</sys:String>
+    <sys:String x:Key="M.Val.PatternNotAFileName">日期格式“{0}”生成的日志文件名类似“{1}”，而文件名里不能有 / \ : * ? " &lt; &gt; |。各部分之间请用 - 或 _ 分隔，比如 yyyy-MM-dd。</sys:String>
+    <sys:String x:Key="M.Val.PatternTooCoarse">roll-by-time 要求日期格式至少每天变一次（比如 yyyyMMdd），“{0}”做不到。服务一启动包装器就不再读取程序输出，程序随后卡住，而服务仍显示“运行中”。</sys:String>
+    <sys:String x:Key="M.Editor.PromptDialogOnly">这里不提供 console：从本控制台安装时，包装器在隐藏窗口里运行，console 方式会一直等着没人看得见的输入，直到安装超时。dialog 会弹出 Windows 的凭据框来询问。</sys:String>
+    <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; 是 console。从本控制台安装时，包装器在隐藏窗口里运行，会一直等着没人看得见的用户名和密码，直到安装超时，提权后的包装器进程还会卡在后台。请改成 dialog，它会弹出 Windows 的凭据框。</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">wrapper 没有被替换，仍然是 {0}。可能有其它进程占用着这个文件；服务已按原状态重新启动。</sys:String>
 
 

@@ -696,6 +696,13 @@
     <sys:String x:Key="M.Editor.LogonRightGranted">Install grants the account the 'Log on as a service' right by itself; the built-in accounts need none. The wrapper does not read &lt;allowservicelogon&gt;, so there is nothing to tick.</sys:String>
     <sys:String x:Key="M.Warn.DriverStartMode">Start mode '{0}' is for drivers. Windows refuses it for this service with error 87, at install and at Save &amp; apply: choose Automatic, Manual or Disabled.</sys:String>
 
+    <!-- Date patterns the wrapper cannot name its log files with, and the console prompt an install from here can never answer. -->
+    <sys:String x:Key="M.Val.PatternNotAFormat">Date pattern '{0}' is not a .NET date format the wrapper can apply.</sys:String>
+    <sys:String x:Key="M.Val.PatternNotAFileName">Date pattern '{0}' makes log file names such as '{1}', and a file name cannot contain / \ : * ? " &lt; &gt; |. Separate the parts with - or _, as in yyyy-MM-dd.</sys:String>
+    <sys:String x:Key="M.Val.PatternTooCoarse">roll-by-time needs a date pattern that changes at least once a day, as yyyyMMdd does, and '{0}' does not. The wrapper would stop reading the program's output as the service starts, and the program then hangs while the service still shows Running.</sys:String>
+    <sys:String x:Key="M.Editor.PromptDialogOnly">'console' is not offered: Install from this console runs the wrapper in a hidden window, where a console prompt waits for typing nobody can see until Install times out. 'dialog' asks in a Windows sign-in box instead.</sys:String>
+    <sys:String x:Key="M.Warn.ConsolePrompt">&lt;prompt&gt; is 'console'. Install from this console runs the wrapper in a hidden window, where it would wait for a user name and password nobody can see until Install times out, and the elevated wrapper stays stuck behind it. Choose 'dialog', which asks in a Windows sign-in box.</sys:String>
+
     <sys:String x:Key="M.Dash.UpgradeNotReplaced">The wrapper was not replaced — it is still {0}. Something else is holding the file open; the services were started again as they were.</sys:String>
 
 
