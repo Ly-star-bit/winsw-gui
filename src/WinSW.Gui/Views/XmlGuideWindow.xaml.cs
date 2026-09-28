@@ -32,6 +32,9 @@ namespace WinSW.Gui.Views
         {
             this.InitializeComponent();
 
+            // Centred on the console, which may itself reach past the screen's edge.
+            WindowFit.Attach(this, this.Width, this.Height);
+
             this.toastTimer.Tick += (_, _) =>
             {
                 this.toastTimer.Stop();
