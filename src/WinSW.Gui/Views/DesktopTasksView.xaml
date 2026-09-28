@@ -146,10 +146,15 @@
 
         <!-- Body -->
         <Grid Grid.Row="2">
+            <!--
+                The list takes two fifths of the width, between 240 and 380 px, and the detail panel
+                the rest, as on the Services page. A fixed 380 px list left the panel under 300 px on
+                a server's 1024 px screen; from about 1280 px up the list is as wide as it was.
+            -->
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="380" />
+                <ColumnDefinition Width="2*" MinWidth="240" MaxWidth="380" />
                 <ColumnDefinition Width="20" />
-                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="3*" />
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
