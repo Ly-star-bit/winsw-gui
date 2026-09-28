@@ -93,38 +93,61 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!--
+            Header. The actions wrap onto a second line rather than push the title off the page:
+            in Chinese they need about 850 px, and a 1024 px screen with the navigation rail open
+            leaves the page about 736. They sit in the star column for that reason — a panel in
+            an Auto column is measured with unlimited width and never wraps. The file's path has
+            a line of its own under both, trimmed, with the whole of it in the tooltip.
+        -->
         <Grid Grid.Row="0" Margin="0,0,0,18">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource S.Configuration}" />
-                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HealthPendingBrush}" Text="{DynamicResource S.Unsaved}" />
-                    </Border>
-                    <Border Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
-                        <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HealthRunningBrush}" Text="{DynamicResource S.Installed}" />
-                    </Border>
-                    <Button Style="{StaticResource HelpButton}" Command="{Binding OpenHelpCommand}" CommandParameter="" />
-                </StackPanel>
-                <TextBlock Margin="0,4,0,0" Style="{StaticResource Mono}" Text="{Binding FileLabel}" />
+            <!--
+                The unsaved pill comes last and is hidden rather than collapsed when there is
+                nothing unsaved: the space it takes stays taken, so the first keystroke does not
+                re-wrap the actions beside it and push the form down under the cursor.
+            -->
+            <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,16,0" VerticalAlignment="Top" Orientation="Horizontal">
+                <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource S.Configuration}" />
+                <Button Style="{StaticResource HelpButton}" Command="{Binding OpenHelpCommand}" CommandParameter="" />
+                <Border Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource StatusPill}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HealthRunningBrush}" Text="{DynamicResource S.Installed}" />
+                </Border>
+                <Border Margin="8,0,0,0" VerticalAlignment="Center">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource StatusPill}">
+                            <Setter Property="Visibility" Value="Hidden" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource HealthPendingBrush}" Text="{DynamicResource S.Unsaved}" />
+                </Border>
             </StackPanel>
 
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
-                <CheckBox Margin="0,0,14,0" VerticalAlignment="Center" Content="{DynamicResource S.XMLPreview}" IsChecked="{Binding ShowPreview}" />
-                <Button Margin="0,0,8,0" Padding="12,7" Click="OnOpenGuide" ToolTip="{DynamicResource G.OpenGuideHint}">
+            <!-- Each action keeps a bottom margin: a wrapped line has no gap of its own. -->
+            <WrapPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <CheckBox Margin="0,0,14,8" VerticalAlignment="Center" Content="{DynamicResource S.XMLPreview}" IsChecked="{Binding ShowPreview}" />
+                <Button Margin="0,0,8,8" Padding="12,7" Click="OnOpenGuide" ToolTip="{DynamicResource G.OpenGuideHint}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xE557;" />
                         <TextBlock Text="{DynamicResource G.OpenGuide}" />
                     </StackPanel>
                 </Button>
-                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding OpenCommand}" Content="{DynamicResource S.Open}" />
-                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding ReloadCommand}" Content="{DynamicResource S.Reload}" />
-                <Button Margin="0,0,8,0" Padding="12,7" Click="OnHistoryClick" ToolTip="{DynamicResource M.History.Tip}">
+                <Button Margin="0,0,8,8" Padding="12,7" Command="{Binding OpenCommand}" Content="{DynamicResource S.Open}" />
+                <Button Margin="0,0,8,8" Padding="12,7" Command="{Binding ReloadCommand}" Content="{DynamicResource S.Reload}" />
+                <Button Margin="0,0,8,8" Padding="12,7" Click="OnHistoryClick" ToolTip="{DynamicResource M.History.Tip}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF47E;" />
                         <TextBlock Text="{DynamicResource M.History.Button}" />
@@ -135,32 +158,45 @@
                         <ContextMenu />
                     </Button.ContextMenu>
                 </Button>
-                <Button Margin="0,0,8,0" Padding="12,7" Command="{Binding SaveAsCommand}" Content="{DynamicResource S.SaveAs}" />
-                <Button Margin="0,0,8,0" Padding="12,7" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}" ToolTip="Ctrl+S">
+                <Button Margin="0,0,8,8" Padding="12,7" Command="{Binding SaveAsCommand}" Content="{DynamicResource S.SaveAs}" />
+                <Button Margin="0,0,8,8" Padding="12,7" Background="{DynamicResource AccentGradientBrush}" Foreground="White" Command="{Binding SaveCommand}" ToolTip="Ctrl+S">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Foreground="White" Style="{StaticResource Icon}" Text="&#xF67F;" />
                         <TextBlock Text="{DynamicResource S.Save}" />
                     </StackPanel>
                 </Button>
-                <Button Padding="12,7" Command="{Binding ApplyToServiceCommand}" ToolTip="{DynamicResource S.SaveThenRunWinswRefreshAgainst}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
+                <Button Margin="0,0,0,8" Padding="12,7" Command="{Binding ApplyToServiceCommand}" ToolTip="{DynamicResource S.SaveThenRunWinswRefreshAgainst}" Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF190;" />
                         <TextBlock Text="{DynamicResource M.Editor.SaveAndApply}" />
                     </StackPanel>
                 </Button>
-                <Button Padding="12,7" Command="{Binding InstallCommand}" ToolTip="{DynamicResource M.Editor.InstallHint}" Visibility="{Binding IsInstalled, Converter={StaticResource InverseBoolToVisibility}}">
+                <Button Margin="0,0,0,8" Padding="12,7" Command="{Binding InstallCommand}" ToolTip="{DynamicResource M.Editor.InstallHint}" Visibility="{Binding IsInstalled, Converter={StaticResource InverseBoolToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF150;" />
                         <TextBlock Text="{DynamicResource M.Editor.Install}" />
                     </StackPanel>
                 </Button>
-            </StackPanel>
+            </WrapPanel>
+
+            <TextBlock
+                Grid.Row="1"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Style="{StaticResource Mono}"
+                Text="{Binding FileLabel}"
+                TextTrimming="CharacterEllipsis"
+                ToolTip="{Binding FileLabel}" />
         </Grid>
 
-        <!-- Body -->
-        <Grid Grid.Row="1">
+        <!--
+            Body. The preview column's width is set from the code-behind: nothing while the
+            preview is hidden, the dragged width when it comes back, and never more than leaves
+            the form its minimum. See PreviewPaneWidth.
+        -->
+        <Grid Grid.Row="1" SizeChanged="OnBodySizeChanged">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" MinWidth="420" />
+                <ColumnDefinition x:Name="FormColumn" Width="*" MinWidth="420" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition x:Name="PreviewColumn" Width="420" MinWidth="0" />
             </Grid.ColumnDefinitions>
@@ -168,6 +204,7 @@
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
@@ -609,8 +646,33 @@
                     </TabControl>
                 </Border>
 
+                <!--
+                    The preview's problems list, under the form while the preview is hidden, so a
+                    save refused for them has them in view. Under the tabs rather than over them:
+                    a problem comes and goes as a field is typed in, and the field would move.
+                -->
+                <Border
+                    Grid.Row="1"
+                    Margin="0,10,0,0"
+                    Padding="12,10"
+                    Background="{DynamicResource DangerSoftBrush}"
+                    BorderBrush="{DynamicResource HealthBrokenBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="{Binding ShowProblemsInForm, Converter={StaticResource BoolToVisibility}}">
+                    <ScrollViewer MaxHeight="120" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Problems}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+
                 <!-- Try run: an expander under the form so the program can be run while editing. -->
-                <Expander Grid.Row="1" Margin="0,10,0,0" IsExpanded="{Binding IsTrialRunning, Mode=OneWay}">
+                <Expander Grid.Row="2" Margin="0,10,0,0" IsExpanded="{Binding IsTrialRunning, Mode=OneWay}">
                     <Expander.Header>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Margin="0,0,8,0" Style="{StaticResource Icon}" Text="&#xF605;" />
@@ -671,6 +733,7 @@
 
             <!-- Resizable divider -->
             <GridSplitter
+                x:Name="PreviewSplitter"
                 Grid.Column="1"
                 Width="8"
                 Margin="4,0"
@@ -700,7 +763,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Center" Style="{StaticResource SectionTitle}" Margin="0" Text="{DynamicResource S.WhatWillBeWritten}" />
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource SectionTitle}" Margin="0" Text="{DynamicResource S.WhatWillBeWritten}" TextTrimming="CharacterEllipsis" />
                         <StackPanel Grid.Column="1" Orientation="Horizontal">
                             <Button Margin="0,0,6,0" Padding="8,3" Click="OnOpenGuide" Content="{DynamicResource G.OpenGuideShort}" ToolTip="{DynamicResource G.OpenGuideHint}" />
                             <Button Padding="8,3" Command="{Binding EnterXmlEditCommand}" Content="{DynamicResource M.Editor.EditXml}" Visibility="{Binding IsXmlEditing, Converter={StaticResource InverseBoolToVisibility}}" />

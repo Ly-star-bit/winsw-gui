@@ -9,6 +9,7 @@ namespace WinSW.Gui.Views
 {
     public partial class ConfigEditorView : UserControl
     {
+        private readonly PreviewPaneWidth previewWidth = new();
         private ConfigEditorViewModel? attached;
 
         public ConfigEditorView()
@@ -31,15 +32,51 @@ namespace WinSW.Gui.Views
             {
                 this.attached.TrialOutput.CollectionChanged += this.OnTrialOutputChanged;
                 this.attached.PropertyChanged += this.OnViewModelPropertyChanged;
+                this.ApplyPreviewWidth();
             }
         }
 
         // Keyboard users land on Cancel when the confirmation opens; Enter is bound to the action.
+        // The preview's column follows its check box.
         private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ConfigEditorViewModel.ConfirmVisible) && this.attached?.ConfirmVisible == true)
             {
                 this.Dispatcher.BeginInvoke(() => this.ConfirmCancelButton.Focus(), System.Windows.Threading.DispatcherPriority.Input);
+            }
+            else if (e.PropertyName == nameof(ConfigEditorViewModel.ShowPreview))
+            {
+                this.ApplyPreviewWidth();
+            }
+        }
+
+        // A hidden preview gives its column back to the form. Collapsing the preview does not
+        // shrink a column with a width of its own, so the column is set to nothing, and to the
+        // width the splitter left it at when the preview comes back. Width rather than
+        // ActualWidth: the splitter writes the one, and the other is 0 until the first layout.
+        private void ApplyPreviewWidth()
+        {
+            if (this.attached is null)
+            {
+                return;
+            }
+
+            var column = this.PreviewColumn;
+            double current = column.Width.IsAbsolute ? column.Width.Value : column.ActualWidth;
+            double width = this.attached.ShowPreview ? this.previewWidth.Show(current) : this.previewWidth.Hide(current);
+            column.Width = new GridLength(width);
+        }
+
+        // The preview takes no more than leaves the form its minimum: a fixed-width column does
+        // not give way when the window narrows. A maximum rather than a new width, so the width
+        // it was dragged to comes back as the window widens again.
+        private void OnBodySizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (e.WidthChanged)
+            {
+                var splitter = this.PreviewSplitter;
+                double splitterWidth = splitter.Width + splitter.Margin.Left + splitter.Margin.Right;
+                this.PreviewColumn.MaxWidth = PreviewPaneWidth.MaximumBeside(e.NewSize.Width, this.FormColumn.MinWidth, splitterWidth);
             }
         }
 

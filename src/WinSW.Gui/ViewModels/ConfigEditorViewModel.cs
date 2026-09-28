@@ -494,8 +494,28 @@ namespace WinSW.Gui.ViewModels
         public bool ShowPreview
         {
             get => this.showPreview;
-            set => this.Set(ref this.showPreview, value);
+            set
+            {
+                if (this.Set(ref this.showPreview, value))
+                {
+                    this.Raise(nameof(this.ShowProblemsInForm));
+                }
+            }
         }
+
+        /// <summary>
+        /// The problems list goes under the form while the preview, where it otherwise sits, is
+        /// hidden.
+        /// </summary>
+        /// <remarks>
+        /// Problems in the failure actions, variables, downloads and mapped drives have no field
+        /// to mark, and a few fields a problem can be about are not on the form, or not while
+        /// the log mode leaves them out: with the preview hidden, a save was refused with "fix
+        /// the reported problems" and nothing reported anywhere on screen. All of them go under
+        /// the form, not just those — a field that is marked may well be on another tab — as
+        /// the preview lists them all.
+        /// </remarks>
+        public bool ShowProblemsInForm => !this.showPreview && this.Problems.Count > 0;
 
         public string StatusMessage
         {
@@ -1151,6 +1171,7 @@ namespace WinSW.Gui.ViewModels
             }
 
             this.Raise(nameof(this.HasProblems));
+            this.Raise(nameof(this.ShowProblemsInForm));
 
             var recovery = this.Model.DescribeRecovery();
             this.RecoverySummary = recovery?.Describe(Localizer.Get) ?? string.Empty;
