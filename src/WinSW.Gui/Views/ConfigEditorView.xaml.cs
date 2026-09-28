@@ -1,8 +1,12 @@
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using WinSW.Gui.Localization;
+using WinSW.Gui.Services;
 using WinSW.Gui.ViewModels;
 
 namespace WinSW.Gui.Views
@@ -125,12 +129,39 @@ namespace WinSW.Gui.Views
         }
 
         // The trial-run panel always follows its output; it is short-lived and interactive.
+        // Scrolling to an item finds it by comparing it with the list's items, and the lines are
+        // compared as the same line, not the same text: a restart loop printing the same lines
+        // again scrolls to the newest copy rather than back to the first.
         private void OnTrialOutputChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             int count = this.TrialOutputList.Items.Count;
             if (e.Action == NotifyCollectionChangedAction.Add && count > 0)
             {
                 this.TrialOutputList.ScrollIntoView(this.TrialOutputList.Items[count - 1]);
+            }
+        }
+
+        // Ctrl+C copies the highlighted lines, as in the log viewer. Top to bottom, as they are
+        // on screen: the selection lists them in the order they were clicked.
+        private void OnTrialOutputKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control && this.TrialOutputList.SelectedItems.Count > 0)
+            {
+                var picked = new HashSet<LogLine>(this.TrialOutputList.SelectedItems.OfType<LogLine>());
+                string text = string.Join(
+                    System.Environment.NewLine,
+                    this.TrialOutputList.Items.OfType<LogLine>().Where(picked.Contains).Select(line => line.Text));
+
+                try
+                {
+                    Clipboard.SetText(text);
+                }
+                catch (System.Runtime.InteropServices.COMException)
+                {
+                    // The clipboard is momentarily owned by another process.
+                }
+
+                e.Handled = true;
             }
         }
     }

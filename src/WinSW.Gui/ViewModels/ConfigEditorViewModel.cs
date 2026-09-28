@@ -357,7 +357,12 @@ namespace WinSW.Gui.ViewModels
             private set => this.Set(ref this.fullExecutablePath, value);
         }
 
-        public ObservableCollection<string> TrialOutput { get; } = new();
+        /// <summary>
+        /// The try run's output, a <see cref="LogLine"/> a line as the log viewer has it: a program
+        /// in a restart loop prints the same lines again and again, and a list of strings finds
+        /// the first copy of one when asked to scroll to the last.
+        /// </summary>
+        public ObservableCollection<LogLine> TrialOutput { get; } = new();
 
         // Raw XML mode ---------------------------------------------------------
 
@@ -1403,7 +1408,7 @@ namespace WinSW.Gui.ViewModels
         private void AppendTrial(string line)
         {
             const int maxLines = 3000;
-            this.TrialOutput.Add(line);
+            this.TrialOutput.Add(new LogLine(line));
             if (this.TrialOutput.Count > maxLines)
             {
                 this.TrialOutput.RemoveAt(0);

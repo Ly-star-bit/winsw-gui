@@ -722,6 +722,11 @@
                                 <!-- A try run is not a service run, and the gap between them is where most first starts fail. -->
                                 <TextBlock Margin="0,8,0,0" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Trial.Differs}" />
                             </StackPanel>
+                            <!--
+                                Lines are selected with the mouse, Shift and Ctrl, and copied with Ctrl+C; see
+                                OnTrialOutputKeyDown. The items take focus for that: a list item that cannot
+                                take focus cannot be clicked into the selection either.
+                            -->
                             <Border Grid.Row="1" Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
                                 <ListBox
                                     x:Name="TrialOutputList"
@@ -730,18 +735,39 @@
                                     FontFamily="{DynamicResource MonoFont}"
                                     FontSize="12"
                                     ItemsSource="{Binding TrialOutput}"
+                                    KeyDown="OnTrialOutputKeyDown"
                                     ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                    SelectionMode="Extended"
+                                    ToolTip="{DynamicResource M.Log.CopyTip}"
                                     VirtualizingPanel.IsVirtualizing="True">
                                     <ListBox.ItemContainerStyle>
                                         <Style TargetType="ListBoxItem">
                                             <Setter Property="Padding" Value="12,1" />
                                             <Setter Property="MinHeight" Value="0" />
-                                            <Setter Property="Focusable" Value="False" />
                                         </Style>
                                     </ListBox.ItemContainerStyle>
+                                    <!--
+                                        Each item is a LogLine, as in the log viewer, whose severity was worked out
+                                        when it arrived. OneTime because a line never changes. No Foreground on the
+                                        element itself: a local value beats the triggers.
+                                    -->
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Foreground="{Binding Converter={StaticResource LogSeverityToBrush}}" Text="{Binding}" />
+                                            <TextBlock Text="{Binding Text, Mode=OneTime}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{DynamicResource LogInfoBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsWarning, Mode=OneTime}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource LogWarnBrush}" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsError, Mode=OneTime}" Value="True">
+                                                                <Setter Property="Foreground" Value="{DynamicResource LogErrorBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
