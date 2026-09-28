@@ -5,6 +5,21 @@
 
     <!-- English. Keys are shared with Strings.zh-CN.xaml; keep the two files in step. -->
 
+    <!--
+        Fonts. They are here and not in the theme palettes because the face that should draw
+        Chinese or Japanese text depends on the language, not the theme, and this dictionary
+        is swapped with the language. Segoe UI and Consolas have no CJK glyphs; the family
+        named after them draws those. Left to WPF's own fallback, Han text takes Japanese
+        glyph shapes unless WPF is told the text is Chinese (Localizer tells it the UI
+        language), and naming the face also keeps line heights steady where CJK and Latin
+        text share a line. Each list reaches, for every script it covers, a face Server 2012
+        R2 has: Cascadia Mono and Yu Gothic UI come only with newer Windows, and where they
+        are missing the next name is used. English names YaHei because service names and
+        log lines are often Chinese whatever language the console is in.
+    -->
+    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+
     <!-- Interface -->
     <sys:String x:Key="S.ANETDateFormatSuchAs">A .NET date format such as yyyyMMdd. Required for time-based rolling.</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">Accept pre-shutdown notifications</sys:String>

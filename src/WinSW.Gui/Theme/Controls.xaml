@@ -68,6 +68,21 @@
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
     </Style>
 
+    <!--
+        Tooltips and context menus open in popups of their own and do not inherit the window's
+        font. Without these they drew with the system message font, which on an English
+        Windows is Segoe UI and leaves Chinese text to WPF's fallback. Each builds on WPF-UI's
+        style: while a style is being loaded, WPF leaves it out of the lookup of its own key,
+        so BasedOn finds the one WPF-UI's dictionary, merged earlier, declares for the type.
+    -->
+    <Style TargetType="ToolTip" BasedOn="{StaticResource {x:Type ToolTip}}">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}" />
+    </Style>
+
+    <Style TargetType="ContextMenu" BasedOn="{StaticResource {x:Type ContextMenu}}">
+        <Setter Property="FontFamily" Value="{DynamicResource BodyFont}" />
+    </Style>
+
     <!-- Validation: a field lights up when the model has a message for it (bound through Tag) -->
 
     <Style x:Key="ValidatedTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">

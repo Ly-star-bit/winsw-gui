@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Markup;
 using WinSW.Gui.Services;
 
 namespace WinSW.Gui.Localization
@@ -31,7 +33,8 @@ namespace WinSW.Gui.Localization
     /// Every user-visible string lives in <c>Localization/Strings.&lt;code&gt;.xaml</c> as a
     /// keyed resource. XAML reads them through <c>DynamicResource</c>, so swapping the merged
     /// dictionary re-renders the whole UI in place. Code reads them through <see cref="Get"/>
-    /// and re-raises its computed properties on <see cref="Changed"/>.
+    /// and re-raises its computed properties on <see cref="Changed"/>. The same dictionaries
+    /// carry the <c>BodyFont</c> and <c>MonoFont</c> of each language, which follow along.
     /// </remarks>
     public static class Localizer
     {
@@ -42,6 +45,9 @@ namespace WinSW.Gui.Localization
             new("zh-TW", "繁體中文"),
             new("ja", "日本語"),
         };
+
+        /// <summary>The language WPF is told the text is in; null until the first <see cref="Apply(Language, bool)"/>.</summary>
+        private static XmlLanguage? textLanguage;
 
         public static event Action? Changed;
 
@@ -80,6 +86,8 @@ namespace WinSW.Gui.Localization
             CultureInfo.CurrentUICulture = culture;
             CultureInfo.DefaultThreadCurrentUICulture = culture;
 
+            ApplyTextLanguage(culture);
+
             Current = language;
 
             if (persist)
@@ -89,6 +97,57 @@ namespace WinSW.Gui.Localization
             }
 
             Changed?.Invoke();
+        }
+
+        /// <summary>Tells WPF which language the text on screen is in.</summary>
+        /// <remarks>
+        /// <para>
+        /// A character none of the named fonts has is drawn from WPF's own fallback font, which
+        /// picks a face by this language. It is en-US unless told otherwise, and for en-US that
+        /// fallback tries Japanese fonts for Han characters before Chinese ones, so a Chinese
+        /// log line came out in a mix of Japanese and Chinese glyph shapes. The
+        /// <c>BodyFont</c> and <c>MonoFont</c> of each language name the right face first;
+        /// this settles whatever they leave to the fallback.
+        /// </para>
+        /// <para>
+        /// The default every element starts from can be set only once, and only before the
+        /// first element exists, so that happens at startup. A later switch is set on each open
+        /// window, which its contents inherit, and on each window, tooltip and menu that
+        /// appears afterwards: tooltips and menus open in popups of their own, outside the
+        /// window they belong to, and the tray menu belongs to no window at all.
+        /// </para>
+        /// </remarks>
+        private static void ApplyTextLanguage(CultureInfo culture)
+        {
+            var language = XmlLanguage.GetLanguage(culture.IetfLanguageTag);
+
+            if (textLanguage is null)
+            {
+                textLanguage = language;
+                FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(language));
+
+                var follow = new RoutedEventHandler((sender, _) => FollowTextLanguage(sender as FrameworkElement));
+                EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, follow);
+                EventManager.RegisterClassHandler(typeof(ToolTip), ToolTip.OpenedEvent, follow);
+                EventManager.RegisterClassHandler(typeof(ContextMenu), ContextMenu.OpenedEvent, follow);
+                return;
+            }
+
+            textLanguage = language;
+            foreach (Window window in Application.Current.Windows)
+            {
+                FollowTextLanguage(window);
+            }
+        }
+
+        /// <summary>Sets the current text language on a root that has another.</summary>
+        private static void FollowTextLanguage(FrameworkElement? root)
+        {
+            if (root != null && textLanguage != null
+                && !string.Equals(root.Language?.IetfLanguageTag, textLanguage.IetfLanguageTag, StringComparison.OrdinalIgnoreCase))
+            {
+                root.Language = textLanguage;
+            }
         }
 
         /// <summary>Returns the string for <paramref name="key"/>, or the key itself when missing.</summary>

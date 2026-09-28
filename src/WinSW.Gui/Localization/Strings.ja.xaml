@@ -5,6 +5,10 @@
 
     <!-- 日本語。キーは Strings.en.xaml と共通です。両方のファイルを同期して保守してください。 -->
 
+    <!-- Fonts; see Strings.en.xaml. Yu Gothic UI comes with Windows 10 and Server 2016; Server 2012 R2 uses Meiryo UI. -->
+    <FontFamily x:Key="BodyFont">Segoe UI, Yu Gothic UI, Meiryo UI, Meiryo</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New, Yu Gothic UI, Meiryo UI, Meiryo</FontFamily>
+
     <!-- Interface -->
     <sys:String x:Key="S.ANETDateFormatSuchAs">yyyyMMdd などの .NET 日付書式。時間ベースのローテーションでは必須です。</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">プリシャットダウン通知を受け取る</sys:String>

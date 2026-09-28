@@ -60,13 +60,13 @@
         an icon is written as the 20-pixel glyph of WPF-UI's SymbolRegular of that name.
     -->
     <FontFamily x:Key="IconFont">pack://application:,,,/Wpf.Ui;component/Resources/Fonts/#FluentSystemIcons-Regular</FontFamily>
-    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
 
     <!--
-        Segoe UI has no CJK glyphs; naming YaHei explicitly keeps line heights stable
-        when Chinese and Latin text share a line, instead of relying on per-glyph fallback.
+        BodyFont and MonoFont are not here but in the string dictionaries,
+        Localization/Strings.*.xaml: which face draws Chinese or Japanese text depends on the
+        language, not on the theme. That dictionary is merged after the palette, so a text
+        font declared here as well would never be used.
     -->
-    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
 
     <CornerRadius x:Key="CardCornerRadius">10</CornerRadius>
 

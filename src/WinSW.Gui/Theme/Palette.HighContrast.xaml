@@ -45,10 +45,8 @@
     <SolidColorBrush x:Key="LogWarnBrush" Color="#FFFF00" />
     <SolidColorBrush x:Key="LogInfoBrush" Color="#FFFFFF" />
 
-    <!-- Fluent System Icons from WPF-UI; see Palette.xaml. -->
+    <!-- Fluent System Icons from WPF-UI; see Palette.xaml, also for where the text fonts are. -->
     <FontFamily x:Key="IconFont">pack://application:,,,/Wpf.Ui;component/Resources/Fonts/#FluentSystemIcons-Regular</FontFamily>
-    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
-    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
 
     <CornerRadius x:Key="CardCornerRadius">4</CornerRadius>
 

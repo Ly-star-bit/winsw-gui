@@ -5,6 +5,10 @@
 
     <!-- 繁體中文。鍵與 Strings.en.xaml 共用，兩個檔案必須同步維護。 -->
 
+    <!-- Fonts; see Strings.en.xaml. JhengHei, not YaHei, has the Traditional Chinese glyph shapes. -->
+    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft JhengHei UI, Microsoft JhengHei</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New, Microsoft JhengHei UI, Microsoft JhengHei</FontFamily>
+
     <!-- Interface -->
     <sys:String x:Key="S.ANETDateFormatSuchAs">.NET 日期格式，例如 yyyyMMdd。依時間輪替時必填。</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">接收系統預先關機通知</sys:String>

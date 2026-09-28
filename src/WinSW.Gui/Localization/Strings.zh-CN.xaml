@@ -5,6 +5,10 @@
 
     <!-- 简体中文。键与 Strings.en.xaml 共用，两个文件必须同步维护。 -->
 
+    <!-- Fonts; see Strings.en.xaml. Simplified Chinese text is drawn with YaHei. -->
+    <FontFamily x:Key="BodyFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+    <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New, Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+
     <!-- Interface -->
     <sys:String x:Key="S.ANETDateFormatSuchAs">.NET 日期格式，例如 yyyyMMdd。按时间滚动时必填。</sys:String>
     <sys:String x:Key="S.AcceptPreShutdownNotifications">接收系统预关机通知</sys:String>
