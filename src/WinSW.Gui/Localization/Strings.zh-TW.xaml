@@ -582,6 +582,9 @@
     <sys:String x:Key="M.Log.Wrap">換行</sys:String>
     <sys:String x:Key="M.Log.ZoomTip">Ctrl + 滾輪縮放字型大小</sys:String>
     <sys:String x:Key="M.Log.CopyTip">選取行後 Ctrl+C 複製</sys:String>
+    <sys:String x:Key="M.Log.ClearView">清除畫面</sys:String>
+    <sys:String x:Key="M.Log.ClearViewTip">只清除這裡顯示的行，檔案本身不受影響。</sys:String>
+    <sys:String x:Key="M.Log.PreferredMissing">找不到 {0}，已改為開啟最新的記錄檔。</sys:String>
     <sys:String x:Key="M.Nav.Settings">設定</sys:String>
     <sys:String x:Key="M.Nav.SettingsSub">語言、佈景主題、系統匣</sys:String>
     <sys:String x:Key="M.Settings.Subtitle">設定依使用者儲存，立即生效。</sys:String>

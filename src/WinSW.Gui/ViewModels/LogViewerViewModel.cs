@@ -60,6 +60,27 @@ namespace WinSW.Gui.ViewModels
             files.Where(f => f.LastWrite < cutoff && !string.Equals(f.Path, onScreen, StringComparison.OrdinalIgnoreCase)).ToList();
 
         /// <summary>
+        /// The entry for <paramref name="path"/> among <paramref name="files"/>, or null when it
+        /// is not there. The path is compared whole first, then by file name alone: whoever
+        /// asks — the dashboard's last-stop card, for its .err.log — puts the path together
+        /// from the configuration itself, and may spell the directory differently from the
+        /// scan (a <c>..</c> in it, forward slashes, another case), while every file listed
+        /// for a service is in the one directory. A bare file name is found the same way.
+        /// </summary>
+        internal static LogFileEntry? Find(IEnumerable<LogFileEntry> files, string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return null;
+            }
+
+            string wanted = path.Trim();
+            string name = System.IO.Path.GetFileName(wanted);
+            return files.FirstOrDefault(f => string.Equals(f.Path, wanted, StringComparison.OrdinalIgnoreCase))
+                ?? (name.Length == 0 ? null : files.FirstOrDefault(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        /// <summary>
         /// The service's log files in <paramref name="directory"/>, newest first: everything
         /// the appenders may produce for it — .out.log, .err.log, the numbered or dated files
         /// the rolling modes add and the .log.old files of roll mode — and the wrapper's own
@@ -284,6 +305,7 @@ namespace WinSW.Gui.ViewModels
             {
                 this.Raise(nameof(this.ServiceName));
                 this.Raise(nameof(this.PauseLabel));
+                this.Raise(nameof(this.EncodingToolTip));
                 foreach (var option in this.Encodings)
                 {
                     option.RefreshLocalized();
@@ -542,8 +564,23 @@ namespace WinSW.Gui.ViewModels
         public string EncodingInfo
         {
             get => this.encodingInfo;
-            private set => this.Set(ref this.encodingInfo, value);
+            private set
+            {
+                if (this.Set(ref this.encodingInfo, value))
+                {
+                    this.Raise(nameof(this.EncodingToolTip));
+                }
+            }
         }
+
+        /// <summary>
+        /// The encoding picker's tooltip: what the picker is, and, once the file has been read,
+        /// what the encoding was found to be. That used to stand beside the picker, taking room
+        /// the toolbar did not have for something looked at only when the text comes out garbled.
+        /// </summary>
+        public string EncodingToolTip => this.encodingInfo.Length == 0
+            ? Localizer.Get("M.Log.Encoding")
+            : Localizer.Get("M.Log.Encoding") + Environment.NewLine + this.encodingInfo;
 
         /// <summary>Case-insensitive substring filter applied to the buffered lines.</summary>
         public string Filter
@@ -630,7 +667,22 @@ namespace WinSW.Gui.ViewModels
             this.Attach(new ServiceEntry(caption, caption, string.Empty, configPath));
         }
 
-        public void Attach(ServiceEntry entry)
+        /// <summary>Puts a service's logs on screen, starting with its newest file.</summary>
+        public void Attach(ServiceEntry entry) => this.Attach(entry, preferredFile: null);
+
+        /// <summary>
+        /// Puts a service's logs on screen, starting with <paramref name="preferredFile"/> when
+        /// it is among them — the .err.log the dashboard's last-stop card read, say, which is
+        /// where a program says why it would not start, while the newest file is as often the
+        /// wrapper's log. When it is not there, the newest file, as with <see cref="Attach(ServiceEntry)"/>.
+        /// </summary>
+        /// <param name="entry">The service.</param>
+        /// <param name="preferredFile">
+        /// The full path of one of the service's log files, or its name alone; null for the
+        /// newest. Looked for once, here: a file that turns up later is not switched to, since
+        /// by then which file is on screen is the user's choice.
+        /// </param>
+        public void Attach(ServiceEntry entry, string? preferredFile)
         {
             this.service = entry;
             this.selectedService = entry;
@@ -638,7 +690,7 @@ namespace WinSW.Gui.ViewModels
             this.Raise(nameof(this.ServiceName));
             this.RescanCommand.RaiseCanExecuteChanged();
             this.RefreshEventsCommand.RaiseCanExecuteChanged();
-            this.Rescan(fresh: true);
+            this.Rescan(fresh: true, preferredFile);
             this.RefreshEventsCommand.Execute(null);
 
             if (this.isActive)
@@ -674,14 +726,16 @@ namespace WinSW.Gui.ViewModels
 
         // Files ------------------------------------------------------------------
 
-        private void Rescan() => this.Rescan(fresh: false);
+        private void Rescan() => this.Rescan(fresh: false, preferredFile: null);
 
         /// <summary>
         /// Looks at the log directory again. The list is brought up to date in place, so the
         /// file on screen stays there with everything it shows; the list starts over only for
         /// another service, or for a configuration that now puts its logs somewhere else.
         /// </summary>
-        private void Rescan(bool fresh)
+        /// <param name="fresh">Start the list over, for a service just put on screen.</param>
+        /// <param name="preferredFile">The file to open when the list starts over; see <see cref="Attach(ServiceEntry, string?)"/>.</param>
+        private void Rescan(bool fresh, string? preferredFile)
         {
             var entry = this.service;
             if (entry?.ConfigPath is null)
@@ -721,7 +775,16 @@ namespace WinSW.Gui.ViewModels
                 this.Raise(nameof(this.TotalSizeText));
                 this.CleanupCommand.RaiseCanExecuteChanged();
 
-                this.SelectedFile ??= this.Files.FirstOrDefault(f => f.Path == previous) ?? this.Files.FirstOrDefault();
+                // The file asked for, else the one that was on screen, else the newest. A file
+                // asked for and not found is said rather than left to be spotted in the picker:
+                // whoever asked for it expects to be looking at it.
+                var preferred = LogFileEntry.Find(this.Files, preferredFile);
+                if (preferred is null && !string.IsNullOrWhiteSpace(preferredFile) && this.Files.Count > 0)
+                {
+                    this.StatusMessage = Localizer.Format("M.Log.PreferredMissing", Path.GetFileName(preferredFile.Trim()));
+                }
+
+                this.SelectedFile ??= preferred ?? this.Files.FirstOrDefault(f => f.Path == previous) ?? this.Files.FirstOrDefault();
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
             {

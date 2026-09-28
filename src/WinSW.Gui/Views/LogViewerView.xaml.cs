@@ -89,6 +89,19 @@ namespace WinSW.Gui.Views
             e.Handled = true;
         }
 
+        // The toolbar's "…" menu: opening the file, showing it in Explorer, clearing the view.
+        // A ContextMenu is not in the visual tree, so it does not inherit the DataContext.
+        private void OnMoreClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.ContextMenu is { } menu)
+            {
+                menu.DataContext = this.DataContext;
+                menu.PlacementTarget = button;
+                menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+                menu.IsOpen = true;
+            }
+        }
+
         // Keyboard users land on Cancel when the confirmation opens; Enter is bound to Delete.
         private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {

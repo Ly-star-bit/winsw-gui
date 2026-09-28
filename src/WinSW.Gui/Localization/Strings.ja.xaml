@@ -582,6 +582,9 @@
     <sys:String x:Key="M.Log.Wrap">折り返し</sys:String>
     <sys:String x:Key="M.Log.ZoomTip">Ctrl + ホイールで文字サイズを変更</sys:String>
     <sys:String x:Key="M.Log.CopyTip">行を選択して Ctrl+C でコピー</sys:String>
+    <sys:String x:Key="M.Log.ClearView">表示をクリア</sys:String>
+    <sys:String x:Key="M.Log.ClearViewTip">ここに表示されている行を消します。ファイル自体は変更しません。</sys:String>
+    <sys:String x:Key="M.Log.PreferredMissing">{0} が見つからないため、最新のログ ファイルを表示しています。</sys:String>
     <sys:String x:Key="M.Nav.Settings">設定</sys:String>
     <sys:String x:Key="M.Nav.SettingsSub">言語、テーマ、トレイ</sys:String>
     <sys:String x:Key="M.Settings.Subtitle">設定はユーザーごとに保存され、すぐに反映されます。</sys:String>

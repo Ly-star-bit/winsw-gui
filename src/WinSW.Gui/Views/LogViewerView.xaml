@@ -21,20 +21,38 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Header -->
+        <!--
+            Header. The service picker has a line of its own under the title: beside the
+            cleanup and rescan controls, at 1024 px in Chinese, it was left less room than its
+            own minimum width and lost its drop-down arrow. The directory gives way instead.
+        -->
         <Grid Grid.Row="0" Margin="0,0,0,18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel>
-                <TextBlock Style="{StaticResource PageTitle}" Text="{DynamicResource S.Logs}" />
-                <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
-                    <ComboBox MinWidth="260" AutomationProperties.Name="{DynamicResource S.Service}" DisplayMemberPath="ServiceName" ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService}" />
-                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding LogDirectory}" />
-                </StackPanel>
-            </StackPanel>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Style="{StaticResource PageTitle}" Text="{DynamicResource S.Logs}" />
+            <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0" MinWidth="260" AutomationProperties.Name="{DynamicResource S.Service}" DisplayMemberPath="ServiceName" ItemsSource="{Binding Services}" SelectedItem="{Binding SelectedService}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Margin="12,0,0,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource Mono}"
+                    Text="{Binding LogDirectory}"
+                    TextTrimming="CharacterEllipsis"
+                    ToolTip="{Binding LogDirectory}" />
+            </Grid>
+            <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
                 <!-- What the service's logs come to here, and clearing out the old ones. -->
                 <TextBlock Margin="0,0,16,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding TotalSizeText}" />
                 <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Log.KeepDays}" />
@@ -54,30 +72,61 @@
             </StackPanel>
         </Grid>
 
-        <!-- Toolbar -->
+        <!--
+            Toolbar, in two rows: which file is on screen and whether it moves, then how its
+            lines are shown. As one row it came to about 1,300 px in Chinese against about
+            966 px of card in the default window, and what gave way was the file picker, the
+            only way between the .out, .err and wrapper logs: it shrank to nothing. Now it has
+            whatever the first row leaves, the second row wraps rather than cuts off, and what
+            is done with the file rather than the view is in the "…" menu. The check boxes drop
+            the theme's 120 px minimum, which was most of their width for a two-character label.
+        -->
         <Border Grid.Row="1" Margin="0,0,0,12" Padding="12,10" Style="{StaticResource Card}">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <ComboBox
+                    Grid.Row="0"
                     Grid.Column="0"
-                    MinWidth="320"
-                    HorizontalAlignment="Left"
+                    MinWidth="200"
                     DisplayMemberPath="Caption"
                     ItemsSource="{Binding Files}"
                     SelectedItem="{Binding SelectedFile}" />
+                <Button Grid.Row="0" Grid.Column="1" Margin="12,0,0,0" Padding="12,6" Command="{Binding TogglePauseCommand}" Content="{Binding PauseLabel}" />
+                <CheckBox Grid.Row="0" Grid.Column="2" MinWidth="0" Margin="12,0,0,0" VerticalAlignment="Center" Content="{DynamicResource S.Follow}" IsChecked="{Binding AutoScroll}" />
+                <Button
+                    Grid.Row="0"
+                    Grid.Column="3"
+                    Margin="12,0,0,0"
+                    Padding="10,6"
+                    AutomationProperties.Name="{DynamicResource M.Dash.More}"
+                    Click="OnMoreClick"
+                    ToolTip="{DynamicResource M.Dash.More}">
+                    <TextBlock Style="{StaticResource Icon}" Text="&#xE824;" />
+                    <Button.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Command="{Binding OpenExternallyCommand}" Header="{DynamicResource S.Open2}" ToolTip="{DynamicResource S.OpenTheFileWithItsDefault}" />
+                            <MenuItem Command="{Binding RevealCommand}" Header="{DynamicResource S.Reveal}" ToolTip="{DynamicResource S.ShowTheFileInExplorer}" />
+                            <Separator />
+                            <MenuItem Command="{Binding ClearCommand}" Header="{DynamicResource M.Log.ClearView}" ToolTip="{DynamicResource M.Log.ClearViewTip}" />
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
 
-                <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Orientation="Horizontal">
+                <WrapPanel Grid.Row="1" Grid.ColumnSpan="4" Margin="0,6,0,0" Orientation="Horizontal">
                     <ui:TextBox
                         Width="200"
+                        Margin="0,4,8,0"
+                        VerticalAlignment="Center"
                         AutomationProperties.Name="{DynamicResource S.ShowOnlyLinesContainingThisText}"
                         PlaceholderText="{DynamicResource M.Ph.Filter}"
                         Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"
@@ -92,26 +141,25 @@
                             </Style>
                         </ui:TextBox.Style>
                     </ui:TextBox>
-                    <CheckBox Margin="8,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Log.Regex}" IsChecked="{Binding UseRegex}" />
-                    <Button Margin="10,0,0,0" Padding="10,4" Command="{Binding NextErrorCommand}" ToolTip="{DynamicResource M.Log.NextErrorTip}">
+                    <CheckBox MinWidth="0" Margin="0,4,10,0" VerticalAlignment="Center" Content="{DynamicResource M.Log.Regex}" IsChecked="{Binding UseRegex}" />
+                    <Button Margin="0,4,20,0" Padding="10,4" VerticalAlignment="Center" Command="{Binding NextErrorCommand}" ToolTip="{DynamicResource M.Log.NextErrorTip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Margin="0,0,6,0" Foreground="{DynamicResource HealthBrokenBrush}" Style="{StaticResource Icon}" Text="&#xF869;" />
                             <TextBlock Text="{Binding ErrorCount}" />
                         </StackPanel>
                     </Button>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center" Orientation="Horizontal">
-                    <ComboBox MinWidth="150" DisplayMemberPath="Label" ItemsSource="{Binding Encodings}" SelectedItem="{Binding SelectedEncoding}" ToolTip="{DynamicResource M.Log.Encoding}" />
-                    <TextBlock Margin="10,0,12,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding EncodingInfo}" />
-                    <CheckBox VerticalAlignment="Center" Content="{DynamicResource S.Follow}" IsChecked="{Binding AutoScroll}" />
-                    <CheckBox Margin="10,0,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Log.Wrap}" IsChecked="{Binding WrapLines}" ToolTip="{DynamicResource M.Log.ZoomTip}" />
-                </StackPanel>
-
-                <Button Grid.Column="3" Margin="0,0,8,0" Padding="12,6" Command="{Binding TogglePauseCommand}" Content="{Binding PauseLabel}" />
-                <Button Grid.Column="4" Margin="0,0,8,0" Padding="12,6" Command="{Binding ClearCommand}" Content="{DynamicResource S.Clear}" />
-                <Button Grid.Column="5" Margin="0,0,8,0" Padding="12,6" Command="{Binding OpenExternallyCommand}" Content="{DynamicResource S.Open2}" ToolTip="{DynamicResource S.OpenTheFileWithItsDefault}" />
-                <Button Grid.Column="6" Padding="12,6" Command="{Binding RevealCommand}" Content="{DynamicResource S.Reveal}" ToolTip="{DynamicResource S.ShowTheFileInExplorer}" />
+                    <!-- What detection settled on is in the tooltip; see EncodingToolTip. -->
+                    <ComboBox
+                        MinWidth="150"
+                        Margin="0,4,12,0"
+                        VerticalAlignment="Center"
+                        AutomationProperties.Name="{DynamicResource M.Log.Encoding}"
+                        DisplayMemberPath="Label"
+                        ItemsSource="{Binding Encodings}"
+                        SelectedItem="{Binding SelectedEncoding}"
+                        ToolTip="{Binding EncodingToolTip}" />
+                    <CheckBox MinWidth="0" Margin="0,4,0,0" VerticalAlignment="Center" Content="{DynamicResource M.Log.Wrap}" IsChecked="{Binding WrapLines}" ToolTip="{DynamicResource M.Log.ZoomTip}" />
+                </WrapPanel>
             </Grid>
         </Border>
 

@@ -593,6 +593,9 @@
     <sys:String x:Key="M.Log.Wrap">Wrap</sys:String>
     <sys:String x:Key="M.Log.ZoomTip">Ctrl + mouse wheel changes the text size</sys:String>
     <sys:String x:Key="M.Log.CopyTip">Select lines and press Ctrl+C to copy them</sys:String>
+    <sys:String x:Key="M.Log.ClearView">Clear screen</sys:String>
+    <sys:String x:Key="M.Log.ClearViewTip">Removes the lines shown here. The file itself is not touched.</sys:String>
+    <sys:String x:Key="M.Log.PreferredMissing">{0} was not found, so the newest log file is shown instead.</sys:String>
     <sys:String x:Key="M.Nav.Settings">Settings</sys:String>
     <sys:String x:Key="M.Nav.SettingsSub">Language, theme, tray</sys:String>
     <sys:String x:Key="M.Settings.Subtitle">Preferences are stored per user and apply immediately.</sys:String>

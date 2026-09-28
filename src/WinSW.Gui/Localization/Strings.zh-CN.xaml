@@ -582,6 +582,9 @@
     <sys:String x:Key="M.Log.Wrap">换行</sys:String>
     <sys:String x:Key="M.Log.ZoomTip">Ctrl + 滚轮缩放字号</sys:String>
     <sys:String x:Key="M.Log.CopyTip">选中行后 Ctrl+C 复制</sys:String>
+    <sys:String x:Key="M.Log.ClearView">清屏</sys:String>
+    <sys:String x:Key="M.Log.ClearViewTip">只清掉这里显示的行，文件本身不受影响。</sys:String>
+    <sys:String x:Key="M.Log.PreferredMissing">没有找到 {0}，已改为打开最新的日志文件。</sys:String>
     <sys:String x:Key="M.Nav.Settings">设置</sys:String>
     <sys:String x:Key="M.Nav.SettingsSub">语言、主题、托盘</sys:String>
     <sys:String x:Key="M.Settings.Subtitle">设置按用户保存，立即生效。</sys:String>
