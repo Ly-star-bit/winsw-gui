@@ -523,12 +523,14 @@ namespace WinSW.Gui.Tests
         [InlineData(LogExcerptState.Empty, "M.LastStop.EmptyFile()")]
         [InlineData(LogExcerptState.NotWritten, "M.LastStop.NotWritten()")]
         [InlineData(LogExcerptState.Unreadable, "M.LastStop.CannotRead(denied)")]
-        [InlineData(LogExcerptState.Missing, "M.LastStop.NoFile(/logs)")]
+        [InlineData(LogExcerptState.Missing, "M.LastStop.NoFile({folder})")]
         public void EachStateOfAFileHasItsNote(LogExcerptState state, string note)
         {
-            var report = new LastStopReport(Start, null, new LogExcerpt(state, "/logs/api.err.log", error: "denied"), null, null);
+            const string file = "/logs/api.err.log";
+            var report = new LastStopReport(Start, null, new LogExcerpt(state, file, error: "denied"), null, null);
 
-            Assert.Equal(note, report.Describe(Keys).ErrorNote);
+            // The folder is named as the system writes it: \logs on Windows, /logs elsewhere.
+            Assert.Equal(note.Replace("{folder}", Path.GetDirectoryName(file)), report.Describe(Keys).ErrorNote);
         }
 
         /// <summary>
