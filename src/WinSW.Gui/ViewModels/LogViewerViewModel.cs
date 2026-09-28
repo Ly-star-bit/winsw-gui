@@ -272,7 +272,8 @@ namespace WinSW.Gui.ViewModels
             this.OpenExternallyCommand = new RelayCommand(this.OpenExternally, () => this.selectedFile != null);
             this.RevealCommand = new RelayCommand(this.Reveal, () => this.selectedFile != null);
             this.RefreshEventsCommand = new AsyncRelayCommand(this.LoadEventsAsync, () => this.service != null && !this.isLoadingEvents);
-            this.NextErrorCommand = new RelayCommand(this.JumpToNextError, () => this.errorCount > 0);
+            this.NextErrorCommand = new RelayCommand(() => this.JumpToError(forward: true), () => this.errorCount > 0);
+            this.PreviousErrorCommand = new RelayCommand(() => this.JumpToError(forward: false), () => this.errorCount > 0);
             this.CleanupCommand = new RelayCommand(this.AskCleanup, () => this.Files.Count > 0 && !this.isCleaning);
             this.ConfirmCleanupCommand = new AsyncRelayCommand(this.CleanUpAsync);
             this.CancelCleanupCommand = new RelayCommand(() => this.CleanupConfirmVisible = false);
@@ -411,7 +412,14 @@ namespace WinSW.Gui.ViewModels
 
         public AsyncRelayCommand RefreshEventsCommand { get; }
 
+        /// <summary>
+        /// The toolbar's error button and F3: the next error line down, or the newest error when
+        /// Follow is on. See <see cref="LogErrorNavigation.Find"/>.
+        /// </summary>
         public RelayCommand NextErrorCommand { get; }
+
+        /// <summary>Shift+F3: the next error line up, or the newest error when Follow is on.</summary>
+        public RelayCommand PreviousErrorCommand { get; }
 
         /// <summary>Installed services, so a service can be picked here as well as from the dashboard.</summary>
         public IEnumerable<ServiceEntry> Services { get; set; } = Array.Empty<ServiceEntry>();
@@ -488,6 +496,7 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.errorCount, value))
                 {
                     this.NextErrorCommand.RaiseCanExecuteChanged();
+                    this.PreviousErrorCommand.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -552,7 +561,15 @@ namespace WinSW.Gui.ViewModels
         public bool AutoScroll
         {
             get => this.autoScroll;
-            set => this.Set(ref this.autoScroll, value);
+            set
+            {
+                // Following puts the eye on the newest lines, so the place an earlier error jump
+                // left off is no longer where it is: the next jump starts afresh.
+                if (this.Set(ref this.autoScroll, value) && value)
+                {
+                    this.lastJumpIndex = -1;
+                }
+            }
         }
 
         public bool IsPaused
@@ -1055,20 +1072,18 @@ namespace WinSW.Gui.ViewModels
             return line.Contains(this.filterNeedle, StringComparison.OrdinalIgnoreCase);
         }
 
-        private void JumpToNextError()
+        private void JumpToError(bool forward)
         {
-            int count = this.Lines.Count;
-            for (int step = 1; step <= count; step++)
+            int index = LogErrorNavigation.Find(this.Lines, this.lastJumpIndex, forward, following: this.autoScroll);
+            if (index < 0)
             {
-                int index = (this.lastJumpIndex + step) % count;
-                if (this.Lines[index].IsError)
-                {
-                    this.lastJumpIndex = index;
-                    this.AutoScroll = false;
-                    this.ScrollToRequested?.Invoke(index);
-                    return;
-                }
+                return;
             }
+
+            // Follow goes off, or the next batch of lines would scroll away from the error.
+            this.AutoScroll = false;
+            this.lastJumpIndex = index;
+            this.ScrollToRequested?.Invoke(index);
         }
 
         // Events -----------------------------------------------------------------
@@ -1087,7 +1102,14 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 // Each record is a native read; hundreds of them do not belong on the UI thread.
-                var events = await Task.Run(() => EventLogReader.Read(entry.ServiceName, entry.DisplayName)).ConfigureAwait(true);
+                var search = await Task.Run(() => EventLogReader.Search(entry.ServiceName, entry.DisplayName)).ConfigureAwait(true);
+                var events = search.Events;
+                if (!ReferenceEquals(entry, this.service))
+                {
+                    // Another service was put on screen while this one's logs were searched, and
+                    // its own search fills the list. A search can take seconds on a large log.
+                    return;
+                }
 
                 this.Events.Clear();
                 foreach (var item in events)
@@ -1095,9 +1117,14 @@ namespace WinSW.Gui.ViewModels
                     this.Events.Add(item);
                 }
 
-                this.EventsStatus = events.Count == 0
-                    ? Localizer.Get("M.Log.NoEvents")
-                    : Localizer.Format("M.Log.EventsLoaded", events.Count);
+                // Nothing found is "none" only when the logs were searched to their start. A
+                // search cut short says how far back it went, since the service's events may be
+                // further back than that.
+                this.EventsStatus = events.Count > 0
+                    ? Localizer.Format("M.Log.EventsLoaded", events.Count)
+                    : search.Scan.CutShortAt is DateTime since
+                        ? Localizer.Format("M.Log.NoEventsInWindow", search.Scan.Examined, since)
+                        : Localizer.Get("M.Log.NoEvents");
             }
             finally
             {

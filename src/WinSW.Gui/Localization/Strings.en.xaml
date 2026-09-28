@@ -361,6 +361,7 @@
     <sys:String x:Key="M.Log.EventsTab">Windows events</sys:String>
     <sys:String x:Key="M.Log.RefreshEvents">Refresh events</sys:String>
     <sys:String x:Key="M.Log.NoEvents">No events for this service in the Application or System log.</sys:String>
+    <sys:String x:Key="M.Log.NoEventsInWindow">No events for this service in the last {0:N0} records (since {1:yyyy-MM-dd HH:mm}). Older records were not searched.</sys:String>
     <sys:String x:Key="M.Log.EventsLoaded">{0} events.</sys:String>
     <sys:String x:Key="M.Log.EventsLoading">Reading the event log…</sys:String>
     <sys:String x:Key="M.Log.Detected">Detected: {0}</sys:String>
@@ -544,7 +545,7 @@
     <sys:String x:Key="M.Shell.StartWithWindows">Start with Windows, in the tray</sys:String>
     <sys:String x:Key="M.Shell.StartWithWindowsTip">Adds a sign-in entry for the current user; no elevation needed. The console watches from the tray, so a service that stops still raises a notification.</sys:String>
     <sys:String x:Key="M.Log.Regex">Regex</sys:String>
-    <sys:String x:Key="M.Log.NextErrorTip">Jump to the next error line</sys:String>
+    <sys:String x:Key="M.Log.NextErrorTip">Jump to the next error line (F3; Shift+F3 goes back). With Follow on, the first press goes to the newest error.</sys:String>
 
     <sys:String x:Key="M.Help.Tip">Open the documentation for this setting</sys:String>
     <sys:String x:Key="M.Browse">Browse</sys:String>

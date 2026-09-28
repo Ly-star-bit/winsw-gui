@@ -350,6 +350,7 @@
     <sys:String x:Key="M.Log.EventsTab">Windows イベント</sys:String>
     <sys:String x:Key="M.Log.RefreshEvents">イベントを更新</sys:String>
     <sys:String x:Key="M.Log.NoEvents">アプリケーション ログとシステム ログにこのサービスのイベントはありません。</sys:String>
+    <sys:String x:Key="M.Log.NoEventsInWindow">直近 {0:N0} 件の記録（{1:yyyy-MM-dd HH:mm} 以降）に、このサービスのイベントはありません。それより前は検索していません。</sys:String>
     <sys:String x:Key="M.Log.EventsLoaded">{0} 件のイベント。</sys:String>
     <sys:String x:Key="M.Log.EventsLoading">イベント ログを読み取り中…</sys:String>
     <sys:String x:Key="M.Log.Detected">検出: {0}</sys:String>
@@ -533,7 +534,7 @@
     <sys:String x:Key="M.Shell.StartWithWindows">Windows の起動時にトレイで開始する</sys:String>
     <sys:String x:Key="M.Shell.StartWithWindowsTip">現在のユーザーのサインイン時の起動項目を追加します（管理者権限は不要）。コンソールはトレイから監視を続けるため、サービスが予期せず停止しても通知されます。</sys:String>
     <sys:String x:Key="M.Log.Regex">正規表現</sys:String>
-    <sys:String x:Key="M.Log.NextErrorTip">次のエラー行へ移動</sys:String>
+    <sys:String x:Key="M.Log.NextErrorTip">次のエラー行へ移動（F3、Shift+F3 で前へ）。「追従」がオンのときは、最初の 1 回で最新のエラーへ移動します。</sys:String>
 
     <sys:String x:Key="M.Help.Tip">この設定のドキュメントを開く</sys:String>
     <sys:String x:Key="M.Browse">参照</sys:String>

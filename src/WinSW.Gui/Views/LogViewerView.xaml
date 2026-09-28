@@ -117,7 +117,7 @@
 
         <!-- Output and events -->
         <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0">
-            <TabItem Header="{DynamicResource M.Log.OutputTab}">
+            <TabItem x:Name="OutputTab" Header="{DynamicResource M.Log.OutputTab}">
                 <Border Margin="0,8,0,0" Padding="0" Background="{DynamicResource InputBrush}" Style="{StaticResource Card}">
                     <ListBox
                         x:Name="Output"

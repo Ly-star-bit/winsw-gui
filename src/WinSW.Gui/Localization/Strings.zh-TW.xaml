@@ -350,6 +350,7 @@
     <sys:String x:Key="M.Log.EventsTab">Windows 事件</sys:String>
     <sys:String x:Key="M.Log.RefreshEvents">重新整理事件</sys:String>
     <sys:String x:Key="M.Log.NoEvents">應用程式/系統記錄中沒有此服務的事件。</sys:String>
+    <sys:String x:Key="M.Log.NoEventsInWindow">最近 {0:N0} 筆記錄（自 {1:yyyy-MM-dd HH:mm} 起）中沒有此服務的事件，更早的記錄未搜尋。</sys:String>
     <sys:String x:Key="M.Log.EventsLoaded">{0} 筆事件。</sys:String>
     <sys:String x:Key="M.Log.EventsLoading">正在讀取事件記錄…</sys:String>
     <sys:String x:Key="M.Log.Detected">偵測到：{0}</sys:String>
@@ -533,7 +534,7 @@
     <sys:String x:Key="M.Shell.StartWithWindows">開機時自動啟動到系統匣</sys:String>
     <sys:String x:Key="M.Shell.StartWithWindowsTip">為目前使用者新增登入啟動項目，不需要系統管理員權限。主控台在系統匣中持續監看，服務意外停止時照樣會跳出通知。</sys:String>
     <sys:String x:Key="M.Log.Regex">規則運算式</sys:String>
-    <sys:String x:Key="M.Log.NextErrorTip">跳到下一個錯誤行</sys:String>
+    <sys:String x:Key="M.Log.NextErrorTip">跳到下一個錯誤行（F3，Shift+F3 往回跳）。勾選「跟隨」時，第一次按會跳到最新的錯誤。</sys:String>
 
     <sys:String x:Key="M.Help.Tip">開啟此設定的文件</sys:String>
     <sys:String x:Key="M.Browse">瀏覽</sys:String>

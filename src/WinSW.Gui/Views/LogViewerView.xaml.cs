@@ -12,10 +12,15 @@ namespace WinSW.Gui.Views
     {
         private LogViewerViewModel? attached;
 
+        /// <summary>The window whose keys F3 and Shift+F3 are taken from while the page is on screen.</summary>
+        private Window? keyWindow;
+
         public LogViewerView()
         {
             this.InitializeComponent();
             this.DataContextChanged += this.OnDataContextChanged;
+            this.Loaded += this.OnLoaded;
+            this.Unloaded += this.OnUnloaded;
         }
 
         private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -35,6 +40,53 @@ namespace WinSW.Gui.Views
                 this.attached.ScrollToRequested += this.ScrollToIndex;
                 this.attached.PropertyChanged += this.OnViewModelPropertyChanged;
             }
+        }
+
+        // F3 and Shift+F3 are listened for on the window rather than bound on the page: a key
+        // binding on the page fires only while something on it has the focus, and after the
+        // page is picked in the rail the focus is still on the rail. The page is in the window
+        // only while it is the one shown — the shell swaps its view in and out — so Loaded and
+        // Unloaded are exactly when the keys are the page's. Let go of first, in case Loaded
+        // comes twice.
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            this.ReleaseKeys();
+            this.keyWindow = Window.GetWindow(this);
+            if (this.keyWindow != null)
+            {
+                this.keyWindow.KeyDown += this.OnWindowKeyDown;
+            }
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e) => this.ReleaseKeys();
+
+        private void ReleaseKeys()
+        {
+            if (this.keyWindow != null)
+            {
+                this.keyWindow.KeyDown -= this.OnWindowKeyDown;
+                this.keyWindow = null;
+            }
+        }
+
+        // Bubbled, not previewed, so anything on the way that has a use for F3 comes first.
+        // Nothing jumps behind the cleanup confirmation.
+        private void OnWindowKeyDown(object sender, KeyEventArgs e)
+        {
+            var modifiers = Keyboard.Modifiers;
+            if (e.Handled || e.Key != Key.F3 || (modifiers != ModifierKeys.None && modifiers != ModifierKeys.Shift)
+                || this.attached is null || this.attached.CleanupConfirmVisible)
+            {
+                return;
+            }
+
+            var command = modifiers == ModifierKeys.Shift ? this.attached.PreviousErrorCommand : this.attached.NextErrorCommand;
+            if (command.CanExecute(null))
+            {
+                command.Execute(null);
+            }
+
+            e.Handled = true;
         }
 
         // Keyboard users land on Cancel when the confirmation opens; Enter is bound to Delete.
@@ -91,8 +143,30 @@ namespace WinSW.Gui.Views
                 return;
             }
 
-            this.Output.SelectedIndex = index;
-            this.Output.ScrollIntoView(this.Output.Items[index]);
+            object line = this.Output.Items[index];
+            if (this.OutputTab.IsSelected)
+            {
+                this.ShowLine(line);
+                return;
+            }
+
+            // An error jump from the events tab, by F3 or the toolbar button: the lines are on
+            // the other tab, whose list is laid out only once that tab is shown. The line rather
+            // than its index is carried over, since more lines may come in meanwhile.
+            this.OutputTab.IsSelected = true;
+            this.Dispatcher.BeginInvoke(() => this.ShowLine(line), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        private void ShowLine(object line)
+        {
+            if (!this.Output.Items.Contains(line))
+            {
+                // Pushed out of the buffer, or the file was changed, before the tab came up.
+                return;
+            }
+
+            this.Output.SelectedItem = line;
+            this.Output.ScrollIntoView(line);
         }
 
         // Following the tail is a view concern: the view model only knows whether it is on.
