@@ -583,6 +583,7 @@
     <sys:String x:Key="M.Wiz.CloneRebased">「{0}」是透過自己的資料夾 {1} 找到檔案的。副本直接寫明這個資料夾，執行的仍是同一份檔案：{2}。程式寫到那裡的東西，兩個服務會共用。</sys:String>
     <sys:String x:Key="M.Wiz.RecoveryHintCopied">複製自「{0}」，每一步前的等待：{1}。一直失敗就一直重複最後一步；{2} 內沒再失敗，就從第一步重新算。改了延遲，就換成精靈自己的等待時間。</sys:String>
     <sys:String x:Key="M.Wiz.RollPatternCopied">複製自「{0}」：日期格式 {1} 每進到下一段就換一個新檔案，不一定是每天。檔案多於這個數量時刪除最舊的；留白則全部保留。</sys:String>
+    <sys:String x:Key="M.Port.InUse">連接埠 {0} 已被 {1}（PID {2}）佔用，程式在這個連接埠上監聽會失敗。請先結束該處理程序，或改用其他連接埠。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">品牌化 wrapper：複製為 &lt;服務ID&gt;.exe 並設定公司名稱</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">公司名稱</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">註冊為：</sys:String>

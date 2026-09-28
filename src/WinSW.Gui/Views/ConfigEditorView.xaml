@@ -882,7 +882,20 @@
             </Border>
         </Grid>
 
-        <TextBlock Grid.Row="2" Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+        <!--
+            The status line, and above it what the port check before the last Install or Try run
+            found: a port the configuration names that something already listens on. Kept in view
+            until the next edit, since the install or the run it came with goes ahead regardless.
+        -->
+        <StackPanel Grid.Row="2" Margin="0,12,0,0">
+            <TextBlock
+                Margin="0,0,0,4"
+                Foreground="{DynamicResource HealthPendingBrush}"
+                Style="{StaticResource PageSubtitle}"
+                Text="{Binding PortWarning}"
+                Visibility="{Binding PortWarning, Converter={StaticResource StringToVisibility}}" />
+            <TextBlock Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+        </StackPanel>
 
         <!--
             Confirmation overlay, as on the dashboard. Escape is bound here as well as Enter:

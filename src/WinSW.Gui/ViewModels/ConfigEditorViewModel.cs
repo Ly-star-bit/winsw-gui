@@ -77,6 +77,10 @@ namespace WinSW.Gui.ViewModels
         private string recoverySummary = string.Empty;
         private string recoveryWarning = string.Empty;
         private string fullExecutablePath = string.Empty;
+        private IReadOnlyList<PortInUse> portsInUse = Array.Empty<PortInUse>();
+
+        /// <summary>Counts the edits, so that a port check an edit overtook drops its answer.</summary>
+        private int edits;
         private (ServiceConfigModel Model, EnvironmentCheck Check)? executableOffer;
         private bool confirmVisible;
         private string confirmTitle = string.Empty;
@@ -194,7 +198,7 @@ namespace WinSW.Gui.ViewModels
             this.ApplyXmlCommand = new RelayCommand(this.ApplyXml);
             this.CancelXmlEditCommand = new RelayCommand(() => this.IsXmlEditing = false);
 
-            this.StartTrialCommand = new RelayCommand(this.StartTrial, () => !this.isTrialRunning);
+            this.StartTrialCommand = new AsyncRelayCommand(this.StartTrialAsync, () => !this.isTrialRunning);
             this.TestProxyCommand = new AsyncRelayCommand(this.TestProxyAsync);
             this.StopTrialCommand = new RelayCommand(() => this.trial.Stop(), () => this.isTrialRunning);
             this.ClearTrialCommand = new RelayCommand(() => this.TrialOutput.Clear());
@@ -218,6 +222,7 @@ namespace WinSW.Gui.ViewModels
             Localizer.Changed += () =>
             {
                 this.Raise(nameof(this.FileLabel));
+                this.Raise(nameof(this.PortWarning));
                 this.Recompute();
             };
 
@@ -233,7 +238,14 @@ namespace WinSW.Gui.ViewModels
         public ServiceConfigModel Model
         {
             get => this.model;
-            private set => this.Set(ref this.model, value);
+            private set
+            {
+                if (this.Set(ref this.model, value))
+                {
+                    // What the port check found was about the configuration this one replaces.
+                    this.ShowPortsInUse(Array.Empty<PortInUse>());
+                }
+            }
         }
 
         public ObservableCollection<string> Problems { get; } = new();
@@ -333,7 +345,7 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand CancelXmlEditCommand { get; }
 
-        public RelayCommand StartTrialCommand { get; }
+        public AsyncRelayCommand StartTrialCommand { get; }
 
         public RelayCommand StopTrialCommand { get; }
 
@@ -363,6 +375,15 @@ namespace WinSW.Gui.ViewModels
         /// the first copy of one when asked to scroll to the last.
         /// </summary>
         public ObservableCollection<LogLine> TrialOutput { get; } = new();
+
+        /// <summary>
+        /// What holds the ports the configuration names, as the check before the last Install or
+        /// Try run found it, a line a port; empty when nothing does. A warning, never a refusal:
+        /// see <see cref="PortCheck"/>. Cleared by the next edit, which may well be the fix.
+        /// </summary>
+        public string PortWarning => string.Join(
+            Environment.NewLine,
+            this.portsInUse.Select(port => Localizer.Format("M.Port.InUse", port.Port, port.ProcessName, port.ProcessId)));
 
         // Raw XML mode ---------------------------------------------------------
 
@@ -922,6 +943,10 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            // Said, not stopped on: the holder may be gone by the time the service starts. This
+            // console's try run does not count, since the question above has had it ended.
+            await this.CheckPortsAsync(Environment.ProcessId).ConfigureAwait(true);
+
             if (await this.ResolveWrapperAsync(Path.GetDirectoryName(this.filePath)!).ConfigureAwait(true) is not { } wrapper)
             {
                 this.Toast?.Invoke(this.StatusMessage, true);
@@ -1066,6 +1091,51 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
+        /// <summary>
+        /// Looks once, off the UI thread, for what already listens on the ports the configuration
+        /// names, and says so in <see cref="PortWarning"/>. Nothing is read when it names none;
+        /// otherwise every process on the machine is, which takes a moment on a busy server.
+        /// </summary>
+        /// <param name="consoleProcessId">This console, when its try run is not to count; see <see cref="PortCheck.Find"/>.</param>
+        private async Task CheckPortsAsync(int? consoleProcessId)
+        {
+            var model = this.Model;
+            int editsBefore = this.edits;
+            var ports = PortCheck.PortsOf(model);
+            if (ports.Count == 0)
+            {
+                this.ShowPortsInUse(Array.Empty<PortInUse>());
+                return;
+            }
+
+            IReadOnlyList<PortInUse> held;
+            try
+            {
+                held = await Task.Run(() => PortCheck.Find(ports, consoleProcessId)).ConfigureAwait(true);
+            }
+            catch (Exception)
+            {
+                // A check that cannot finish has nothing to say, as with the environment check;
+                // the install or try run it comes before goes ahead either way.
+                held = Array.Empty<PortInUse>();
+            }
+
+            // Edited or replaced meanwhile: the answer is about a configuration no longer shown.
+            if (ReferenceEquals(model, this.Model) && editsBefore == this.edits)
+            {
+                this.ShowPortsInUse(held);
+            }
+        }
+
+        private void ShowPortsInUse(IReadOnlyList<PortInUse> held)
+        {
+            if (held.Count > 0 || this.portsInUse.Count > 0)
+            {
+                this.portsInUse = held;
+                this.Raise(nameof(this.PortWarning));
+            }
+        }
+
         // Confirmation -------------------------------------------------------------
 
         /// <summary>
@@ -1192,6 +1262,8 @@ namespace WinSW.Gui.ViewModels
             }
 
             this.IsDirty = true;
+            this.edits++;
+            this.ShowPortsInUse(Array.Empty<PortInUse>());
             this.recomputeTimer.Stop();
             this.recomputeTimer.Start();
         }
@@ -1327,9 +1399,21 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        private void StartTrial()
+        private async Task StartTrialAsync()
         {
             this.Recompute();
+
+            // Looked for before the program starts, while nothing of this run can hold the port.
+            // A program that cannot listen says so in words that name neither the port nor who
+            // has it — when it says anything before it exits.
+            var model = this.Model;
+            await this.CheckPortsAsync(consoleProcessId: null).ConfigureAwait(true);
+            if (!ReferenceEquals(model, this.Model))
+            {
+                // Another configuration was opened meanwhile; this one is no longer on screen.
+                return;
+            }
+
             try
             {
                 this.TrialOutput.Clear();

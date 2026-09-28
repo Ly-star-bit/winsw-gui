@@ -1,0 +1,140 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using WinSW.Gui.Model;
+using WinSW.Gui.Services;
+using Xunit;
+
+namespace WinSW.Gui.Tests
+{
+    /// <summary>
+    /// The check before a configuration runs — the wizard's review step, the editor's Install and
+    /// Try run — for what already listens on the ports it names, over a port table and a process
+    /// snapshot built by hand. Localized text reads back as its key here.
+    /// </summary>
+    public class PortCheckTests
+    {
+        private const int Console = 900;
+
+        private static readonly DateTime T0 = new(2026, 9, 24, 8, 0, 0);
+
+        // The ports a configuration names ---------------------------------------------------
+
+        [Fact]
+        public void ThePortsComeFromTheArgumentsAndTheVariables()
+        {
+            var model = ServiceConfigModel.CreateNew();
+            model.Arguments = "main:app --host 0.0.0.0 --port 8000";
+            model.EnvironmentVariables.Add(new EnvironmentVariable { Name = "ADMIN_PORT", Value = "9001" });
+
+            Assert.Equal(new[] { 8000, 9001 }, PortCheck.PortsOf(model));
+        }
+
+        /// <summary>The wrapper starts the program with the start arguments when there are any, and with those alone.</summary>
+        [Fact]
+        public void StartArgumentsTakeThePlaceOfTheArguments()
+        {
+            var model = ServiceConfigModel.CreateNew();
+            model.Arguments = "--port 8000";
+            model.StartArguments = "--port 9000";
+
+            Assert.Equal(new[] { 9000 }, PortCheck.PortsOf(model));
+
+            model.StartArguments = " ";
+            Assert.Equal(new[] { 8000 }, PortCheck.PortsOf(model));
+        }
+
+        /// <summary>A configuration that names no port is not looked into: nothing of the machine is read.</summary>
+        [Fact]
+        public void NothingIsReadWhenNoPortIsNamed()
+        {
+            Assert.Empty(PortCheck.Find(Array.Empty<int>(), consoleProcessId: null));
+        }
+
+        // Who holds them --------------------------------------------------------------------
+
+        [Fact]
+        public void AHolderIsNamedWithItsPid()
+        {
+            var snapshot = Snapshot(P(3000, 1, "cmd.exe"), P(4312, 3000, "python.exe"));
+
+            var held = PortCheck.Holders(new[] { 8000, 8001 }, Table((8000, 4312)), snapshot, consoleProcessId: null);
+
+            Assert.Equal(new[] { new PortInUse(8000, "python.exe", 4312) }, held);
+        }
+
+        /// <summary>
+        /// Another service's program is in the way as much as anyone's: unlike the dashboard's
+        /// banner, which is about one service, this names it.
+        /// </summary>
+        [Fact]
+        public void AnotherServicesProgramIsNamedToo()
+        {
+            var snapshot = Snapshot(P(20, 1, "WinSW.exe"), P(4312, 20, "python.exe"));
+
+            var held = PortCheck.Holders(new[] { 8000 }, Table((8000, 4312)), snapshot, consoleProcessId: null);
+
+            Assert.Equal(4312, Assert.Single(held).ProcessId);
+        }
+
+        /// <summary>HTTP.sys listens in System's name; that is who holds the port.</summary>
+        [Fact]
+        public void SystemIsNamedAndTheIdleProcessIsNot()
+        {
+            var snapshot = Snapshot(P(0, 0, "Idle"), P(4, 0, "System"));
+
+            var held = PortCheck.Holders(new[] { 80, 81 }, Table((80, 4), (81, 0)), snapshot, consoleProcessId: null);
+
+            Assert.Equal(new[] { new PortInUse(80, "System", 4) }, held);
+        }
+
+        /// <summary>Gone from the snapshot, taken after the table: exited meanwhile, with its socket.</summary>
+        [Fact]
+        public void AHolderThatHasExitedIsNotNamed()
+        {
+            Assert.Empty(PortCheck.Holders(new[] { 8000 }, Table((8000, 4312)), Snapshot(P(3000, 1, "cmd.exe")), consoleProcessId: null));
+        }
+
+        /// <summary>
+        /// Before Install, this console's try run does not count: it has been asked to end. Before
+        /// a try run, or on the wizard's review step, everything does.
+        /// </summary>
+        [Fact]
+        public void TheConsolesTryRunCountsOnlyWhenAskedTo()
+        {
+            var snapshot = Snapshot(P(Console, 1, "WinSW.Gui.exe"), P(4312, Console, "cmd.exe"), P(4400, 4312, "python.exe"));
+            var table = Table((8000, 4400));
+
+            Assert.Empty(PortCheck.Holders(new[] { 8000 }, table, snapshot, Console));
+            Assert.Equal(4400, Assert.Single(PortCheck.Holders(new[] { 8000 }, table, snapshot, consoleProcessId: null)).ProcessId);
+        }
+
+        /// <summary>Every process listening on the port is named, port by port, lowest PID first.</summary>
+        [Fact]
+        public void EveryHolderIsNamedInOrder()
+        {
+            var snapshot = Snapshot(P(500, 1, "a.exe"), P(600, 1, "b.exe"), P(700, 1, "c.exe"));
+
+            var held = PortCheck.Holders(new[] { 9000, 8000 }, Table((8000, 600), (8000, 500), (9000, 700)), snapshot, consoleProcessId: null);
+
+            Assert.Equal(new[] { 700, 500, 600 }, held.Select(p => p.ProcessId));
+        }
+
+        private static PortTable Table(params (int Port, int ProcessId)[] listeners)
+        {
+            var all = new List<ListeningPort>();
+            foreach (var (port, processId) in listeners)
+            {
+                all.Add(new ListeningPort("0.0.0.0", port, processId));
+                all.Add(new ListeningPort("::", port, processId));
+            }
+
+            return new PortTable(all);
+        }
+
+        private static ProcessRecord P(int id, int parent, string name) =>
+            new(id, parent, name, id <= 4 ? null : T0.AddMinutes(id / 100.0), TimeSpan.Zero, 0, 0);
+
+        private static ProcessSnapshot Snapshot(params ProcessRecord[] records) => new(records);
+    }
+}
