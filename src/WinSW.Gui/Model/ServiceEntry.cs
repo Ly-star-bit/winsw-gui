@@ -59,7 +59,7 @@ namespace WinSW.Gui.Model
         private int crashCount;
         private string group = string.Empty;
         private string? executablePath;
-        private IReadOnlyList<Services.ProcessMark> descendants = Array.Empty<Services.ProcessMark>();
+        private ImmutableArray<Services.ProcessMark> rememberedProcesses = ImmutableArray<Services.ProcessMark>.Empty;
         private Services.StrayFinding? strayProcess;
         private Services.StrayFinding? strayCandidate;
         private DateTime strayCandidateSince;
@@ -758,16 +758,29 @@ namespace WinSW.Gui.Model
             set => this.Set(ref this.executablePath, value);
         }
 
-        /// <summary>What was under the wrapper at the last reading while the service ran.</summary>
-        public IReadOnlyList<Services.ProcessMark> Descendants
+        /// <summary>
+        /// What the service's runs have had under their wrappers and still run, this run's and
+        /// earlier ones', as the last full reading left it: what a leftover is recognised by. Not
+        /// emptied when a new wrapper starts; see <see cref="Services.StrayWatch"/>. Read off the UI
+        /// thread by the poll, which is why it is immutable.
+        /// </summary>
+        public ImmutableArray<Services.ProcessMark> RememberedProcesses
         {
-            get => this.descendants;
-            set => this.descendants = value ?? Array.Empty<Services.ProcessMark>();
+            get => this.rememberedProcesses;
+            set => this.rememberedProcesses = value.IsDefault ? ImmutableArray<Services.ProcessMark>.Empty : value;
         }
 
         /// <summary>
+        /// When the wrapper last seen running started, kept after it stops, unlike
+        /// <see cref="StartedAt"/>: a service that is stopping no longer says which wrapper it is,
+        /// and what started before this is an earlier run's. See <see cref="Services.StrayWatch"/>.
+        /// </summary>
+        public DateTime? RunStartedAt { get; set; }
+
+        /// <summary>
         /// The service's program, still running though the service is stopped, or whatever holds a
-        /// port it last listened on; see <see cref="Services.StrayProcesses"/>.
+        /// port it last listened on; see <see cref="Services.StrayProcesses"/>. While the service runs
+        /// or is stopping, what an earlier run of it left running beside it; see <see cref="Services.StrayWatch"/>.
         /// </summary>
         public Services.StrayFinding? StrayProcess
         {
@@ -788,7 +801,7 @@ namespace WinSW.Gui.Model
         }
 
         /// <summary>
-        /// Takes one reading of what the stopped service has left running. A process is called
+        /// Takes one reading of what the service's runs have left running. A process is called
         /// stray only once it has been there for a few seconds: a clean stop can leave the
         /// program's own children a moment to exit, and a warning that flashed on every stop
         /// would be the one nobody reads when it matters.
@@ -828,10 +841,10 @@ namespace WinSW.Gui.Model
             }
         }
 
-        /// <summary>The process was among those noted under the wrapper while the service last ran.</summary>
+        /// <summary>The process was among those noted under the service's wrapper, in this run or an earlier one.</summary>
         private bool WasUnderWrapper(Services.ProcessMark process)
         {
-            foreach (var noted in this.descendants)
+            foreach (var noted in this.rememberedProcesses)
             {
                 if (noted.IsSameProcessAs(process))
                 {

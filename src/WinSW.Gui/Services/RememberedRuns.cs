@@ -36,8 +36,10 @@ namespace WinSW.Gui.Services
     /// <para>
     /// The console's own bookkeeping, like the groups and the remembered start types: nothing is
     /// written to the service or its configuration. Read and written by the status poll's worker,
-    /// and two polls can overlap, so every member takes a lock; the file is written only when what
-    /// it holds changed, which is once or twice per run of a service, not once per poll.
+    /// and read by the rescan's, which seeds a new row's processes; two polls can overlap as well,
+    /// so every member takes a lock. The file is written only when what it holds changed, which is
+    /// once or twice per run of a service, not once per poll; see <see cref="StrayWatch"/> for the
+    /// processes.
     /// </para>
     /// </remarks>
     public sealed class RememberedRuns

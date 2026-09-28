@@ -497,6 +497,11 @@
     <sys:String x:Key="M.Dash.StrayEnded">已结束 {0}（PID {1}）。</sys:String>
     <sys:String x:Key="M.Dash.StrayGone">那个进程已经退出了。</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">无法结束：{0}</sys:String>
+    <!-- A leftover beside a running service: the banner and hint for a process an earlier run of the service left, found while the service runs or is stopping, and the questions before ending it or its parent. StrayEarlierRun: {0} {1} the process and its PID. StrayEarlierRunBody: {0} {1} the process, {2} the service. StrayEarlierRunParentBody: {0} {1} the parent, {2} {3} the process, {4} the service. -->
+    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）是之前某次运行遗留的，仍在运行，但不在服务之下。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunHint">服务之后又启动过，这个遗留进程和它同时在跑：两边可能争用同一个端口和文件，或者把同一件事做两遍。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunBody">将强制结束 {0}（PID {1}）及其启动的所有进程，不做正常关闭。服务“{2}”本身不受影响。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunParentBody">将强制结束 {0}（PID {1}）及其启动的所有进程（包括 {2}，PID {3}），不做正常关闭。服务“{4}”本身不受影响。</sys:String>
     <!-- Ports on the Services page: the label of the line under a running service's metrics, then the banner for a service whose port, remembered from its last run, is held by a process outside every wrapper, and the questions before ending that process or its parent. PortHeld/PortHeldBy: {0} the port, {1} {2} the process and its PID, {3} what started it. PortParent: {0} {1} the parent, {2} the process. PortHeldByWindows: {0} the process. PortHint: {0} the service. PortEndBody: {0} {1} the process, {2} the port, {3} the service. PortParentBody: {0} {1} the parent, {2} {3} the process, {4} the port, {5} the service. -->
     <sys:String x:Key="M.Dash.Listening">监听端口</sys:String>
     <sys:String x:Key="M.Dash.PortHeld">端口 {0} 被 {1}（PID {2}）占用。</sys:String>

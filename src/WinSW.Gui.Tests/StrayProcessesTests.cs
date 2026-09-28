@@ -113,6 +113,20 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
+        /// The same machine seen from the wrapper: a new wrapper given a dead launcher's ID does not
+        /// take the launcher's orphans, or anything under them, for its own.
+        /// </summary>
+        [Fact]
+        public void AReusedParentIdHasNoDescendants()
+        {
+            var snapshot = Snapshot(P(20, 1, "WinSW.exe", 50), P(500, 20, "server.exe", 5), P(600, 500, "worker.exe", 6), P(700, 20, "python.exe", 51));
+
+            var under = StrayProcesses.DescendantsOf(snapshot, 20);
+
+            Assert.Equal(new[] { 700 }, under.Select(m => m.ProcessId));
+        }
+
+        /// <summary>
         /// Called stray only after a few seconds: a clean stop leaves the program's children a
         /// moment to exit, and a banner that flashed on every stop would go unread.
         /// </summary>

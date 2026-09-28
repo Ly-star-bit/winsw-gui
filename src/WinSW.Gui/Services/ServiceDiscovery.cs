@@ -53,10 +53,19 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// While stopped: the service's program, still running outside it, or whatever holds a port
-        /// it last listened on; see <see cref="StrayProcesses"/>. While running, only a holder of its
-        /// port that its banner already names; see <see cref="PortWatch"/>.
+        /// it last listened on; see <see cref="StrayProcesses"/>. In any other state, what an earlier
+        /// run left that still runs, as <see cref="StrayWatch"/> tells it, or a holder of its port
+        /// that its banner already names; see <see cref="PortWatch"/>.
         /// </summary>
         public StrayFinding? Stray { get; init; }
+
+        /// <summary>
+        /// What the service's runs have had running that is worth remembering after this reading:
+        /// what is under the wrapper, and what earlier runs had that still runs; see
+        /// <see cref="StrayWatch"/>. Default when nothing was looked at, which is at a reading
+        /// without the process snapshot.
+        /// </summary>
+        public ImmutableArray<ProcessMark> Remembered { get; init; }
 
         /// <summary>
         /// While running: what the wrapper and everything under it listen on, in the order the panel
@@ -154,6 +163,11 @@ namespace WinSW.Gui.Services
                         ExecutablePath = ExecutableOf(model, configPath),
                         DependsOn = Names(() => controller.ServicesDependedOn),
                         DependedBy = Names(() => controller.DependentServices),
+
+                        // What the console knew of the service's runs when it last ran, for a row
+                        // new to this session; a row already on the list keeps its own, since the
+                        // rescan merges into it. See StrayWatch.
+                        RememberedProcesses = RememberedRuns.Current.ProcessesOf(name),
                     };
 
                     results.Add(entry);
@@ -196,21 +210,24 @@ namespace WinSW.Gui.Services
 
             bool sameProcess = sample.ProcessId != 0 && sample.ProcessId == entry.ProcessId;
 
-            // A new wrapper is a new tree: what was noted under the last one describes a run
-            // that has ended, and is dropped before anything is noted under this one.
-            if (sample.ProcessId != 0 && !sameProcess)
+            // A new wrapper does not wipe what the last one had: what an earlier run left and still
+            // runs is exactly what is looked for beside the new one, and the reading has already
+            // dropped whatever of it has gone. Taken before the finding, which is judged by it.
+            // See StrayWatch.
+            if (!sample.Remembered.IsDefault)
             {
-                entry.Descendants = Array.Empty<ProcessMark>();
+                entry.RememberedProcesses = sample.Remembered;
+            }
+
+            if (sample.HasProcess && sample.StartedAt is DateTime runStartedAt)
+            {
+                entry.RunStartedAt = runStartedAt;
             }
 
             entry.Status = sample.Status;
             entry.ProcessId = sample.ProcessId;
             entry.LastExitCode = sample.LastExitCode;
             entry.NoteStray(sample.Stray, DateTime.UtcNow);
-            if (!sample.Descendants.IsDefault)
-            {
-                entry.Descendants = sample.Descendants;
-            }
 
             // The ports are read only at a reading that needed them, which for the service on
             // screen is every reading while it runs. Not read, they stay with the process they
@@ -248,12 +265,13 @@ namespace WinSW.Gui.Services
         /// full reading starts from nothing rather than from another process's figures.
         /// </para>
         /// <para>
-        /// What the stopped service has left running is not looked for, so a finding stays as the
-        /// last full reading left it until the next one. A service that is not stopped has none:
-        /// under <see cref="Apply"/> one is looked for while it is stopped, and kept while it runs
-        /// only when it holds the service's port, which only a full reading can tell. The ports a
-        /// running service listens on are not read either, and stay with the process they were
-        /// read for, as its counters do.
+        /// What the service's runs have left running is not looked for, in any state, so a finding
+        /// stays as the last full reading left it until the next one, and so does what is remembered
+        /// to recognise one by, which a new wrapper does not empty; see <see cref="StrayWatch"/>. A
+        /// finding is made in every state, and one cleared here whenever the service was not stopped
+        /// would go and come back, after the wait for a new one, at every restart of a loop. The
+        /// ports a running service listens on are not read either, and stay with the process they
+        /// were read for, as its counters do.
         /// </para>
         /// </remarks>
         public static void ApplyStatus(ServiceEntry entry, in ServiceSample sample)
@@ -266,20 +284,9 @@ namespace WinSW.Gui.Services
 
             bool sameProcess = sample.ProcessId != 0 && sample.ProcessId == entry.ProcessId;
 
-            // A new wrapper is a new tree, as in Apply.
-            if (sample.ProcessId != 0 && !sameProcess)
-            {
-                entry.Descendants = Array.Empty<ProcessMark>();
-            }
-
             entry.Status = sample.Status;
             entry.ProcessId = sample.ProcessId;
             entry.LastExitCode = sample.LastExitCode;
-
-            if (sample.Status != ServiceControllerStatus.Stopped)
-            {
-                entry.NoteStray(null, DateTime.UtcNow);
-            }
 
             if (!sameProcess)
             {

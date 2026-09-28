@@ -508,6 +508,11 @@
     <sys:String x:Key="M.Dash.StrayEnded">{0} (PID {1}) was ended.</sys:String>
     <sys:String x:Key="M.Dash.StrayGone">That process has already exited.</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">Could not end it: {0}</sys:String>
+    <!-- A leftover beside a running service: the banner and hint for a process an earlier run of the service left, found while the service runs or is stopping, and the questions before ending it or its parent. StrayEarlierRun: {0} {1} the process and its PID. StrayEarlierRunBody: {0} {1} the process, {2} the service. StrayEarlierRunParentBody: {0} {1} the parent, {2} {3} the process, {4} the service. -->
+    <sys:String x:Key="M.Dash.StrayEarlierRun">{0} (PID {1}), left by an earlier run, is still running outside the service.</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunHint">The service has been started again since, and this copy runs beside it: the two can fight over the same port and files, or do the same work twice.</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunBody">{0} (PID {1}) and every process it started will be ended without a graceful shutdown. The service '{2}' itself is left alone.</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunParentBody">{0} (PID {1}) and every process it started, {2} (PID {3}) among them, will be ended without a graceful shutdown. The service '{4}' itself is left alone.</sys:String>
     <!-- Ports on the Services page: the label of the line under a running service's metrics, then the banner for a service whose port, remembered from its last run, is held by a process outside every wrapper, and the questions before ending that process or its parent. PortHeld/PortHeldBy: {0} the port, {1} {2} the process and its PID, {3} what started it. PortParent: {0} {1} the parent, {2} the process. PortHeldByWindows: {0} the process. PortHint: {0} the service. PortEndBody: {0} {1} the process, {2} the port, {3} the service. PortParentBody: {0} {1} the parent, {2} {3} the process, {4} the port, {5} the service. -->
     <sys:String x:Key="M.Dash.Listening">LISTENING</sys:String>
     <sys:String x:Key="M.Dash.PortHeld">Port {0} is held by {1} (PID {2}).</sys:String>

@@ -674,12 +674,13 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            // As for the process itself: a port holder is ended for the port, not to be run again.
+            // As for the process itself: a port holder is ended for the port, not to be run again,
+            // and an earlier run's leftover beside a running service leaves the service running.
             this.Ask(
                 Localizer.Get("M.Dash.StrayParentTitle"),
                 finding.HoldsPort
                     ? Localizer.Format("M.Dash.PortParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, finding.Port, entry.ServiceName)
-                    : Localizer.Format("M.Dash.StrayParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, entry.ServiceName),
+                    : Localizer.Format(finding.EarlierRun ? "M.Dash.StrayEarlierRunParentBody" : "M.Dash.StrayParentBody", parent.Name, parent.ProcessId, stray.Name, stray.ProcessId, entry.ServiceName),
                 Localizer.Get("M.Dash.StrayAction"),
                 () => this.TerminateStrayAsync(entry, parent));
         }
@@ -696,12 +697,13 @@ namespace WinSW.Gui.ViewModels
             }
 
             // A port holder need not be the service's program at all; the question names the port
-            // it is ended for rather than calling it left behind.
+            // it is ended for rather than calling it left behind. An earlier run's leftover beside
+            // a running service is ended with the service left running, not to be started after.
             this.Ask(
                 Localizer.Get(finding.HoldsPort ? "M.Dash.PortEndTitle" : "M.Dash.StrayTitle"),
                 finding.HoldsPort
                     ? Localizer.Format("M.Dash.PortEndBody", stray.Name, stray.ProcessId, finding.Port, entry.ServiceName)
-                    : Localizer.Format("M.Dash.StrayBody", stray.Name, stray.ProcessId, entry.ServiceName),
+                    : Localizer.Format(finding.EarlierRun ? "M.Dash.StrayEarlierRunBody" : "M.Dash.StrayBody", stray.Name, stray.ProcessId, entry.ServiceName),
                 Localizer.Get("M.Dash.StrayAction"),
                 () => this.TerminateStrayAsync(entry, stray));
         }
@@ -712,6 +714,14 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private async Task TerminateStrayAsync(ServiceEntry entry, ProcessMark stray)
         {
+            // The last word before anything is ended, whichever question led here: the buttons and
+            // the questions check the same, but a process tree ended by mistake is not undone, and
+            // Windows' own — explorer.exe, a service host — are never this console's to end.
+            if (!StrayProcesses.MayEnd(stray))
+            {
+                return;
+            }
+
             this.BeginBusy();
             try
             {
@@ -1553,16 +1563,20 @@ namespace WinSW.Gui.ViewModels
             var selectedAtStart = this.selectedService;
             int selectedIndex = selectedAtStart is null ? -1 : Array.IndexOf(entries, selectedAtStart);
 
-            // What the stray-process check needs, read here where the rows belong: the worker
-            // gets plain values. Any wrapper on the list owns what runs under it, including a
-            // desktop task's, which shares the wrapper under the install root.
-            var executables = entries.Select(e => e.ExecutablePath).ToArray();
-            var remembered = entries.Select(e => e.Descendants).ToArray();
+            // What the stray-process check and the ports need, read here where the rows belong: the
+            // worker gets plain values. Which service is on screen, which banners name a port, what
+            // each service's runs are remembered to have had and when its run began. Any wrapper on
+            // the list owns what runs under it, including a desktop task's, which shares the
+            // wrapper under the install root.
             var wrapperNames = new HashSet<string>(entries.Select(e => Path.GetFileName(e.WrapperPath)), StringComparer.OrdinalIgnoreCase) { "WinSW.exe" };
-
-            // And what the ports need: which service is on screen, and which banners name a port.
             var polled = entries
-                .Select(e => new PolledService(e.ServiceName, ReferenceEquals(e, selectedAtStart), e.StrayProcess is { HoldsPort: true }))
+                .Select(e => new PolledService(
+                    e.ServiceName,
+                    ReferenceEquals(e, selectedAtStart),
+                    e.StrayProcess is { HoldsPort: true },
+                    e.RememberedProcesses,
+                    e.RunStartedAt,
+                    e.ExecutablePath))
                 .ToArray();
 
             // Held across the writing as well as the reading. Dropped after the await, the
@@ -1579,22 +1593,22 @@ namespace WinSW.Gui.ViewModels
                     for (int i = 0; i < read.Length; i++)
                     {
                         read[i] = reading.Sample(entries[i].ServiceName);
-                        if (statesOnly)
+                        if (statesOnly || reading.Processes is not { } snapshot)
                         {
                             continue;
                         }
 
-                        // Running: note what is under the wrapper. Stopped: see whether any of
-                        // it, or the program itself, is still up. Starting and stopping are
-                        // neither — the tree is in motion, and would only flash a warning.
+                        // Running: note what is under the wrapper. In every state: see whether
+                        // anything a run of the service left is still up beside it, which state by
+                        // state means something different; see StrayWatch. What is remembered goes
+                        // to the file as well, for the next start of the console.
                         if (read[i].HasProcess)
                         {
                             read[i] = read[i] with { Descendants = reading.DescendantsOf(read[i].ProcessId) };
                         }
-                        else if (read[i].Queried && read[i].Status == ServiceControllerStatus.Stopped)
-                        {
-                            read[i] = read[i] with { Stray = reading.FindStray(remembered[i], executables[i], wrapperNames) };
-                        }
+
+                        read[i] = StrayWatch.Look(read[i], polled[i], snapshot, wrapperNames, Environment.ProcessId, NativeMethods.ImagePathOf);
+                        StrayWatch.Keep(RememberedRuns.Current, polled[i].Name, read[i].Remembered, DateTime.Now);
                     }
 
                     // The machine's listening ports, read once for every service and only when one

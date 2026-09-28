@@ -26,7 +26,11 @@ namespace WinSW.Gui.Services
     /// The port the service last listened on that the process now holds, when that is how it was
     /// found; 0 when it was found as the service's own program. See <see cref="StrayProcesses.FindPortHolder"/>.
     /// </param>
-    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent, int Port = 0)
+    /// <param name="EarlierRun">
+    /// Found while the service runs, or is stopping, as what an earlier run of it left: the service
+    /// has a program of its own again, and this one runs beside it. See <see cref="StrayWatch"/>.
+    /// </param>
+    public readonly record struct StrayFinding(ProcessMark Process, ProcessMark? Parent, int Port = 0, bool EarlierRun = false)
     {
         /// <summary>Found holding the service's port rather than as its program.</summary>
         public bool HoldsPort => this.Port != 0;
@@ -42,12 +46,14 @@ namespace WinSW.Gui.Services
             var process = this.Process;
             if (!this.HoldsPort)
             {
+                // Beside a running service the leftover is not what the next start fails on — the
+                // start has happened — but a second copy of the program, working next to the first.
                 return new StrayText(
-                    format("M.Dash.StrayBanner", new object?[] { process.Name, process.ProcessId }),
+                    format(this.EarlierRun ? "M.Dash.StrayEarlierRun" : "M.Dash.StrayBanner", new object?[] { process.Name, process.ProcessId }),
                     this.Parent is { } parent
                         ? format("M.Dash.StrayParent", new object?[] { parent.Name, parent.ProcessId })
                         : format("M.Dash.StrayOrphan", Array.Empty<object?>()),
-                    format("M.Dash.StrayHint", Array.Empty<object?>()));
+                    format(this.EarlierRun ? "M.Dash.StrayEarlierRunHint" : "M.Dash.StrayHint", Array.Empty<object?>()));
             }
 
             string banner = this.Parent is { } starter
@@ -102,32 +108,58 @@ namespace WinSW.Gui.Services
     /// hand: the port. What holds a port the service listened on when it last ran, outside every
     /// wrapper, is what its next start will fail on, whoever it is; see <see cref="FindPortHolder"/>.
     /// </para>
+    /// <para>
+    /// What was noted is remembered past the next start, and past a restart of the console, and
+    /// looked for while the service runs as well: a leftover matters most when the service has
+    /// started again beside it, which under Windows' recovery is seconds after the wrapper went.
+    /// See <see cref="StrayWatch"/>.
+    /// </para>
     /// </remarks>
     public static class StrayProcesses
     {
         /// <summary>Everything under <paramref name="processId"/>, for noticing later what outlived it.</summary>
+        /// <remarks>
+        /// A parent link is a process ID, and IDs are reused: a wrapper given the ID of a launcher
+        /// that has exited would otherwise count the launcher's orphans as its own, and have them
+        /// remembered, found left behind and offered for ending as the service's. A child that
+        /// started before its supposed parent was started by an earlier holder of the ID, and is
+        /// left out with everything under it, as <see cref="ProcessTreeProvider"/> leaves it out.
+        /// </remarks>
         public static ImmutableArray<ProcessMark> DescendantsOf(ProcessSnapshot snapshot, int processId)
         {
             var found = ImmutableArray.CreateBuilder<ProcessMark>();
-            var pending = new Stack<int>(snapshot.ChildrenOf(processId));
+            if (!snapshot.TryGet(processId, out var root))
+            {
+                return found.ToImmutable();
+            }
+
+            var pending = new Stack<(int Child, DateTime? ParentStartedAt)>();
             var seen = new HashSet<int> { processId };
+            PushChildren(root);
 
             while (pending.Count > 0)
             {
-                int child = pending.Pop();
-                if (!seen.Add(child) || !snapshot.TryGet(child, out var record))
+                var (child, parentStartedAt) = pending.Pop();
+                if (!seen.Add(child)
+                    || !snapshot.TryGet(child, out var record)
+                    || (record.StartedAt is DateTime childStart && parentStartedAt is DateTime parentStart && childStart < parentStart))
                 {
                     continue;
                 }
 
                 found.Add(new ProcessMark(record.ProcessId, record.StartedAt, record.Name));
-                foreach (int grandchild in snapshot.ChildrenOf(child))
-                {
-                    pending.Push(grandchild);
-                }
+                PushChildren(record);
             }
 
             return found.ToImmutable();
+
+            void PushChildren(in ProcessRecord parent)
+            {
+                foreach (int childId in snapshot.ChildrenOf(parent.ProcessId))
+                {
+                    pending.Push((childId, parent.StartedAt));
+                }
+            }
         }
 
         /// <summary>
@@ -177,6 +209,22 @@ namespace WinSW.Gui.Services
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// The processes among <paramref name="marks"/> that still run, in the order given: the same
+        /// ID, started at the same moment. One that has exited, or whose ID the system has since
+        /// given to another process, is left out.
+        /// </summary>
+        internal static IEnumerable<ProcessRecord> StillRunning(ProcessSnapshot snapshot, IEnumerable<ProcessMark> marks)
+        {
+            foreach (var mark in marks)
+            {
+                if (snapshot.TryGet(mark.ProcessId, out var record) && SameStart(record.StartedAt, mark.StartedAt))
+                {
+                    yield return record;
+                }
+            }
         }
 
         /// <summary>

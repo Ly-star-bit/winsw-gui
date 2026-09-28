@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Immutable;
 using System.ServiceProcess;
 using WinSW.Gui.Model;
 using WinSW.Gui.Services;
@@ -52,20 +53,21 @@ namespace WinSW.Gui.Tests
         /// <summary>
         /// Restarted by Windows' recovery while the page was hidden: the figures belong to the
         /// process that is gone, and the next full reading starts from nothing rather than from
-        /// its CPU time.
+        /// its CPU time. What the last run had running is kept: it is what the next full reading
+        /// looks for beside the new wrapper.
         /// </summary>
         [Fact]
         public void AReplacedProcessTakesItsFiguresWithIt()
         {
             var entry = Running();
-            entry.Descendants = new[] { new ProcessMark(5000, T0, "python.exe") };
+            entry.RememberedProcesses = ImmutableArray.Create(new ProcessMark(5000, T0, "python.exe"));
 
             ServiceDiscovery.ApplyStatus(entry, States(ServiceControllerStatus.Running, 9876));
 
             Assert.Equal(9876, entry.ProcessId);
             Assert.Empty(entry.CpuHistory);
             Assert.Equal(0, entry.WorkingSetBytes);
-            Assert.Empty(entry.Descendants);
+            Assert.Single(entry.RememberedProcesses);
         }
 
         /// <summary>The same process keeps what was noted under it, for the stray check once it stops.</summary>
@@ -73,19 +75,21 @@ namespace WinSW.Gui.Tests
         public void TheSameProcessKeepsWhatWasNotedUnderIt()
         {
             var entry = Running();
-            entry.Descendants = new[] { new ProcessMark(5000, T0, "python.exe") };
+            entry.RememberedProcesses = ImmutableArray.Create(new ProcessMark(5000, T0, "python.exe"));
 
             ServiceDiscovery.ApplyStatus(entry, States(ServiceControllerStatus.Running, 4321));
 
-            Assert.Single(entry.Descendants);
+            Assert.Single(entry.RememberedProcesses);
         }
 
         /// <summary>
-        /// Nothing is looked for behind a hidden page, so a stopped service keeps the finding of
-        /// the last full reading; one running again has none, as it would under a full reading.
+        /// Nothing is looked for behind a hidden page, so the finding of the last full reading stays
+        /// in every state until the next one: a leftover is told while the service starts and runs
+        /// again, and clearing it here would have the banner wait out its seconds anew at every
+        /// restart of a loop.
         /// </summary>
         [Fact]
-        public void AStrayFindingStaysWhileStoppedAndGoesOnceRunning()
+        public void AStrayFindingStaysUntilTheNextFullReading()
         {
             var entry = new ServiceEntry("demo", "Demo", @"C:\bin\WinSW.exe", @"C:\svc\demo.xml");
             ServiceDiscovery.Apply(entry, States(ServiceControllerStatus.Stopped, 0));
@@ -98,6 +102,13 @@ namespace WinSW.Gui.Tests
             Assert.True(entry.HasStrayProcess);
 
             ServiceDiscovery.ApplyStatus(entry, States(ServiceControllerStatus.StartPending, 0));
+            Assert.True(entry.HasStrayProcess);
+
+            ServiceDiscovery.ApplyStatus(entry, States(ServiceControllerStatus.Running, 9876));
+            Assert.True(entry.HasStrayProcess);
+
+            // The next full reading is what tells: here, that nothing is left.
+            ServiceDiscovery.Apply(entry, States(ServiceControllerStatus.Running, 9876));
             Assert.False(entry.HasStrayProcess);
         }
 

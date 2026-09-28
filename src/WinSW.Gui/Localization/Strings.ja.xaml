@@ -497,6 +497,11 @@
     <sys:String x:Key="M.Dash.StrayEnded">{0}（PID {1}）を終了しました。</sys:String>
     <sys:String x:Key="M.Dash.StrayGone">そのプロセスはすでに終了しています。</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">終了できませんでした: {0}</sys:String>
+    <!-- A leftover beside a running service: the banner and hint for a process an earlier run of the service left, found while the service runs or is stopping, and the questions before ending it or its parent. StrayEarlierRun: {0} {1} the process and its PID. StrayEarlierRunBody: {0} {1} the process, {2} the service. StrayEarlierRunParentBody: {0} {1} the parent, {2} {3} the process, {4} the service. -->
+    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）は以前の実行で残されたもので、サービスの外で実行中です。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunHint">サービスはその後もう一度起動されており、これはその横で動いています。同じポートやファイルを取り合ったり、同じ処理を二重に行ったりすることがあります。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunBody">{0}（PID {1}）と、それが起動したすべてのプロセスを正常なシャットダウンなしで終了します。サービス '{2}' 自体には影響しません。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunParentBody">{0}（PID {1}）と、それが起動したすべてのプロセス（{2}、PID {3} を含む）を正常なシャットダウンなしで終了します。サービス '{4}' 自体には影響しません。</sys:String>
     <!-- Ports on the Services page: the label of the line under a running service's metrics, then the banner for a service whose port, remembered from its last run, is held by a process outside every wrapper, and the questions before ending that process or its parent. PortHeld/PortHeldBy: {0} the port, {1} {2} the process and its PID, {3} what started it. PortParent: {0} {1} the parent, {2} the process. PortHeldByWindows: {0} the process. PortHint: {0} the service. PortEndBody: {0} {1} the process, {2} the port, {3} the service. PortParentBody: {0} {1} the parent, {2} {3} the process, {4} the port, {5} the service. -->
     <sys:String x:Key="M.Dash.Listening">待ち受けポート</sys:String>
     <sys:String x:Key="M.Dash.PortHeld">ポート {0} は {1}（PID {2}）が使用中です。</sys:String>

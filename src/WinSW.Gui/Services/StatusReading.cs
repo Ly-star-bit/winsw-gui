@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.ServiceProcess;
 
@@ -102,12 +101,6 @@ namespace WinSW.Gui.Services
         /// <summary>Everything under a running service's wrapper, out of this reading's snapshot.</summary>
         public ImmutableArray<ProcessMark> DescendantsOf(int processId) =>
             this.Processes is { } processes ? StrayProcesses.DescendantsOf(processes, processId) : ImmutableArray<ProcessMark>.Empty;
-
-        /// <summary>What a stopped service has left running, if anything; see <see cref="StrayProcesses.Find"/>.</summary>
-        public StrayFinding? FindStray(IReadOnlyList<ProcessMark> remembered, string? executablePath, ISet<string> wrapperNames) =>
-            this.Processes is { } processes
-                ? StrayProcesses.Find(processes, remembered, executablePath, wrapperNames, Environment.ProcessId, NativeMethods.ImagePathOf)
-                : null;
 
         /// <summary>The tree under a process, out of the same snapshot the samples came from.</summary>
         public ProcessNode? Tree(int processId) =>

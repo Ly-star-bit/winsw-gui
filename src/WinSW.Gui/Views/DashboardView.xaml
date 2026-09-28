@@ -56,7 +56,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Stopped, but its program is still running outside it, or something else holds its port. -->
+                    <!-- Its program is still running outside it, left by a run that has ended, or something else holds its port. -->
                     <TextBlock
                         Margin="0,0,8,0"
                         VerticalAlignment="Center"
@@ -435,7 +435,7 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- Stopped, with its program left running, or with its port held by another -->
+                                    <!-- A run's program left running, whether the service is stopped or running again beside it, or its port held by another -->
                                     <Border
                                         Margin="0,0,0,14"
                                         Padding="12,8"

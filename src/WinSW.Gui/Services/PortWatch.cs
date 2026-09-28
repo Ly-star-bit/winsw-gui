@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.ServiceProcess;
 
@@ -135,5 +136,14 @@ namespace WinSW.Gui.Services
     /// <param name="Name">The service's name.</param>
     /// <param name="Selected">Its details are on screen.</param>
     /// <param name="HolderShown">Its banner names a process holding its port; see <see cref="PortWatch"/>.</param>
-    public readonly record struct PolledService(string Name, bool Selected, bool HolderShown);
+    /// <param name="Remembered">What its runs are remembered to have had running; see <see cref="StrayWatch"/>.</param>
+    /// <param name="RunStartedAt">When the wrapper last seen running started; see <see cref="Model.ServiceEntry.RunStartedAt"/>.</param>
+    /// <param name="Executable">Its program, full path; null when it is named bare or cannot be read.</param>
+    public readonly record struct PolledService(
+        string Name,
+        bool Selected,
+        bool HolderShown,
+        ImmutableArray<ProcessMark> Remembered = default,
+        DateTime? RunStartedAt = null,
+        string? Executable = null);
 }

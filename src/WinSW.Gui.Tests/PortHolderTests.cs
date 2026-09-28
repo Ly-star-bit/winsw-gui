@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Globalization;
 using WinSW.Gui.Model;
 using WinSW.Gui.Services;
@@ -157,7 +158,7 @@ namespace WinSW.Gui.Tests
         {
             var entry = new ServiceEntry("api", "API", "C:/bin/WinSW.exe", "C:/svc/api.xml")
             {
-                Descendants = new[] { Mark(4312, 1, "python.exe") },
+                RememberedProcesses = ImmutableArray.Create(Mark(4312, 1, "python.exe")),
             };
             var holder = new StrayFinding(Mark(4312, 1, "python.exe"), null, 8000);
 

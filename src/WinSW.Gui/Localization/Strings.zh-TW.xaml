@@ -497,6 +497,11 @@
     <sys:String x:Key="M.Dash.StrayEnded">已結束 {0}（PID {1}）。</sys:String>
     <sys:String x:Key="M.Dash.StrayGone">那個處理程序已經結束了。</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">無法結束：{0}</sys:String>
+    <!-- A leftover beside a running service: the banner and hint for a process an earlier run of the service left, found while the service runs or is stopping, and the questions before ending it or its parent. StrayEarlierRun: {0} {1} the process and its PID. StrayEarlierRunBody: {0} {1} the process, {2} the service. StrayEarlierRunParentBody: {0} {1} the parent, {2} {3} the process, {4} the service. -->
+    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）是先前某次執行遺留的，仍在執行，但不在服務之下。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunHint">服務之後又啟動過，這個遺留的處理程序和它同時在執行：兩邊可能爭用同一個連接埠和檔案，或者把同一件事做兩次。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序，不做正常關閉。服務「{2}」本身不受影響。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRunParentBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序（包括 {2}，PID {3}），不做正常關閉。服務「{4}」本身不受影響。</sys:String>
     <!-- Ports on the Services page: the label of the line under a running service's metrics, then the banner for a service whose port, remembered from its last run, is held by a process outside every wrapper, and the questions before ending that process or its parent. PortHeld/PortHeldBy: {0} the port, {1} {2} the process and its PID, {3} what started it. PortParent: {0} {1} the parent, {2} the process. PortHeldByWindows: {0} the process. PortHint: {0} the service. PortEndBody: {0} {1} the process, {2} the port, {3} the service. PortParentBody: {0} {1} the parent, {2} {3} the process, {4} the port, {5} the service. -->
     <sys:String x:Key="M.Dash.Listening">監聽連接埠</sys:String>
     <sys:String x:Key="M.Dash.PortHeld">連接埠 {0} 被 {1}（PID {2}）佔用。</sys:String>
