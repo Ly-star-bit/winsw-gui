@@ -59,7 +59,13 @@ namespace WinSW.Gui
 
             this.shell.ExitDecided += this.OnExitDecided;
 
+            // The size the window is laid out for, read before a saved one replaces it: when a
+            // window that does not fit the screen would not fit at that size either, it opens
+            // maximized. The saved placement came from whatever screen the last session had.
+            double designWidth = this.Width;
+            double designHeight = this.Height;
             this.RestoreWindowPlacement();
+            WindowFit.Attach(this, designWidth, designHeight);
             this.StateChanged += this.OnStateChanged;
 
             if (App.StartupConfigPath is { } startupPath)
@@ -133,7 +139,8 @@ namespace WinSW.Gui
             if (settings.WindowWidth is double width && settings.WindowHeight is double height
                 && settings.WindowLeft is double left && settings.WindowTop is double top)
             {
-                // Only honour a position that is still on a screen; monitors come and go.
+                // Only honour a position that is still on a screen; monitors come and go. The
+                // screen may also be smaller than it was: WindowFit brings the window within it.
                 var area = SystemParameters.VirtualScreenWidth;
                 var areaHeight = SystemParameters.VirtualScreenHeight;
                 if (left >= SystemParameters.VirtualScreenLeft - 8 && top >= SystemParameters.VirtualScreenTop - 8

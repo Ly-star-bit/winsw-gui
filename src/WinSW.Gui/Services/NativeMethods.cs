@@ -215,6 +215,40 @@ namespace WinSW.Gui.Services
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool GetWindowRect(IntPtr window, out RECT rect);
 
+        // Window fit ------------------------------------------------------------
+        //
+        // Which monitor a window is on, and how much of it the taskbar leaves free; see
+        // WindowFit. Both answer in screen pixels.
+
+        /// <summary>A point on no monitor is taken to the monitor nearest to it.</summary>
+        internal const int MONITOR_DEFAULTTONEAREST = 2;
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct POINT
+        {
+            public int X;
+            public int Y;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct MONITORINFO
+        {
+            /// <summary>Has to be set to the structure's size before the call, or the call fails.</summary>
+            public int Size;
+            public RECT Monitor;
+
+            /// <summary>The monitor less the taskbar and any other docked bar.</summary>
+            public RECT WorkArea;
+            public int Flags;
+        }
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr MonitorFromPoint(POINT point, int flags);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        internal static extern bool GetMonitorInfoW(IntPtr monitor, ref MONITORINFO info);
+
         // Notification area ---------------------------------------------------
         //
         // WPF has no tray control. Windows Forms has one, and using it cost the whole

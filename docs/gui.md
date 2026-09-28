@@ -38,7 +38,10 @@ Across the pages:
   running as SYSTEM, so nobody needs to be signed in. It restarts only a service that is
   running, and does not force one that other services depend on. Setting or removing it
   takes one elevation prompt.
-- **Light, dark or system theme**, remembered window placement, F5 / Ctrl+S / Esc.
+- **Light, dark or system theme**, remembered window placement, F5 / Ctrl+S / Esc. The
+  window is kept within the screen it opens on: a size saved in a wider remote desktop
+  session is brought down to this one's, a screen too small for the window's usual size gets
+  it maximized, and a reconnect at another resolution fits it again.
 - **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
   file is staged and copied into place with one elevation prompt. There is also a
   "Restart as administrator" button in the rail for prompt-free sessions.

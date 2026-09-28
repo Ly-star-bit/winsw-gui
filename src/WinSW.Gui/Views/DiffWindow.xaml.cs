@@ -45,6 +45,9 @@ namespace WinSW.Gui.Views
         {
             this.InitializeComponent();
 
+            // Centred on the console, which may itself reach past the screen's edge.
+            WindowFit.Attach(this, this.Width, this.Height);
+
             this.Subtitle.Text = subtitle;
             this.Lines.ItemsSource = lines.Select(l => new DiffRow(l)).ToList();
             if (lines.Count == 0)
