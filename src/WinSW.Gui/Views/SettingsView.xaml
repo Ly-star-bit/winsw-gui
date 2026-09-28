@@ -129,6 +129,33 @@
                             <Button DockPanel.Dock="Left" Padding="10,4" Command="{Binding SendTestAlertCommand}" Content="{DynamicResource M.Alert.SendTest}" />
                             <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource FieldHint}" Text="{Binding AlertTestStatus}" TextWrapping="Wrap" />
                         </DockPanel>
+
+                        <!-- The last real alert, this console's or the unattended alert's: blank before the first. -->
+                        <TextBlock
+                            Margin="0,10,0,0"
+                            Style="{StaticResource FieldHint}"
+                            Text="{Binding LastAlertText}"
+                            TextWrapping="Wrap"
+                            Visibility="{Binding LastAlertText, Converter={StaticResource StringToVisibility}}" />
+
+                        <!-- The same webhook, posted by a task that runs as SYSTEM; see UnattendedAlert. -->
+                        <CheckBox
+                            Margin="0,16,0,0"
+                            Content="{DynamicResource M.Alert.Unattended}"
+                            IsChecked="{Binding AlertWhenNobodySignedIn}"
+                            IsEnabled="{Binding CanChangeUnattendedAlert}" />
+                        <TextBlock Margin="24,2,0,0" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Alert.UnattendedHint}" />
+                        <DockPanel Margin="24,8,0,0" Visibility="{Binding UnattendedAlertNotice, Converter={StaticResource StringToVisibility}}">
+                            <Button
+                                Margin="0,0,10,0"
+                                Padding="10,4"
+                                VerticalAlignment="Center"
+                                DockPanel.Dock="Left"
+                                Command="{Binding ApplyUnattendedAlertCommand}"
+                                Content="{DynamicResource M.Alert.UnattendedApply}"
+                                Visibility="{Binding UnattendedAlertStale, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Style="{StaticResource FieldHint}" Text="{Binding UnattendedAlertNotice}" TextWrapping="Wrap" />
+                        </DockPanel>
                     </StackPanel>
                 </Border>
 

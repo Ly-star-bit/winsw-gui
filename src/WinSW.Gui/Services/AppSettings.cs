@@ -95,6 +95,15 @@ namespace WinSW.Gui.Services
         /// <summary>The webhook's signing secret, encrypted to this user.</summary>
         public string? AlertSecret { get; set; }
 
+        /// <summary>When this console last posted an alert; null when it never has. Shown on the settings page.</summary>
+        public DateTimeOffset? LastAlertAt { get; set; }
+
+        /// <summary>The service that alert was about.</summary>
+        public string? LastAlertService { get; set; }
+
+        /// <summary>Why that alert was not sent; null when it was.</summary>
+        public string? LastAlertError { get; set; }
+
         public double? WindowLeft { get; set; }
 
         public double? WindowTop { get; set; }

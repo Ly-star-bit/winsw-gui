@@ -77,7 +77,27 @@ Across the pages:
 - **Alerts to a group chat**: Settings takes a WeCom, DingTalk or Feishu robot's webhook (or
   any receiver that accepts a JSON `text` field) and a signing secret, and posts each
   unexpected stop there as well as to the tray, naming the machine. Both are stored encrypted
-  to the Windows user; *Send a test* checks them.
+  to the Windows user; *Send a test* checks them. A failed send is recorded with every message
+  in its chain ("no such host", a certificate the machine does not trust), and Settings shows
+  when the last alert went out and how.
+- **Alerts when nobody is signed in** (Settings, off by default): the console's own alerts come
+  only while it runs in a signed-in session. With this on, a task in the task scheduler
+  (`\WinSW\Alert`, running as SYSTEM) starts on the failures the service control manager
+  records in the System log — 7031 and 7034 (stopped unexpectedly), 7000 (failed to start),
+  7009 (did not start in time), 7023 and 7024 (stopped with an error) — looks the service up,
+  ignores anything that is not a WinSW service, and posts to the same webhook: after a reboot
+  for updates at night as well. A service failing over and over is posted once per 5 minutes,
+  the next message saying how many failures were held back
+  (`%ProgramData%\WinSW.Gui\alert-state.json`); each attempt is a line in
+  `%ProgramData%\WinSW.Gui\alerts.log`. Turning it on or off takes one elevation prompt. The
+  task works from its own copies in `%ProgramData%\WinSW.Gui\Alert`, a folder only
+  administrators and SYSTEM can open: the webhook, sealed to the machine rather than to a user,
+  and the console's executable, so that nothing a standard user can replace ever runs as
+  SYSTEM. When the address, the secret or the console's version changes, Settings says the
+  copy is out of date and offers *Apply again*. While the task is on, the console leaves the
+  failures it covers to it (a program that ended with exit code 0 is not a failure to Windows,
+  and still posted by the console); tray notifications are unchanged. SYSTEM has no per-user
+  proxy, so it has to reach the robot's host directly.
 - **Action log**: every start, stop, restart, uninstall, upgrade, install, schedule change
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside

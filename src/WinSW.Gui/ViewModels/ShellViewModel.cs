@@ -1,9 +1,11 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using WinSW.Gui.Localization;
+using WinSW.Gui.Model;
 using WinSW.Gui.Mvvm;
 using WinSW.Gui.Services;
 using WinSW.Gui.Theme;
@@ -74,6 +76,18 @@ namespace WinSW.Gui.ViewModels
         private string alertUrl = AlertWebhook.Url;
         private string alertSecret = AlertWebhook.Secret;
         private string alertTestStatus = string.Empty;
+
+        /// <summary>The unattended alert's task is registered and enabled, as last read.</summary>
+        private bool alertWhenNobodySignedIn;
+
+        /// <summary>Turning it on or off is under way: the elevated step has not returned yet.</summary>
+        private bool unattendedAlertBusy;
+
+        /// <summary>Why the last attempt to turn it on or off did not go through; blank when it did.</summary>
+        private string unattendedAlertError = string.Empty;
+
+        /// <summary>The unattended alert as last read; null until the first reading comes back.</summary>
+        private UnattendedAlertStatus? unattendedAlert;
         private bool isRailCollapsed = AppSettings.Current.RailCollapsed;
         private string toastText = string.Empty;
         private bool toastVisible;
@@ -163,8 +177,9 @@ namespace WinSW.Gui.ViewModels
 
             // Where the tray notification goes, the group chat's goes too. The dashboard has
             // already held a crash-looping service to one announcement per five minutes.
-            this.Dashboard.UnexpectedStop += entry => ErrorLog.Observe(AlertWebhook.NotifyStopAsync(entry), "alert webhook");
+            this.Dashboard.UnexpectedStop += entry => ErrorLog.Observe(this.PostStopAsync(entry), "alert webhook");
             this.SendTestAlertCommand = new AsyncRelayCommand(this.SendTestAlertAsync, () => !string.IsNullOrWhiteSpace(this.alertUrl));
+            this.ApplyUnattendedAlertCommand = new AsyncRelayCommand(() => this.SetUnattendedAlertAsync(true), () => !this.unattendedAlertBusy);
             this.Dashboard.CreateServiceRequested += () =>
             {
                 // The wizard keeps whichever mode it was last used in; arriving from a page
@@ -216,6 +231,7 @@ namespace WinSW.Gui.ViewModels
             // Nobody awaits this or the reload below, so a failure is recorded as it happens
             // rather than going nowhere.
             ErrorLog.Observe(this.CheckGuiUpdateAsync(), "update check");
+            ErrorLog.Observe(this.RefreshUnattendedAlertAsync(), "unattended alert status");
 
             // Once, in the background: the wizard needs to know which task names are taken
             // before anyone has opened the desktop-task page.
@@ -270,6 +286,8 @@ namespace WinSW.Gui.ViewModels
                 this.Raise(nameof(this.UnsavedSaveLabel));
                 this.Raise(nameof(this.UnsavedDiscardLabel));
                 this.Raise(nameof(this.SettingsFileProblem));
+                this.RaiseUnattendedAlertNotice();
+                this.Raise(nameof(this.LastAlertText));
             };
 
             // The defaults on screen must not pass for the user's own choices. The page keeps
@@ -716,6 +734,7 @@ namespace WinSW.Gui.ViewModels
                     AlertWebhook.Url = this.alertUrl;
                     this.AlertTestStatus = string.Empty;
                     this.SendTestAlertCommand.RaiseCanExecuteChanged();
+                    this.RaiseUnattendedAlertNotice();
                 }
             }
         }
@@ -730,6 +749,7 @@ namespace WinSW.Gui.ViewModels
                 {
                     AlertWebhook.Secret = this.alertSecret;
                     this.AlertTestStatus = string.Empty;
+                    this.RaiseUnattendedAlertNotice();
                 }
             }
         }
@@ -749,6 +769,187 @@ namespace WinSW.Gui.ViewModels
             string? error = await AlertWebhook.SendAsync(url, this.alertSecret, Localizer.Format("M.Alert.Test", Environment.MachineName)).ConfigureAwait(true);
             ActionLog.Record("alert test", AlertWebhook.KindOf(url).ToString(), error is null ? "ok" : "failed: " + error);
             this.AlertTestStatus = error is null ? Localizer.Get("M.Alert.TestOk") : Localizer.Format("M.Alert.TestFailed", error);
+        }
+
+        /// <summary>
+        /// Posts the group chat's copy of a tray notification, and keeps how it went for the
+        /// settings page. Written here, on the UI thread, which is the thread that changes the
+        /// settings everywhere else.
+        /// </summary>
+        private async Task PostStopAsync(ServiceEntry entry)
+        {
+            var outcome = await AlertWebhook.NotifyStopAsync(entry).ConfigureAwait(true);
+            if (outcome is null)
+            {
+                return;
+            }
+
+            var settings = AppSettings.Current;
+            settings.LastAlertAt = outcome.At;
+            settings.LastAlertService = outcome.Service;
+            settings.LastAlertError = outcome.Error;
+            settings.Save();
+            this.Raise(nameof(this.LastAlertText));
+        }
+
+        /// <summary>
+        /// How the last alert went — this console's or, when it is newer, the unattended
+        /// alert's — and when; blank before the first one.
+        /// </summary>
+        public string LastAlertText
+        {
+            get
+            {
+                var settings = AppSettings.Current;
+                var console = settings.LastAlertAt is { } at
+                    ? new AlertOutcome { At = at, Service = settings.LastAlertService ?? string.Empty, Error = settings.LastAlertError }
+                    : null;
+
+                var (last, byTask) = AlertOutcome.Latest(console, this.unattendedAlert?.Last);
+                if (last is null)
+                {
+                    return string.Empty;
+                }
+
+                string result = last.Error is null ? Localizer.Get("M.Alert.LastSent") : Localizer.Format("M.Alert.LastNotSent", last.Error);
+                string text = Localizer.Format("M.Alert.Last", last.At.ToLocalTime().ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture), last.Service, result);
+                return byTask ? text + " " + Localizer.Get("M.Alert.LastByTask") : text;
+            }
+        }
+
+        // Alerts when nobody is signed in ---------------------------------------------------
+
+        /// <summary>
+        /// "Also alert when nobody is signed in": the task that posts from the failures Windows
+        /// records, as last read; see <see cref="Services.UnattendedAlert"/>. Setting it turns the
+        /// task on or off, which takes an elevation prompt and a few seconds. Meanwhile the box
+        /// shows what was asked for and cannot be changed; then it shows what is registered.
+        /// </summary>
+        public bool AlertWhenNobodySignedIn
+        {
+            get => this.alertWhenNobodySignedIn;
+            set
+            {
+                if (value == this.alertWhenNobodySignedIn || this.unattendedAlertBusy)
+                {
+                    this.Raise();
+                    return;
+                }
+
+                ErrorLog.Observe(this.SetUnattendedAlertAsync(value), "unattended alert");
+            }
+        }
+
+        public bool CanChangeUnattendedAlert => !this.unattendedAlertBusy;
+
+        /// <summary>
+        /// Under the box: that the change is under way, why it did not go through, or that the
+        /// task's copy of the webhook or of the console is older than this console's; blank
+        /// otherwise.
+        /// </summary>
+        public string UnattendedAlertNotice =>
+            this.unattendedAlertBusy ? Localizer.Get("M.Alert.UnattendedWorking")
+            : this.unattendedAlertError.Length > 0 ? this.unattendedAlertError
+            : this.UnattendedAlertOutdated();
+
+        /// <summary>The task's copy is out of date, and <see cref="ApplyUnattendedAlertCommand"/> is offered.</summary>
+        public bool UnattendedAlertStale => !this.unattendedAlertBusy && this.unattendedAlertError.Length == 0 && this.UnattendedAlertOutdated().Length > 0;
+
+        /// <summary>Copies this console's webhook and executable to the task again, with one elevation prompt.</summary>
+        public AsyncRelayCommand ApplyUnattendedAlertCommand { get; }
+
+        /// <summary>
+        /// Why the task's copy no longer matches this console, or blank. The address and secret
+        /// typed on this page reach the task only when they are applied: a prompt per keystroke
+        /// is not something to put anyone through.
+        /// </summary>
+        private string UnattendedAlertOutdated()
+        {
+            if (this.unattendedAlert is not { Active: true, Manifest: { } manifest })
+            {
+                return string.Empty;
+            }
+
+            if (!string.Equals(manifest.Fingerprint, UnattendedAlert.Fingerprint(this.alertUrl, this.alertSecret), StringComparison.Ordinal))
+            {
+                return Localizer.Get("M.Alert.UnattendedStale");
+            }
+
+            return string.Equals(manifest.Version, UpdateChecker.CurrentGuiVersion, StringComparison.Ordinal)
+                ? string.Empty
+                : Localizer.Format("M.Alert.UnattendedOld", manifest.Version, UpdateChecker.CurrentGuiVersion);
+        }
+
+        private void RaiseUnattendedAlertNotice()
+        {
+            this.Raise(nameof(this.UnattendedAlertNotice));
+            this.Raise(nameof(this.UnattendedAlertStale));
+        }
+
+        private void SetUnattendedAlertBusy(bool busy)
+        {
+            this.unattendedAlertBusy = busy;
+            this.Raise(nameof(this.CanChangeUnattendedAlert));
+            this.ApplyUnattendedAlertCommand.RaiseCanExecuteChanged();
+            this.RaiseUnattendedAlertNotice();
+        }
+
+        /// <summary>Turns the unattended alert on — or brings its copy up to date — or off.</summary>
+        private async Task SetUnattendedAlertAsync(bool on)
+        {
+            this.unattendedAlertError = string.Empty;
+            this.SetUnattendedAlertBusy(true);
+            try
+            {
+                if (on && !AlertWebhook.IsConfigured)
+                {
+                    this.unattendedAlertError = Localizer.Get("M.Alert.UnattendedNoUrl");
+                    return;
+                }
+
+                var result = on
+                    ? await UnattendedAlert.TurnOnAsync(AlertWebhook.Url, AlertWebhook.Secret, Localizer.Current.Code).ConfigureAwait(true)
+                    : await UnattendedAlert.TurnOffAsync().ConfigureAwait(true);
+
+                ActionLog.Record("unattended alert", on ? "on" : "off", result);
+
+                // A declined prompt changed nothing, which the box going back says well enough.
+                if (!result.Succeeded && !result.Cancelled)
+                {
+                    this.unattendedAlertError = result.Error ?? ActionLog.Describe(result);
+                }
+            }
+            finally
+            {
+                // Whatever happened, the box ends up showing what is registered now.
+                await this.RefreshUnattendedAlertAsync(force: true).ConfigureAwait(true);
+                this.SetUnattendedAlertBusy(false);
+            }
+        }
+
+        /// <summary>
+        /// Reads the task, its manifest and its last message off the UI thread, and shows them.
+        /// Left alone while a change is under way, except by that change itself, so that the box
+        /// does not jump back to the old state in the middle of it.
+        /// </summary>
+        private async Task RefreshUnattendedAlertAsync(bool force = false)
+        {
+            if (this.unattendedAlertBusy && !force)
+            {
+                return;
+            }
+
+            var status = await Task.Run(UnattendedAlert.ReadStatus).ConfigureAwait(true);
+            if (this.unattendedAlertBusy && !force)
+            {
+                return;
+            }
+
+            this.unattendedAlert = status;
+            this.alertWhenNobodySignedIn = status.Active;
+            this.Raise(nameof(this.AlertWhenNobodySignedIn));
+            this.RaiseUnattendedAlertNotice();
+            this.Raise(nameof(this.LastAlertText));
         }
 
         /// <summary>The sign-in entry that starts this console in the tray; see <see cref="Autostart"/>.</summary>
@@ -923,6 +1124,13 @@ namespace WinSW.Gui.ViewModels
                     case DesktopTasksViewModel tasks:
                         tasks.Activate();
                         break;
+                }
+
+                // The settings page shows the unattended alert as it is now: another
+                // administrator may have turned it on or off since, and it may have posted.
+                if (ReferenceEquals(value, this))
+                {
+                    ErrorLog.Observe(this.RefreshUnattendedAlertAsync(), "unattended alert status");
                 }
             }
         }

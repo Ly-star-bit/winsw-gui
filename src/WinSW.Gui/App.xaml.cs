@@ -25,6 +25,20 @@ namespace WinSW.Gui
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            // The unattended alert's runs: the task scheduler's, as SYSTEM with nobody signed
+            // in, and the elevated steps that turn it on and off. None of them is a console, so
+            // they come before anything a console does — claiming the session, the dialogs for
+            // failures, a window — and end the process when they are done.
+            if (UnattendedAlert.ParseHeadless(e.Args) is { } headless)
+            {
+                int exitCode = UnattendedAlert.RunHeadless(headless);
+
+                // Main returns nothing, so this is what the process exits with.
+                Environment.ExitCode = exitCode;
+                this.Shutdown(exitCode);
+                return;
+            }
+
             var arguments = StartupArguments.Parse(e.Args, System.IO.File.Exists);
             StartupConfigPath = arguments.ConfigPath;
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -41,9 +42,15 @@ namespace WinSW.Gui.Services
     /// the settings file encrypted to the Windows user; see <see cref="ProtectedText"/>.
     /// </para>
     /// <para>
-    /// A failure is recorded in the action log and nowhere else. An alert that could not be
-    /// sent is not a reason to put a dialog in front of someone at the console — who, if they
-    /// are there, already has the tray notification.
+    /// A failure is recorded in the action log, with every message in its exception's chain,
+    /// and the settings page shows how the last alert went. An alert that could not be sent is
+    /// not a reason to put a dialog in front of someone at the console — who, if they are
+    /// there, already has the tray notification.
+    /// </para>
+    /// <para>
+    /// This is the console's alert, and it comes only while the console runs. For when nobody
+    /// is signed in there is <see cref="UnattendedAlert"/>, and while that is on it is the one
+    /// that posts.
     /// </para>
     /// </remarks>
     public static class AlertWebhook
@@ -99,20 +106,40 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>Announces an unexpected stop, if an address is set. Never throws.</summary>
-        public static async Task NotifyStopAsync(ServiceEntry entry)
+        /// <returns>
+        /// How it went; null when nothing was sent for it — no address is set, or the stop is
+        /// the unattended alert's to post.
+        /// </returns>
+        public static async Task<AlertOutcome?> NotifyStopAsync(ServiceEntry entry)
         {
             if (!IsConfigured)
             {
-                return;
+                return null;
             }
 
+            // Everything read from the entry and the settings is read here, on the caller's
+            // thread, before the first wait.
+            string service = entry.ServiceName;
+            int? lastExitCode = entry.LastExitCode;
             string exitCode = entry.LastExitCodeText;
             string text = entry.CrashCount > 1
-                ? Localizer.Format("M.Alert.StoppedRepeated", Environment.MachineName, entry.ServiceName, exitCode, entry.CrashCount)
-                : Localizer.Format("M.Alert.Stopped", Environment.MachineName, entry.ServiceName, exitCode);
+                ? Localizer.Format("M.Alert.StoppedRepeated", Environment.MachineName, service, exitCode, entry.CrashCount)
+                : Localizer.Format("M.Alert.Stopped", Environment.MachineName, service, exitCode);
+            string url = Url;
+            string secret = Secret;
 
-            string? error = await SendAsync(Url, Secret, text).ConfigureAwait(false);
-            ActionLog.Record("alert", entry.ServiceName, error is null ? "ok" : "failed: " + error);
+            // While the unattended alert is on, the failure Windows records is what posts it,
+            // whether or not this console is running; posting here as well would say it twice.
+            // A program that ended with 0 is no failure to Windows, and still posted from here.
+            if (UnattendedAlert.CoversStop(lastExitCode) && await Task.Run(UnattendedAlert.IsActive).ConfigureAwait(false))
+            {
+                ActionLog.Record("alert", service, "left to the unattended alert");
+                return null;
+            }
+
+            string? error = await SendAsync(url, secret, text).ConfigureAwait(false);
+            ActionLog.Record("alert", service, error is null ? "ok" : "failed: " + error);
+            return new AlertOutcome { At = DateTimeOffset.Now, Service = service, Error = error };
         }
 
         /// <summary>Posts <paramref name="text"/>; null when the robot accepted it, otherwise why not.</summary>
@@ -139,8 +166,31 @@ namespace WinSW.Gui.Services
             }
             catch (Exception e) when (e is HttpRequestException or TaskCanceledException or InvalidOperationException)
             {
-                return e.Message;
+                return DescribeFailure(e);
             }
+        }
+
+        /// <summary>
+        /// Every message in the exception's chain, outermost first. A failed send says only "An
+        /// error occurred while sending the request"; why — no such host, a certificate the
+        /// machine does not trust, a connection reset by a proxy — is one or two levels down,
+        /// and was being dropped.
+        /// </summary>
+        internal static string DescribeFailure(Exception exception)
+        {
+            var messages = new List<string>();
+            for (Exception? e = exception; e != null; e = e.InnerException)
+            {
+                string message = e.Message.Trim();
+
+                // A wrapper often repeats what it wraps; once is enough.
+                if (message.Length > 0 && !messages.Contains(message))
+                {
+                    messages.Add(message);
+                }
+            }
+
+            return messages.Count == 0 ? exception.GetType().Name : string.Join(" — ", messages);
         }
 
         /// <summary>The request for one message, signed where the robot is given a secret.</summary>
