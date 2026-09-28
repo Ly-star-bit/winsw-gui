@@ -128,6 +128,18 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private static readonly TimeSpan ScheduleReadDelay = TimeSpan.FromMilliseconds(250);
 
+        /// <summary>
+        /// How long a stopped service has to stay selected before why it stopped is read. Moving
+        /// down the list is not a request for a read of every stopped row passed over; and at the
+        /// first reading that sees a service stopped, the wrapper may still be writing its last
+        /// lines and Windows its record of the stop.
+        /// </summary>
+        private static readonly TimeSpan LastStopReadDelay = TimeSpan.FromSeconds(1.5);
+
+        /// <summary>A service started from this panel, watched for falling over straight after; see <see cref="StartWatch"/>.</summary>
+        private ServiceEntry? startWatched;
+        private StartWatch? startWatch;
+
         private RestartChoice selectedRestartChoice;
         private string restartTime = "03:00";
         private string restartScheduleNote = string.Empty;
@@ -188,6 +200,9 @@ namespace WinSW.Gui.ViewModels
             this.ViewLogsCommand = new RelayCommand(
                 () => this.OpenLogsRequested?.Invoke(this.selectedService!),
                 () => this.selectedService?.ConfigPath != null);
+
+            this.OpenErrorLogCommand = new RelayCommand(this.OpenErrorLog, () => this.selectedService?.LastStop?.ErrorLog is { Exists: true });
+            this.ReadLastStopAgainCommand = new RelayCommand(this.ReadLastStopAgain, () => this.selectedService is { IsStopped: true, LastStop: not null });
 
             this.OpenFolderCommand = new RelayCommand(this.OpenContainingFolder, () => this.selectedService != null);
 
@@ -289,6 +304,13 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>Raised when the user asks to tail the selected service's logs.</summary>
         public event Action<ServiceEntry>? OpenLogsRequested;
+
+        /// <summary>
+        /// Raised when the user asks for one particular file of a service's logs — its err.log, from
+        /// the Last stop card — with the service and the file's full path. Without a handler, the
+        /// request goes out as <see cref="OpenLogsRequested"/>, which opens the newest file.
+        /// </summary>
+        public event Action<ServiceEntry, string>? OpenLogFileRequested;
 
         /// <summary>
         /// Raised when a service crashes — goes from running to stopped, with a failure exit code,
@@ -445,6 +467,12 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand ViewLogsCommand { get; }
 
+        /// <summary>Opens the stopped service's err.log on the Logs page, from the Last stop card.</summary>
+        public RelayCommand OpenErrorLogCommand { get; }
+
+        /// <summary>Reads why the service stopped again, for a report read before everything was written.</summary>
+        public RelayCommand ReadLastStopAgainCommand { get; }
+
         public RelayCommand OpenFolderCommand { get; }
 
         public RelayCommand OpenWorkingDirectoryCommand { get; }
@@ -521,6 +549,7 @@ namespace WinSW.Gui.ViewModels
                     this.RaiseWrapperUpdate();
                     this.RaiseStartTypeRestore();
                     _ = this.LoadRestartScheduleAsync();
+                    _ = this.LoadLastStopAsync();
                 }
             }
         }
@@ -841,6 +870,118 @@ namespace WinSW.Gui.ViewModels
             {
                 held.Dispose();
                 this.EndBusy();
+            }
+        }
+
+        // Why it stopped --------------------------------------------------------
+
+        /// <summary>
+        /// Reads why the selected service stopped, for the Last stop card, when it is stopped and
+        /// that has not been read yet: once per stop, off this thread, after the selection has
+        /// rested on it for a moment. The report is kept on the entry until its state or its exit
+        /// code moves on, so going back to a service shows it without a second read.
+        /// </summary>
+        private async Task LoadLastStopAsync()
+        {
+            var entry = this.selectedService;
+            if (entry?.BeginLastStopRead() is not int stop)
+            {
+                return;
+            }
+
+            LastStopReport? report = null;
+            try
+            {
+                await Task.Delay(LastStopReadDelay).ConfigureAwait(true);
+
+                // Moved on meanwhile: read when it is selected again. A service that has left the
+                // stop is not read either; the entry would drop the report anyway.
+                if (!ReferenceEquals(entry, this.selectedService) || !entry.IsStopped)
+                {
+                    return;
+                }
+
+                // What the worker needs, read here where the entry belongs.
+                string serviceName = entry.ServiceName;
+                string displayName = entry.DisplayName;
+                string? configPath = entry.ConfigPath;
+                var encoding = AppSettings.Current.LogEncoding;
+
+                report = await Task.Run(() => LastStopReader.Read(
+                    configPath,
+                    encoding,
+                    () => EventLogReader.Read(serviceName, displayName, LastStopReader.EventsToSearch))).ConfigureAwait(true);
+            }
+            catch (Exception e)
+            {
+                // Said on the card rather than read again at every tick. The reader already says
+                // what it could not read; this is for what it did not expect.
+                report = new LastStopReport(null, null, null, null, null, readError: e.Message);
+            }
+            finally
+            {
+                entry.EndLastStopRead(stop, report);
+                if (ReferenceEquals(entry, this.selectedService))
+                {
+                    this.OpenErrorLogCommand.RaiseCanExecuteChanged();
+                    this.ReadLastStopAgainCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Opens the stopped service's err.log on the Logs page. The file as the card read it: the
+        /// newest a rolling mode has written, which the Logs page would not necessarily open first.
+        /// </summary>
+        private void OpenErrorLog()
+        {
+            if (this.selectedService is not { LastStop.ErrorLog: { Exists: true } errorLog } entry)
+            {
+                return;
+            }
+
+            if (this.OpenLogFileRequested is { } open)
+            {
+                open(entry, errorLog.Path);
+            }
+            else
+            {
+                this.OpenLogsRequested?.Invoke(entry);
+            }
+        }
+
+        private void ReadLastStopAgain()
+        {
+            this.selectedService?.ForgetLastStop();
+            this.ReadLastStopAgainCommand.RaiseCanExecuteChanged();
+            this.OpenErrorLogCommand.RaiseCanExecuteChanged();
+            _ = this.LoadLastStopAsync();
+        }
+
+        /// <summary>
+        /// Checks the service watched since a start from this panel. Stopped again within the watch,
+        /// the start did not hold, and the green notice that said it completed is replaced with one
+        /// that says so and where to look.
+        /// </summary>
+        private void CheckStartWatch()
+        {
+            if (this.startWatch is not { } watch || this.startWatched is not { } entry)
+            {
+                return;
+            }
+
+            var outcome = watch.Observe(entry.Status, DateTime.UtcNow);
+            if (outcome == StartWatchOutcome.Watching)
+            {
+                return;
+            }
+
+            this.startWatch = null;
+            this.startWatched = null;
+            if (outcome == StartWatchOutcome.StoppedAgain)
+            {
+                this.StatusMessage = Localizer.Format("M.Dash.StoppedAfterStart", entry.ServiceName);
+                this.Toast?.Invoke(this.StatusMessage, true);
             }
         }
 
@@ -1266,11 +1407,13 @@ namespace WinSW.Gui.ViewModels
             // would be racing it. Taken last before the try, so that nothing can leave it held.
             var held = this.inFlight.Begin(OperationsInFlight.NamesFor(label, entry, this.Services));
             this.BeginBusy();
+            bool started = false;
 
             try
             {
                 var result = await operation(entry.WrapperPath, entry.ConfigPath).ConfigureAwait(true);
                 ActionLog.Record(label, entry.ServiceName, result);
+                started = result.Succeeded && (label is "start" or "restart");
 
                 this.StatusMessage = result switch
                 {
@@ -1330,6 +1473,15 @@ namespace WinSW.Gui.ViewModels
                 held.Dispose();
                 this.EndBusy();
                 this.BurstPolling();
+
+                // After the hold is let go, so that a hold from here on is another command's: see
+                // OnOperationsChanged. A stop the reading just taken has already seen is seen again
+                // by the next, a burst tick away.
+                if (started)
+                {
+                    this.startWatched = entry;
+                    this.startWatch = new StartWatch(entry.ServiceName, DateTime.UtcNow + BurstLength);
+                }
             }
         }
 
@@ -1451,9 +1603,17 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 this.AnnounceUnexpectedStops(entries);
+                this.CheckStartWatch();
 
                 this.RaiseCounts();
                 this.RefreshCommandStates();
+
+                // A stop the selected service has just come to. Not behind another page, where the
+                // card is not on screen: it is read when the page comes back.
+                if (!statesOnly)
+                {
+                    _ = this.LoadLastStopAsync();
+                }
 
                 // The selection may have moved while the reading was in flight, in which case
                 // this tree belongs to a service the panel is no longer showing. A reading of
@@ -1812,6 +1972,8 @@ namespace WinSW.Gui.ViewModels
             this.EndStrayParentCommand.RaiseCanExecuteChanged();
             this.StopRestartingCommand.RaiseCanExecuteChanged();
             this.RestoreStartTypeCommand.RaiseCanExecuteChanged();
+            this.OpenErrorLogCommand.RaiseCanExecuteChanged();
+            this.ReadLastStopAgainCommand.RaiseCanExecuteChanged();
         }
 
         /// <summary>
@@ -1821,6 +1983,14 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private void OnOperationsChanged()
         {
+            // A command now working on the service watched since its start: a stop from here on
+            // is that command's doing, or at least not the start's.
+            if (this.startWatch is { } watch && this.inFlight.Contains(watch.ServiceName))
+            {
+                this.startWatch = null;
+                this.startWatched = null;
+            }
+
             this.RefreshCommandStates();
             this.UpgradeWrapperCommand.RaiseCanExecuteChanged();
             this.StartSelectedCommand.RaiseCanExecuteChanged();

@@ -69,6 +69,10 @@ namespace WinSW.Gui.Model
         private ServiceControllerStatus? recoverySeen;
         private DateTime? stoppedAt;
         private bool restartingByRecovery;
+        private Services.LastStopReport? lastStop;
+        private Services.LastStopText? lastStopText;
+        private int stopStamp;
+        private int lastStopReadFor = -1;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -374,6 +378,86 @@ namespace WinSW.Gui.Model
                 && now < due;
         }
 
+        // Last stop -------------------------------------------------------------
+
+        /// <summary>The service is stopped: the Last stop card has something to say.</summary>
+        public bool IsStopped => this.status == ServiceControllerStatus.Stopped;
+
+        /// <summary>
+        /// Why the service stopped, as read for the stop it is in now; null until it has been read,
+        /// and from the moment the state or the exit code moves on, which makes it a different stop
+        /// or none. Read by the dashboard for the selected service only; see
+        /// <see cref="BeginLastStopRead"/>.
+        /// </summary>
+        public Services.LastStopReport? LastStop
+        {
+            get => this.lastStop;
+            private set
+            {
+                if (this.Set(ref this.lastStop, value))
+                {
+                    this.lastStopText = null;
+                    this.Raise(nameof(this.LastStopText));
+                    this.Raise(nameof(this.IsReadingLastStop));
+                }
+            }
+        }
+
+        /// <summary>
+        /// <see cref="LastStop"/> in words, made when first asked for rather than when the report
+        /// arrives, and again after a change of language.
+        /// </summary>
+        public Services.LastStopText? LastStopText =>
+            this.lastStop is { } report ? this.lastStopText ??= report.Describe(Localizer.Format) : null;
+
+        /// <summary>Stopped, and why is still being read.</summary>
+        public bool IsReadingLastStop => this.IsStopped && this.lastStop is null;
+
+        /// <summary>
+        /// Starts a read of <see cref="LastStop"/>, when one is wanted: the service is stopped, this stop
+        /// has not been read yet, and no read of it is under way. Returns the stop the read is for,
+        /// to hand back with the report, or null for nothing to read.
+        /// </summary>
+        internal int? BeginLastStopRead()
+        {
+            if (this.status != ServiceControllerStatus.Stopped || this.lastStop != null || this.lastStopReadFor == this.stopStamp)
+            {
+                return null;
+            }
+
+            this.lastStopReadFor = this.stopStamp;
+            return this.stopStamp;
+        }
+
+        /// <summary>
+        /// Ends the read begun for <paramref name="stop"/>, keeping <paramref name="report"/> if the
+        /// service is still in that stop. A null report, a read given up, leaves the stop to be read
+        /// again.
+        /// </summary>
+        internal void EndLastStopRead(int stop, Services.LastStopReport? report)
+        {
+            if (this.lastStopReadFor == stop)
+            {
+                this.lastStopReadFor = -1;
+            }
+
+            if (report != null && stop == this.stopStamp && this.status == ServiceControllerStatus.Stopped)
+            {
+                this.LastStop = report;
+            }
+        }
+
+        /// <summary>
+        /// Drops <see cref="LastStop"/>: the stop it described is over, or it is to be read again. A
+        /// read still under way for it is dropped with it when it comes back.
+        /// </summary>
+        public void ForgetLastStop()
+        {
+            this.stopStamp++;
+            this.LastStop = null;
+            this.Raise(nameof(this.IsReadingLastStop));
+        }
+
         // Live metrics --------------------------------------------------------
 
         /// <summary>The Win32 or service-specific exit code from the last stop, if any.</summary>
@@ -385,11 +469,18 @@ namespace WinSW.Gui.Model
                 if (this.Set(ref this.lastExitCode, value))
                 {
                     this.Raise(nameof(this.LastExitCodeText));
+                    this.Raise(nameof(this.LastExitCodeSystemText));
+
+                    // A new code with the status unchanged is a new stop, between two readings.
+                    this.ForgetLastStop();
                 }
             }
         }
 
         public string LastExitCodeText => this.lastExitCode is int code && code != 0 ? code.ToString() : "0";
+
+        /// <summary>Windows' own text for <see cref="LastExitCode"/>, such as "The process terminated unexpectedly." for 1067; empty for 0.</summary>
+        public string LastExitCodeSystemText => this.lastExitCode is int code ? Services.LastStopReader.SystemText(code) : string.Empty;
 
         public DateTime? StartedAt
         {
@@ -592,6 +683,8 @@ namespace WinSW.Gui.Model
                     this.Raise(nameof(this.StatusText));
                     this.Raise(nameof(this.CanStart));
                     this.Raise(nameof(this.CanStop));
+                    this.Raise(nameof(this.IsStopped));
+                    this.ForgetLastStop();
                 }
             }
         }
@@ -804,6 +897,13 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.RecoveryText));
             this.Raise(nameof(this.RecoveryDifferenceText));
             this.Raise(nameof(this.StartUnavailableTip));
+
+            // Made in the language it was first asked for in.
+            if (this.lastStopText != null)
+            {
+                this.lastStopText = null;
+                this.Raise(nameof(this.LastStopText));
+            }
 
             // Stored as text, because a rescan brings it forward as text; said again from the
             // start type it was made from, as the rescan would, rather than waiting for one.

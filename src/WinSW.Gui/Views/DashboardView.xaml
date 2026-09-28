@@ -535,6 +535,129 @@
                                     </Border>
                                 </StackPanel>
 
+                                <!--
+                                    Why it stopped: both exit codes, what the System log recorded, and
+                                    the end of err.log and the wrapper log since the last start. Read
+                                    once per stop, for the selected service; see LoadLastStopAsync.
+                                    Above the facts, where it is seen without scrolling.
+                                -->
+                                <Border
+                                    Margin="0,0,0,16"
+                                    Padding="12,10"
+                                    Style="{StaticResource RowCard}"
+                                    Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}">
+                                    <StackPanel>
+                                        <TextBlock Margin="0,0,0,2" Style="{StaticResource SectionTitle}" Text="{DynamicResource M.LastStop.Title}" />
+                                        <TextBlock Margin="0,0,0,8" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.Since}" Visibility="{Binding LastStopText.Since, Converter={StaticResource StringToVisibility}}" />
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                            </Grid.RowDefinitions>
+
+                                            <!-- What Windows recorded for the service: 1067 whenever the program ended on its own. -->
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,16,6" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Metric.ExitCode}" />
+                                            <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap">
+                                                <Run FontFamily="{DynamicResource MonoFont}" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding LastExitCodeText, Mode=OneWay}" />
+                                                <Run Text="  " />
+                                                <Run Text="{Binding LastExitCodeSystemText, Mode=OneWay}" />
+                                            </TextBlock>
+
+                                            <!-- What the program itself exited with, from the wrapper log. -->
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                Grid.Column="0"
+                                                Margin="0,0,16,6"
+                                                Style="{StaticResource FieldLabel}"
+                                                Text="{DynamicResource M.LastStop.ProgramExitCode}"
+                                                ToolTip="{DynamicResource M.LastStop.ProgramExitCodeTip}"
+                                                Visibility="{Binding LastStopText.ProgramExitCode, Converter={StaticResource StringToVisibility}}" />
+                                            <TextBlock
+                                                Grid.Row="1"
+                                                Grid.Column="1"
+                                                Margin="0,0,0,6"
+                                                Foreground="{DynamicResource TextPrimaryBrush}"
+                                                Style="{StaticResource Mono}"
+                                                Text="{Binding LastStopText.ProgramExitCode}"
+                                                ToolTip="{DynamicResource M.LastStop.ProgramExitCodeTip}"
+                                                Visibility="{Binding LastStopText.ProgramExitCode, Converter={StaticResource StringToVisibility}}" />
+
+                                            <!-- The service control manager's record of the stop, or that it made none. -->
+                                            <TextBlock
+                                                Grid.Row="2"
+                                                Grid.Column="0"
+                                                Margin="0,0,16,6"
+                                                Style="{StaticResource FieldLabel}"
+                                                Text="{DynamicResource M.LastStop.SystemLog}"
+                                                Visibility="{Binding LastStopText, Converter={StaticResource NullToVisibility}}" />
+                                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,6" Visibility="{Binding LastStopText, Converter={StaticResource NullToVisibility}}">
+                                                <TextBlock Style="{StaticResource Mono}" Text="{Binding LastStopText.EventTitle}" Visibility="{Binding LastStopText.EventTitle, Converter={StaticResource StringToVisibility}}" />
+                                                <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding LastStopText.EventText}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.LastStop.Reading}" Visibility="{Binding IsReadingLastStop, Converter={StaticResource BoolToVisibility}}" />
+
+                                        <!-- The program's error output: uvicorn's "address already in use", a Python traceback. -->
+                                        <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.ErrorHeading, Converter={StaticResource StringToVisibility}}">
+                                            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding LastStopText.ErrorHeading}" ToolTip="{Binding LastStop.ErrorLog.Path}" />
+                                            <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.ErrorNote}" Visibility="{Binding LastStopText.ErrorNote, Converter={StaticResource StringToVisibility}}" />
+                                            <TextBox
+                                                MaxHeight="180"
+                                                Margin="0,0,0,4"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                FontFamily="{DynamicResource MonoFont}"
+                                                FontSize="12"
+                                                HorizontalScrollBarVisibility="Disabled"
+                                                IsReadOnly="True"
+                                                Text="{Binding LastStopText.ErrorLines, Mode=OneWay}"
+                                                TextWrapping="Wrap"
+                                                VerticalScrollBarVisibility="Auto"
+                                                Visibility="{Binding LastStopText.ErrorLines, Converter={StaticResource StringToVisibility}}" />
+                                        </StackPanel>
+
+                                        <!-- The wrapper's own lines: the start, the program's exit, anything it could not do. -->
+                                        <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.WrapperHeading, Converter={StaticResource StringToVisibility}}">
+                                            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding LastStopText.WrapperHeading}" ToolTip="{Binding LastStop.WrapperLog.Path}" />
+                                            <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.WrapperNote}" Visibility="{Binding LastStopText.WrapperNote, Converter={StaticResource StringToVisibility}}" />
+                                            <TextBox
+                                                MaxHeight="180"
+                                                Margin="0,0,0,4"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                FontFamily="{DynamicResource MonoFont}"
+                                                FontSize="12"
+                                                HorizontalScrollBarVisibility="Disabled"
+                                                IsReadOnly="True"
+                                                Text="{Binding LastStopText.WrapperLines, Mode=OneWay}"
+                                                TextWrapping="Wrap"
+                                                VerticalScrollBarVisibility="Auto"
+                                                Visibility="{Binding LastStopText.WrapperLines, Converter={StaticResource StringToVisibility}}" />
+                                        </StackPanel>
+
+                                        <WrapPanel Margin="0,6,0,0">
+                                            <Button
+                                                Margin="0,0,8,0"
+                                                Padding="10,4"
+                                                Command="{Binding DataContext.OpenErrorLogCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Content="{DynamicResource M.LastStop.OpenErrorLog}"
+                                                ToolTip="{DynamicResource M.LastStop.OpenErrorLogTip}" />
+                                            <Button
+                                                Padding="10,4"
+                                                Command="{Binding DataContext.ReadLastStopAgainCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Content="{DynamicResource M.LastStop.ReadAgain}"
+                                                ToolTip="{DynamicResource M.LastStop.ReadAgainTip}" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- Facts -->
                                 <Grid Margin="0,0,0,16">
                                     <Grid.ColumnDefinitions>
