@@ -367,6 +367,52 @@ namespace WinSW.Gui.Tests
             Assert.False(fetched);
         }
 
+        /// <summary>
+        /// A hard link put at the download's name by another account, to a file this one may
+        /// write: the link is deleted, not written through, and the download is a file of its own.
+        /// </summary>
+        [Fact]
+        public async Task AHardLinkAtTheDownloadsNameIsNotWrittenThrough()
+        {
+            string elsewhere = Path.Combine(this.folder, "elsewhere.txt");
+            File.WriteAllText(elsewhere, "not the console");
+            HardLink(elsewhere, SelfUpdate.NewPath(this.Executable));
+
+            var download = await this.DownloadAsync(Sha256(Release), SendRelease);
+
+            Assert.Equal(UpdateProblem.None, download.Problem);
+            Assert.Equal(Release, await File.ReadAllBytesAsync(download.File!));
+            Assert.Equal("not the console", File.ReadAllText(elsewhere));
+        }
+
+        /// <summary>
+        /// Something at the download's name that cannot be deleted is never used in its place:
+        /// nothing is fetched, as for a folder that cannot be written to.
+        /// </summary>
+        [Fact]
+        public async Task WhatCannotBeDeletedFromTheDownloadsNameIsNotUsed()
+        {
+            bool fetched = false;
+            Directory.CreateDirectory(SelfUpdate.NewPath(this.Executable));
+
+            var download = await SelfUpdate.DownloadAsync(
+                ReleaseWithList(),
+                Asset,
+                this.Executable,
+                Checksums(Sha256(Release)),
+                (url, output, progress, cancellationToken) =>
+                {
+                    fetched = true;
+                    return Task.CompletedTask;
+                },
+                null,
+                CancellationToken.None);
+
+            Assert.Equal(UpdateProblem.FolderNotWritable, download.Problem);
+            Assert.False(fetched);
+            Assert.True(Directory.Exists(SelfUpdate.NewPath(this.Executable)));
+        }
+
         // Putting it in place ----------------------------------------------------------
 
         [Fact]
@@ -449,6 +495,20 @@ namespace WinSW.Gui.Tests
         }
 
         private static string Hex(char digit) => new string(digit, 64);
+
+        /// <summary>Makes <paramref name="link"/> a second name for <paramref name="existing"/>; .NET has no call for it.</summary>
+        private static void HardLink(string existing, string link)
+        {
+            bool made = OperatingSystem.IsWindows() ? CreateHardLink(link, existing, IntPtr.Zero) : Link(existing, link) == 0;
+            Assert.True(made, "The test's hard link could not be made: error " + Marshal.GetLastPInvokeError());
+        }
+
+        [DllImport("kernel32.dll", EntryPoint = "CreateHardLinkW", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CreateHardLink(string fileName, string existingFileName, IntPtr securityAttributes);
+
+        [DllImport("libc", EntryPoint = "link", SetLastError = true)]
+        private static extern int Link([MarshalAs(UnmanagedType.LPUTF8Str)] string existing, [MarshalAs(UnmanagedType.LPUTF8Str)] string link);
 
         private static string Sha256(byte[] content) => Convert.ToHexString(SHA256.HashData(content)).ToLowerInvariant();
 

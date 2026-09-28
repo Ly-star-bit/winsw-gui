@@ -28,7 +28,10 @@ namespace WinSW.Gui.Services
         /// <summary>The release has no SHA256SUMS.txt, or the file has no line for the executable.</summary>
         NoChecksum,
 
-        /// <summary>The executable's folder cannot be written to, and the new file has to go beside the old one.</summary>
+        /// <summary>
+        /// The executable's folder cannot be written to, and the new file has to go beside the
+        /// old one; or a file of the new one's name is there and cannot be deleted.
+        /// </summary>
         FolderNotWritable,
 
         DownloadFailed,
@@ -268,11 +271,21 @@ namespace WinSW.Gui.Services
             // Opened before the download starts, so that a folder this account cannot write to —
             // Program Files, for a console not running as administrator — is said at once rather
             // than after seventy megabytes.
+            //
+            // Made new, never opened as it is. In a folder where other accounts can create files
+            // — a folder under the root of drive C, some under ProgramData — one of them could put
+            // a file of this name there first. Opened and overwritten, it would keep its owner and
+            // its permissions, so that they could change it between the check and the swap, or
+            // own the console's executable ever after; a hard link of this name would have the
+            // download written into whatever file it links to. So whatever is there is deleted
+            // (a link, not what it links to), and the file is created only if the name is still
+            // free; one put back in between makes the creation fail rather than be used.
             string file = NewPath(executable);
             FileStream output;
             try
             {
-                output = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+                File.Delete(file);
+                output = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or NotSupportedException)
             {
