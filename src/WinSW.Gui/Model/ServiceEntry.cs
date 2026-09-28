@@ -110,6 +110,8 @@ namespace WinSW.Gui.Model
         private int recentStops;
         private ImmutableArray<EnvironmentFinding> startFindings = ImmutableArray<EnvironmentFinding>.Empty;
         private int runStamp;
+        private DateTime? runningSince;
+        private bool runHeld;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -502,8 +504,9 @@ namespace WinSW.Gui.Model
         /// What checking the configuration as the service will run it found — a program its PATH
         /// cannot find, a mapped drive, a virtual environment whose Python has gone — after a start
         /// from this console failed or fell back to stopped straight after; empty otherwise. Shown
-        /// on the Last stop card. Dropped when the service is next seen starting or running: it was
-        /// about the start that failed. See <see cref="ServiceConfigModel.CheckEnvironment(string)"/>.
+        /// on the Last stop card. Kept through the restarts of a loop, each of which is the start
+        /// that failed over again, and dropped once a run has held (see <see cref="NoteRun"/>) or a
+        /// later check has found something else. See <see cref="ServiceConfigModel.CheckEnvironment(string)"/>.
         /// </summary>
         public ImmutableArray<EnvironmentFinding> StartFindings => this.startFindings;
 
@@ -514,13 +517,13 @@ namespace WinSW.Gui.Model
 
         /// <summary>
         /// Starts a check after a failed start. Returns the run it is for, to hand back with what it
-        /// finds: the check is made off the UI thread, and the service may be started again meanwhile.
+        /// finds: the check is made off the UI thread, and a run of the service may hold meanwhile.
         /// </summary>
         internal int BeginStartCheck() => this.runStamp;
 
         /// <summary>
-        /// Keeps what the check begun for <paramref name="run"/> found, unless the service has been
-        /// seen starting or running since, which makes it about a start that is over.
+        /// Keeps what the check begun for <paramref name="run"/> found, unless a run of the service
+        /// has held since, which makes it about a start that is over.
         /// </summary>
         internal void EndStartCheck(int run, ImmutableArray<EnvironmentFinding> findings)
         {
@@ -541,6 +544,44 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.StartFindings));
             this.Raise(nameof(this.StartFindingsText));
             this.Raise(nameof(this.HasStartFindings));
+        }
+
+        /// <summary>
+        /// Takes one reading into how long the service has been running, which is what ends
+        /// <see cref="StartFindings"/>: a run that has held for <see cref="Services.CrashAnnouncer.RecoveredAfter"/>,
+        /// the time the crash announcer tells a recovery by, is a start that worked. Called after
+        /// every reading, full or of states alone.
+        /// </summary>
+        /// <remarks>
+        /// Not when the service is seen starting, which is when they used to be dropped: in a
+        /// restart loop that is Windows' recovery starting it again seconds after the check, and
+        /// each of those starts fails as the checked one did, so the card went blank for the rest
+        /// of the loop. A reading that could not be made is passed over, as the crash announcer
+        /// passes it over, rather than starting the clock again.
+        /// </remarks>
+        public void NoteRun(DateTime now)
+        {
+            if (this.status is not { } state)
+            {
+                return;
+            }
+
+            if (state != ServiceControllerStatus.Running)
+            {
+                this.runningSince = null;
+                this.runHeld = false;
+                return;
+            }
+
+            this.runningSince ??= now;
+            if (!this.runHeld && now - this.runningSince.Value >= Services.CrashAnnouncer.RecoveredAfter)
+            {
+                // Once a run. A check still out was begun before the run held, and is about a
+                // start that is over by the time it comes back.
+                this.runHeld = true;
+                this.runStamp++;
+                this.SetStartFindings(ImmutableArray<EnvironmentFinding>.Empty);
+            }
         }
 
         // Live metrics --------------------------------------------------------
@@ -771,14 +812,6 @@ namespace WinSW.Gui.Model
                     this.Raise(nameof(this.CanStop));
                     this.Raise(nameof(this.IsStopped));
                     this.ForgetLastStop();
-
-                    // Seen starting or running: a new run, and what was found after the start
-                    // that failed is about one that is over.
-                    if (value is { } state && state != ServiceControllerStatus.Stopped && state != ServiceControllerStatus.StopPending)
-                    {
-                        this.runStamp++;
-                        this.SetStartFindings(ImmutableArray<EnvironmentFinding>.Empty);
-                    }
                 }
             }
         }

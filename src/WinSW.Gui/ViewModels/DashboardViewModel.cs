@@ -1539,8 +1539,12 @@ namespace WinSW.Gui.ViewModels
 
                 // A start that did not take: what the service will see is checked, now that the
                 // state it is in has been read back; see CheckWhatTheServiceSeesAsync. A start that
-                // took and then fell over is the start watch's to catch.
-                if ((label is "start" or "restart") && !result.Succeeded && !result.Cancelled)
+                // took and then fell over is the start watch's to catch. Only a service the start
+                // left stopped, or still starting: a restart that failed in its stop half leaves the
+                // service running, or stopping, as it was, never started, and what the check found
+                // would wait on the entry for a stop hours away.
+                if ((label is "start" or "restart") && !result.Succeeded && !result.Cancelled
+                    && entry.Status is ServiceControllerStatus.Stopped or ServiceControllerStatus.StartPending)
                 {
                     ErrorLog.Observe(this.CheckWhatTheServiceSeesAsync(entry), "environment check");
                 }
@@ -1828,6 +1832,7 @@ namespace WinSW.Gui.ViewModels
 
                 // After the count, which tells how far into its failure actions the service is.
                 entry.NoteRecovery(now);
+                entry.NoteRun(now);
 
                 if (!notify)
                 {
