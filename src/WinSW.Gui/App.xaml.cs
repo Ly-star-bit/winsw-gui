@@ -19,6 +19,12 @@ namespace WinSW.Gui
 
         private SingleInstance? instance;
 
+        /// <summary>The console's window, once it is made; what later launches ask for goes to it.</summary>
+        private MainWindow? window;
+
+        /// <summary>What later launches asked for before there was a window, done once there is; null from then on.</summary>
+        private List<Action<MainWindow>>? beforeWindow = new();
+
         /// <summary>
         /// A .xml given on the command line: "WinSW.Gui.exe myapp.xml", the Explorer verb, or the
         /// configuration a copy restarted as administrator had open; see <see cref="StartupArguments"/>.
@@ -55,6 +61,16 @@ namespace WinSW.Gui
                 this.Shutdown();
                 return;
             }
+
+            // Listening starts as soon as the session is this copy's, not once its window is up.
+            // Making the window takes a moment, and a launch in that moment — a second
+            // double-click on an .xml — found no pipe and waited out its timeout. The copy it
+            // could not reach being this same console, there was nothing to offer to replace,
+            // and it opened the file in a second full console, which announced every stop again.
+            // What arrives before the window is kept for it.
+            this.instance.OnOpenRequested(
+                path => this.Dispatcher.BeginInvoke(() => this.ToWindow(target => target.OpenHandedOver(path))),
+                launch => this.Dispatcher.BeginInvoke(() => this.ToWindow(target => target.OnLaunched(launch))));
 
             // A crash dialog with the message beats the process silently disappearing,
             // which is what an unhandled exception on the dispatcher otherwise produces.
@@ -94,9 +110,14 @@ namespace WinSW.Gui
             }
 
             this.instance.OnShowRequested(() => this.Dispatcher.BeginInvoke(window.BringToFront));
-            this.instance.OnOpenRequested(
-                path => this.Dispatcher.BeginInvoke(() => window.OpenHandedOver(path)),
-                launch => this.Dispatcher.BeginInvoke(() => window.OnLaunched(launch)));
+
+            this.window = window;
+            var waiting = this.beforeWindow!;
+            this.beforeWindow = null;
+            foreach (var action in waiting)
+            {
+                action(window);
+            }
 
             // What the last update left beside the executable. By the copy that holds the
             // session, which is the one an update restarts into; the copy it restarted from may
@@ -104,6 +125,22 @@ namespace WinSW.Gui
             if (this.instance.HoldsSession && Environment.ProcessPath is { } executable)
             {
                 ErrorLog.Observe(Task.Run(() => SelfUpdate.CleanUpAsync(executable)), "update clean-up");
+            }
+        }
+
+        /// <summary>
+        /// Does <paramref name="action"/> to the window, or keeps it for when there is one. On
+        /// the UI thread, which is where the window is made.
+        /// </summary>
+        private void ToWindow(Action<MainWindow> action)
+        {
+            if (this.window is { } shown)
+            {
+                action(shown);
+            }
+            else
+            {
+                this.beforeWindow?.Add(action);
             }
         }
 
