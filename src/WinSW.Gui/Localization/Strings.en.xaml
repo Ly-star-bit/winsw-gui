@@ -239,6 +239,9 @@
     <sys:String x:Key="M.Log.DirFailed">Could not read the log directory: {0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── the log file was reset or rolled ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── {0:N0} bytes of older output were skipped to catch up ──</sys:String>
+    <sys:String x:Key="M.Log.RolledOver">── the log rolled over; the new file follows ──</sys:String>
+    <sys:String x:Key="M.Log.RolledAway">── the log rolled over while this page was not reading it; the end of the old file is in the rolled file ──</sys:String>
+    <sys:String x:Key="M.Log.NewerFile">── a newer log file appeared: {0}. Pick it in the file list above ──</sys:String>
     <sys:String x:Key="M.Log.TotalSize">{0} files · {1}</sys:String>
     <sys:String x:Key="M.Log.KeepDays">Days to keep</sys:String>
     <sys:String x:Key="M.Log.Cleanup">Delete older files</sys:String>

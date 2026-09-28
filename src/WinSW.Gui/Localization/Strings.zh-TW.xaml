@@ -228,6 +228,9 @@
     <sys:String x:Key="M.Log.DirFailed">無法讀取記錄目錄：{0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── 記錄檔已重設或輪替 ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── 為趕上進度，已略過 {0:N0} 位元組較早的輸出 ──</sys:String>
+    <sys:String x:Key="M.Log.RolledOver">── 記錄檔已輪替，以下是新檔案 ──</sys:String>
+    <sys:String x:Key="M.Log.RolledAway">── 未讀取期間記錄檔已輪替，舊檔案結尾未顯示的內容在輪替出去的檔案中 ──</sys:String>
+    <sys:String x:Key="M.Log.NewerFile">── 出現了較新的記錄檔：{0}，可在上方檔案清單中切換 ──</sys:String>
     <sys:String x:Key="M.Log.TotalSize">{0} 個檔案 · {1}</sys:String>
     <sys:String x:Key="M.Log.KeepDays">保留天數</sys:String>
     <sys:String x:Key="M.Log.Cleanup">清理更早的檔案</sys:String>

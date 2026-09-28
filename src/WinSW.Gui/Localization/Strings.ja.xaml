@@ -228,6 +228,9 @@
     <sys:String x:Key="M.Log.DirFailed">ログ ディレクトリを読み取れませんでした: {0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── ログ ファイルがリセットまたはロールされました ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── 追いつくため、古い出力 {0:N0} バイトをスキップしました ──</sys:String>
+    <sys:String x:Key="M.Log.RolledOver">── ログがロールされました。以下は新しいファイルです ──</sys:String>
+    <sys:String x:Key="M.Log.RolledAway">── 読み取っていない間にログがロールされました。古いファイルの末尾はロール後のファイルにあります ──</sys:String>
+    <sys:String x:Key="M.Log.NewerFile">── 新しいログ ファイルがあります: {0}。上のファイル一覧で切り替えられます ──</sys:String>
     <sys:String x:Key="M.Log.TotalSize">{0} ファイル · {1}</sys:String>
     <sys:String x:Key="M.Log.KeepDays">保持日数</sys:String>
     <sys:String x:Key="M.Log.Cleanup">古いファイルを削除</sys:String>

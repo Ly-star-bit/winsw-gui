@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 
 namespace WinSW.Gui.Services
 {
@@ -17,6 +19,25 @@ namespace WinSW.Gui.Services
         SystemAnsi,
     }
 
+    /// <summary>How the file under a reader's path was replaced by another since the last read.</summary>
+    public enum LogRollover
+    {
+        None,
+
+        /// <summary>
+        /// The old file was read to its end: the lines returned are the last it has. The next
+        /// read starts the new file from its beginning.
+        /// </summary>
+        ReadToEnd,
+
+        /// <summary>
+        /// The file was replaced while the reader had let go of it. Whatever the old file
+        /// gained after that was not read; it is in the file the old one was renamed to. The
+        /// next read starts the new file from its beginning.
+        /// </summary>
+        WhileReleased,
+    }
+
     /// <summary>
     /// Incrementally reads a log file that another process is still writing to.
     /// </summary>
@@ -25,7 +46,8 @@ namespace WinSW.Gui.Services
     /// The file is opened with the widest possible share mode so tailing can never block the
     /// service from writing to, rolling, or deleting its own log. Callers pull; there is no
     /// background thread of its own, and nothing here is safe against two calls at once. The
-    /// viewer reads on a worker and applies on the UI thread, one read in flight at a time.
+    /// viewer reads on a worker and applies on the UI thread, one read in flight at a time,
+    /// and releases the file only while no read is out.
     /// </para>
     /// <para>
     /// The wrapper writes the child's output bytes verbatim, and a console program on Windows
@@ -33,6 +55,15 @@ namespace WinSW.Gui.Services
     /// so decoding blindly as UTF-8 turns every Chinese log line into mojibake. Bytes are
     /// therefore buffered up to the last complete line and the encoding is decided from the
     /// first line that contains a non-ASCII byte.
+    /// </para>
+    /// <para>
+    /// The wrapper rolls a log by renaming it (<c>svc.out.log</c> to <c>svc.0.out.log</c>, or
+    /// to <c>.old</c> at each start in roll mode) and creating a new file under the old name.
+    /// The delete sharing that lets the rename through also means the handle held here follows
+    /// the renamed file, which never grows again: the viewer went quiet at the first roll and
+    /// said nothing. So whenever a read finds nothing new, the path is asked which file it
+    /// names now, and once that is not the file held, the held one is read to its end and let
+    /// go, and the path is opened again from its first byte.
     /// </para>
     /// </remarks>
     public sealed class LogTailReader : IDisposable
@@ -62,6 +93,15 @@ namespace WinSW.Gui.Services
         private long position;
         private Encoding? encoding;
 
+        /// <summary>The file the stream is open on, where the file system numbers its files.</summary>
+        private FileId? heldId;
+
+        /// <summary>Set by <see cref="Release"/>: the next open carries on at <see cref="position"/>.</summary>
+        private bool released;
+
+        /// <summary>Set after a roll: the next open starts at the first byte rather than at the tail.</summary>
+        private bool fromStart;
+
         public LogTailReader(string path, LogEncodingChoice choice = LogEncodingChoice.Auto)
         {
             this.path = path;
@@ -70,8 +110,15 @@ namespace WinSW.Gui.Services
 
         public string Path => this.path;
 
-        /// <summary>Set when the file was rolled or truncated since the last read.</summary>
+        /// <summary>Set when the file shrank since the last read: it was reset in place, and is read again from the start.</summary>
         public bool Restarted { get; private set; }
+
+        /// <summary>
+        /// Set when the path came to name a different file since the last read: the wrapper
+        /// rolled it. Unlike <see cref="Restarted"/>, what was read before is still true; the
+        /// lines returned alongside come before the roll.
+        /// </summary>
+        public LogRollover Rollover { get; private set; }
 
         /// <summary>
         /// Bytes passed over unread by the last call, because the file had grown by more than
@@ -108,6 +155,7 @@ namespace WinSW.Gui.Services
         public IReadOnlyList<string> ReadNewLines()
         {
             this.Restarted = false;
+            this.Rollover = LogRollover.None;
             this.SkippedBytes = 0;
             var lines = new List<string>();
 
@@ -115,36 +163,29 @@ namespace WinSW.Gui.Services
             {
                 if (this.stream is null)
                 {
-                    if (!File.Exists(this.path))
+                    if (!File.Exists(this.path) || !this.Open(lines))
                     {
                         return lines;
-                    }
-
-                    this.stream = new FileStream(
-                        this.path,
-                        FileMode.Open,
-                        FileAccess.Read,
-                        FileShare.ReadWrite | FileShare.Delete,
-                        bufferSize: 4096,
-                        FileOptions.SequentialScan);
-
-                    this.position = Math.Max(0, CurrentLength(this.stream) - InitialTailBytes);
-                    this.DetectFromPreamble();
-
-                    if (this.position > 0)
-                    {
-                        // Starting mid-file: skip to the next line so the first line shown is whole.
-                        this.position = this.StartOfNextLine(this.position);
                     }
                 }
 
                 // Not FileStream.Length: for a read-only handle .NET may cache it, and this
                 // file is being grown by another process the whole time.
-                long length = CurrentLength(this.stream);
+                long length = CurrentLength(this.stream!);
+
+                // A file that is still growing is the one being written, so the path is only
+                // asked about it when nothing has arrived. After a roll the old file never
+                // grows again, so a roll is seen one read after its last line at the latest.
+                bool rolled = length == this.position && this.PathNamesAnotherFile(length);
+                if (rolled)
+                {
+                    // The wrapper may have written to it between the measuring and the rename.
+                    length = CurrentLength(this.stream!);
+                }
 
                 if (length < this.position)
                 {
-                    // The file shrank: the appender reset or rolled it. Start over.
+                    // The file shrank: the appender reset it. Start over.
                     this.position = 0;
                     this.pending.SetLength(0);
                     this.Restarted = true;
@@ -163,33 +204,67 @@ namespace WinSW.Gui.Services
                     this.pending.SetLength(0);
                 }
 
-                if (length == this.position)
+                if (length > this.position)
                 {
-                    return lines;
+                    this.stream!.Position = this.position;
+
+                    int read;
+                    while ((read = this.stream.Read(this.buffer, 0, this.buffer.Length)) > 0)
+                    {
+                        this.pending.Write(this.buffer, 0, read);
+                    }
+
+                    this.position = this.stream.Position;
+                    this.DrainCompleteLines(lines);
                 }
 
-                this.stream.Position = this.position;
-
-                int read;
-                while ((read = this.stream.Read(this.buffer, 0, this.buffer.Length)) > 0)
+                if (rolled)
                 {
-                    this.pending.Write(this.buffer, 0, read);
+                    // Everything the old file will ever hold is read. Let go of it — the wrapper
+                    // renames it again at every roll, and on older Windows a file still held
+                    // open cannot be deleted from the end of that chain — and take the new
+                    // one from its first byte. The encoding stays until the new file decides
+                    // its own, so that it still names the one these last lines were read in.
+                    this.FlushPartialLine(lines);
+                    this.stream!.Dispose();
+                    this.stream = null;
+                    this.position = 0;
+                    this.heldId = null;
+                    this.fromStart = true;
+                    this.Rollover = LogRollover.ReadToEnd;
                 }
-
-                this.position = this.stream.Position;
-                this.DrainCompleteLines(lines);
             }
-            catch (IOException)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
                 // The file is momentarily locked or was replaced mid-roll; the next tick retries.
-                this.Reset();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                this.Reset();
+                // One that could not be opened at all keeps the place it was to be opened at.
+                if (this.stream != null)
+                {
+                    this.Reset();
+                }
             }
 
             return lines;
+        }
+
+        /// <summary>
+        /// Closes the file but keeps the place in it, so that a viewer that is not reading
+        /// holds nothing open. The next read opens the path again and carries on from that
+        /// place, or, when the path names a different file by then, says so through
+        /// <see cref="Rollover"/> and starts that file from its beginning. Never while a read
+        /// is out.
+        /// </summary>
+        public void Release()
+        {
+            if (this.stream is null)
+            {
+                // Not opened yet, or let go of at a roll: the next open already knows where to start.
+                return;
+            }
+
+            this.stream.Dispose();
+            this.stream = null;
+            this.released = true;
         }
 
         /// <summary>Flushes a trailing line that has no newline yet, so nothing is lost on stop.</summary>
@@ -203,6 +278,156 @@ namespace WinSW.Gui.Services
             string value = (this.encoding ?? LenientUtf8).GetString(this.pending.GetBuffer(), 0, (int)this.pending.Length);
             this.pending.SetLength(0);
             return value;
+        }
+
+        /// <summary>
+        /// Opens the path and decides where reading starts: the tail of the file the first
+        /// time, its first byte after a roll, and the place it was let go at after
+        /// <see cref="Release"/>. False when there is nothing to read in this call.
+        /// </summary>
+        private bool Open(List<string> lines)
+        {
+            this.stream = new FileStream(
+                this.path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 4096,
+                FileOptions.SequentialScan);
+
+            FileId? id = Describe(this.stream.SafeFileHandle).Id;
+
+            if (this.released)
+            {
+                this.released = false;
+
+                if (id is null || this.heldId is null || id == this.heldId)
+                {
+                    // The same file, or one that cannot be told apart from it: carry on. A file
+                    // that was reset meanwhile is shorter than the place, which the read notices.
+                    this.heldId ??= id;
+                    return true;
+                }
+
+                // Rolled while nothing was reading it. What is left of the old file is not to
+                // be had through this path; the partial line held from it is all there is.
+                this.FlushPartialLine(lines);
+                this.heldId = id;
+                this.position = 0;
+                this.DetectFromPreamble();
+                this.Rollover = LogRollover.WhileReleased;
+                return false;
+            }
+
+            this.heldId = id;
+
+            if (this.fromStart)
+            {
+                // The file that took over the name after a roll: all of it is new.
+                this.fromStart = false;
+                this.position = 0;
+                this.DetectFromPreamble();
+                return true;
+            }
+
+            this.position = Math.Max(0, CurrentLength(this.stream) - InitialTailBytes);
+            this.DetectFromPreamble();
+
+            if (this.position > 0)
+            {
+                // Starting mid-file: skip to the next line so the first line shown is whole.
+                this.position = this.StartOfNextLine(this.position);
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Whether the path now names a file other than the one held open. No verdict — false —
+        /// when the path cannot be asked: it is missing for the moment between the wrapper's
+        /// rename and its new file, or locked, or on a share that is not answering. The held
+        /// file stays open until the answer is certain, so none of its end is lost.
+        /// </summary>
+        /// <param name="held">The held file's length, measured just before this call.</param>
+        private bool PathNamesAnotherFile(long held)
+        {
+            try
+            {
+                using var probe = OpenForQuery(this.path);
+                if (probe is null)
+                {
+                    return false;
+                }
+
+                var named = Describe(probe);
+                if (named.Id != null && this.heldId != null)
+                {
+                    return named.Id != this.heldId;
+                }
+
+                // No file numbers to compare, so by length, measured so that a write landing
+                // in between cannot pass for a roll. The held length came first; the same file
+                // measured afterwards can only be as long or longer. When it is longer, the
+                // held file is measured again, and the same file is by then at least as long.
+                // A new file exactly as long as the old one passes for it until its next
+                // write, which is then read from its first byte all the same. Never the
+                // creation time: NTFS hands a deleted or renamed file's creation time on to a
+                // new file created under its name within fifteen seconds.
+                return named.Length < held || (named.Length > held && named.Length > CurrentLength(this.stream!));
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// A handle on the path good for asking which file it is and how long, or null when
+        /// there is no file there. On Windows the handle asks for attributes only: that is
+        /// never refused for sharing, and an on-access virus scanner has no reason to read a
+        /// file nobody is reading, which matters for a question asked every few hundred
+        /// milliseconds.
+        /// </summary>
+        private static SafeFileHandle? OpenForQuery(string path)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                var handle = Win32.CreateFileW(path, Win32.FILE_READ_ATTRIBUTES, FileShare.ReadWrite | FileShare.Delete, IntPtr.Zero, Win32.OPEN_EXISTING, 0, IntPtr.Zero);
+                if (!handle.IsInvalid)
+                {
+                    return handle;
+                }
+
+                // Refused. Usually there is no file there for the moment; but a path longer
+                // than MAX_PATH is refused as "not found" too when passed as written, so the
+                // answer is left to .NET's own open, which puts such a path to Windows in the
+                // form it takes, and says which of the two it was.
+                handle.Dispose();
+            }
+
+            try
+            {
+                return File.OpenHandle(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            }
+            catch (Exception e) when (e is FileNotFoundException or DirectoryNotFoundException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Which file a handle is open on, where that is known, and its current length.</summary>
+        private static (FileId? Id, long Length) Describe(SafeFileHandle handle)
+        {
+            if (OperatingSystem.IsWindows() && Win32.GetFileInformationByHandle(handle, out var info))
+            {
+                ulong index = ((ulong)info.FileIndexHigh << 32) | info.FileIndexLow;
+                long length = ((long)info.FileSizeHigh << 32) | info.FileSizeLow;
+
+                // A file system or redirector with no file numbers reports zero, which proves nothing.
+                return (index == 0 ? null : new FileId(info.VolumeSerialNumber, index), length);
+            }
+
+            return (null, RandomAccess.GetLength(handle));
         }
 
         private void DrainCompleteLines(List<string> lines)
@@ -247,6 +472,29 @@ namespace WinSW.Gui.Services
             int remainder = count - complete;
             Buffer.BlockCopy(bytes, complete, bytes, 0, remainder);
             this.pending.SetLength(remainder);
+        }
+
+        /// <summary>
+        /// Hands over a last line that will never get its newline, because the file it is in
+        /// has been rolled, decoded the way a complete line would have been.
+        /// </summary>
+        private void FlushPartialLine(List<string> lines)
+        {
+            int count = (int)this.pending.Length;
+            if (count == 0)
+            {
+                return;
+            }
+
+            byte[] bytes = this.pending.GetBuffer();
+            this.encoding ??= this.Decide(bytes, count);
+
+            string line = (this.encoding ?? LenientUtf8).GetString(bytes, 0, count).TrimEnd('\r');
+            this.pending.SetLength(0);
+            if (line.Length > 0)
+            {
+                lines.Add(line);
+            }
         }
 
         /// <summary>
@@ -338,12 +586,57 @@ namespace WinSW.Gui.Services
             this.position = 0;
             this.pending.SetLength(0);
             this.encoding = null;
+            this.heldId = null;
+            this.released = false;
+            this.fromStart = false;
         }
 
         public void Dispose()
         {
             this.Reset();
             this.pending.Dispose();
+        }
+
+        /// <summary>
+        /// A file as the file system numbers it: the volume's serial number and the file's
+        /// index on it. It stays with the file through a rename, and, unlike the creation
+        /// time, it is never handed on to a new file created under the old name.
+        /// </summary>
+        private readonly record struct FileId(uint Volume, ulong Index);
+
+        /// <summary>
+        /// The two calls the roll check needs. Kept with the reader rather than with the
+        /// service calls in <see cref="NativeMethods"/>: they answer questions about this
+        /// reader's file and nothing else.
+        /// </summary>
+        private static class Win32
+        {
+            internal const int FILE_READ_ATTRIBUTES = 0x0080;
+            internal const int OPEN_EXISTING = 3;
+
+            // FILETIME rather than long for the times: a long would be aligned to eight bytes
+            // and push every field after the first four bytes out of place.
+            [StructLayout(LayoutKind.Sequential)]
+            internal struct BY_HANDLE_FILE_INFORMATION
+            {
+                public uint FileAttributes;
+                public System.Runtime.InteropServices.ComTypes.FILETIME CreationTime;
+                public System.Runtime.InteropServices.ComTypes.FILETIME LastAccessTime;
+                public System.Runtime.InteropServices.ComTypes.FILETIME LastWriteTime;
+                public uint VolumeSerialNumber;
+                public uint FileSizeHigh;
+                public uint FileSizeLow;
+                public uint NumberOfLinks;
+                public uint FileIndexHigh;
+                public uint FileIndexLow;
+            }
+
+            [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+            internal static extern SafeFileHandle CreateFileW(string fileName, int desiredAccess, FileShare shareMode, IntPtr securityAttributes, int creationDisposition, int flagsAndAttributes, IntPtr templateFile);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            [return: MarshalAs(UnmanagedType.Bool)]
+            internal static extern bool GetFileInformationByHandle(SafeFileHandle file, out BY_HANDLE_FILE_INFORMATION information);
         }
     }
 }

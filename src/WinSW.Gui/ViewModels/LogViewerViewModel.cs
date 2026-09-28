@@ -14,23 +14,31 @@ using WinSW.Gui.Services;
 namespace WinSW.Gui.ViewModels
 {
     /// <summary>One log file belonging to a service.</summary>
-    public sealed class LogFileEntry
+    /// <remarks>
+    /// Observable because the list is brought up to date in place while a file is on screen:
+    /// an entry replaced by a new one would make the picker drop its selection, and the viewer
+    /// start the file over.
+    /// </remarks>
+    public sealed class LogFileEntry : ObservableObject
     {
+        private long length;
+        private DateTime lastWrite;
+
         public LogFileEntry(FileInfo file)
         {
             this.Path = file.FullName;
             this.Name = file.Name;
-            this.Length = file.Length;
-            this.LastWrite = file.LastWriteTime;
+            this.length = file.Length;
+            this.lastWrite = file.LastWriteTime;
         }
 
         public string Path { get; }
 
         public string Name { get; }
 
-        public long Length { get; }
+        public long Length => this.length;
 
-        public DateTime LastWrite { get; }
+        public DateTime LastWrite => this.lastWrite;
 
         public string Caption =>
             $"{this.Name}   ·   {FormatSize(this.Length)}   ·   {this.LastWrite:yyyy-MM-dd HH:mm:ss}";
@@ -50,6 +58,104 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         internal static IReadOnlyList<LogFileEntry> OlderThan(IEnumerable<LogFileEntry> files, DateTime cutoff, string? onScreen) =>
             files.Where(f => f.LastWrite < cutoff && !string.Equals(f.Path, onScreen, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        /// <summary>
+        /// The service's log files in <paramref name="directory"/>, newest first: everything
+        /// the appenders may produce for it — .out.log, .err.log, .wrapper.log and the numbered
+        /// or dated files the rolling modes add.
+        /// </summary>
+        internal static IReadOnlyList<LogFileEntry> Scan(string directory, string stem) =>
+            new DirectoryInfo(directory)
+                .EnumerateFiles(stem + "*")
+                .Where(f => f.Extension.Equals(".log", StringComparison.OrdinalIgnoreCase)
+                    || f.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(f => f.LastWriteTime)
+                .Select(f => new LogFileEntry(f))
+                .ToList();
+
+        /// <summary>
+        /// Brings <paramref name="files"/> in line with a fresh <see cref="Scan"/>, in place:
+        /// entries still there take their new size and time, new files go where newest-first
+        /// puts them, and files that are gone are dropped. The entry on screen is never dropped
+        /// or replaced, even when the scan no longer finds it — in roll mode it is missing for
+        /// the moment between the wrapper's rename and its new file.
+        /// </summary>
+        /// <returns>The entries added.</returns>
+        internal static IReadOnlyList<LogFileEntry> Merge(IList<LogFileEntry> files, IReadOnlyList<LogFileEntry> found, LogFileEntry? onScreen)
+        {
+            var unseen = new Dictionary<string, LogFileEntry>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in found)
+            {
+                unseen[entry.Path] = entry;
+            }
+
+            for (int i = files.Count - 1; i >= 0; i--)
+            {
+                var entry = files[i];
+                if (unseen.Remove(entry.Path, out var scanned))
+                {
+                    entry.Update(scanned);
+                }
+                else if (!ReferenceEquals(entry, onScreen))
+                {
+                    files.RemoveAt(i);
+                }
+            }
+
+            var added = new List<LogFileEntry>();
+            foreach (var entry in found)
+            {
+                if (!unseen.ContainsKey(entry.Path))
+                {
+                    continue;
+                }
+
+                int at = 0;
+                while (at < files.Count && files[at].LastWrite >= entry.LastWrite)
+                {
+                    at++;
+                }
+
+                files.Insert(at, entry);
+                added.Add(entry);
+            }
+
+            return added;
+        }
+
+        /// <summary>
+        /// Of the entries a <see cref="Merge"/> added to <paramref name="files"/>, those written
+        /// later than every file listed before: the files a new period of roll-by-time starts.
+        /// A file rolled away by size is never among them, since the file that took over its
+        /// name was created after it was last written — so a busy .err.log rolling beside a
+        /// quiet .out.log is not news. Nothing, when nothing was listed before.
+        /// </summary>
+        internal static IReadOnlyList<LogFileEntry> NewerThanTheRest(IEnumerable<LogFileEntry> files, IReadOnlyList<LogFileEntry> added)
+        {
+            var before = files.Where(f => !added.Contains(f)).ToList();
+            if (before.Count == 0)
+            {
+                return Array.Empty<LogFileEntry>();
+            }
+
+            DateTime latest = before.Max(f => f.LastWrite);
+            return added.Where(f => f.LastWrite > latest).ToList();
+        }
+
+        /// <summary>Takes the size and time a later scan found for the same file.</summary>
+        private void Update(LogFileEntry scanned)
+        {
+            if (this.length == scanned.length && this.lastWrite == scanned.lastWrite)
+            {
+                return;
+            }
+
+            this.length = scanned.length;
+            this.lastWrite = scanned.lastWrite;
+            this.Raise(nameof(this.Length));
+            this.Raise(nameof(this.LastWrite));
+            this.Raise(nameof(this.Caption));
+        }
     }
 
     /// <summary>A selectable log encoding, labelled for the picker.</summary>
@@ -84,6 +190,9 @@ namespace WinSW.Gui.ViewModels
     {
         private const int MaxLines = 5000;
         private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(600);
+
+        /// <summary>How often the log directory is looked at again while the page is shown.</summary>
+        private static readonly TimeSpan FileScanInterval = TimeSpan.FromSeconds(30);
 
         private readonly DispatcherTimer timer;
         private readonly LinkedList<string> history = new();
@@ -122,10 +231,28 @@ namespace WinSW.Gui.ViewModels
         private bool isCleaning;
         private IReadOnlyList<LogFileEntry> cleanupCandidates = Array.Empty<LogFileEntry>();
 
+        /// <summary>The file-name stem the list was last scanned for, in <see cref="LogDirectory"/>.</summary>
+        private string logStem = string.Empty;
+
+        /// <summary>When the list was last scanned, in <see cref="Environment.TickCount64"/> milliseconds.</summary>
+        private long lastFileScan;
+        private bool isScanning;
+
+        /// <summary>Whether the page is the one shown. Only then is the file on screen held open and read.</summary>
+        private bool isActive;
+
         public LogViewerViewModel()
         {
             this.timer = new DispatcherTimer { Interval = PollInterval };
-            this.timer.Tick += async (_, _) => await this.PumpAsync().ConfigureAwait(true);
+            this.timer.Tick += async (_, _) =>
+            {
+                if (!this.isPaused && Environment.TickCount64 - this.lastFileScan >= (long)FileScanInterval.TotalMilliseconds)
+                {
+                    _ = this.RefreshFilesAsync();
+                }
+
+                await this.PumpAsync().ConfigureAwait(true);
+            };
 
             this.Encodings = new[]
             {
@@ -436,6 +563,13 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.isPaused, value))
                 {
                     this.Raise(nameof(this.PauseLabel));
+
+                    // A paused viewer reads nothing, so it holds nothing open either: left paused
+                    // overnight, it would hold a file the wrapper keeps rolling down its chain.
+                    if (value)
+                    {
+                        this.ReleaseReader();
+                    }
                 }
             }
         }
@@ -486,23 +620,50 @@ namespace WinSW.Gui.ViewModels
             this.Raise(nameof(this.ServiceName));
             this.RescanCommand.RaiseCanExecuteChanged();
             this.RefreshEventsCommand.RaiseCanExecuteChanged();
-            this.Rescan();
+            this.Rescan(fresh: true);
             this.RefreshEventsCommand.Execute(null);
-        }
 
-        public void Activate()
-        {
-            if (this.service != null)
+            if (this.isActive)
             {
                 this.timer.Start();
             }
         }
 
-        public void Deactivate() => this.timer.Stop();
+        public void Activate()
+        {
+            this.isActive = true;
+            if (this.service != null)
+            {
+                this.timer.Start();
+
+                // The file was let go of when the page was left: open it again at the place it
+                // was let go at now, rather than a tick from now.
+                _ = this.PumpAsync();
+            }
+        }
+
+        /// <summary>
+        /// Stops polling and lets go of the file on screen, keeping the place in it. A page out
+        /// of sight held its file open for as long as the console ran, while the wrapper
+        /// renamed that file down its whole chain of rolled logs underneath it.
+        /// </summary>
+        public void Deactivate()
+        {
+            this.isActive = false;
+            this.timer.Stop();
+            this.ReleaseReader();
+        }
 
         // Files ------------------------------------------------------------------
 
-        private void Rescan()
+        private void Rescan() => this.Rescan(fresh: false);
+
+        /// <summary>
+        /// Looks at the log directory again. The list is brought up to date in place, so the
+        /// file on screen stays there with everything it shows; the list starts over only for
+        /// another service, or for a configuration that now puts its logs somewhere else.
+        /// </summary>
+        private void Rescan(bool fresh)
         {
             var entry = this.service;
             if (entry?.ConfigPath is null)
@@ -514,45 +675,106 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var model = ServiceConfigModel.Load(entry.ConfigPath);
-                this.LogDirectory = ConfigPaths.ResolveLogDirectory(model, entry.ConfigPath);
+                string directory = ConfigPaths.ResolveLogDirectory(model, entry.ConfigPath);
                 string stem = ConfigPaths.ResolveLogBaseName(model, entry.ConfigPath);
 
                 string? previous = this.selectedFile?.Path;
-                this.Files.Clear();
-                this.Raise(nameof(this.TotalSizeText));
-
-                var directory = new DirectoryInfo(this.LogDirectory);
-                if (!directory.Exists)
+                if (fresh || directory != this.LogDirectory || stem != this.logStem)
                 {
-                    this.StatusMessage = Localizer.Format("M.Log.DirMissing", this.LogDirectory);
-                    return;
+                    this.SelectedFile = null;
+                    this.Files.Clear();
                 }
 
-                // Everything the appenders may produce for this service: .out.log, .err.log,
-                // .wrapper.log and the numbered or dated files the rolling modes add.
-                var files = directory
-                    .EnumerateFiles(stem + "*")
-                    .Where(f => f.Extension.Equals(".log", StringComparison.OrdinalIgnoreCase)
-                        || f.Extension.Equals(".txt", StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(f => f.LastWriteTime)
-                    .ToList();
+                this.LogDirectory = directory;
+                this.logStem = stem;
+                this.lastFileScan = Environment.TickCount64;
 
-                foreach (var file in files)
-                {
-                    this.Files.Add(new LogFileEntry(file));
-                }
+                bool exists = Directory.Exists(directory);
+                IReadOnlyList<LogFileEntry> found = exists ? LogFileEntry.Scan(directory, stem) : Array.Empty<LogFileEntry>();
+                LogFileEntry.Merge(this.Files, found, this.selectedFile);
 
-                this.StatusMessage = this.Files.Count == 0
-                    ? Localizer.Format("M.Log.NoFiles", stem, this.LogDirectory)
-                    : Localizer.Format("M.Log.Files", this.Files.Count, this.LogDirectory);
+                this.StatusMessage = !exists
+                    ? Localizer.Format("M.Log.DirMissing", directory)
+                    : this.Files.Count == 0
+                        ? Localizer.Format("M.Log.NoFiles", stem, directory)
+                        : Localizer.Format("M.Log.Files", this.Files.Count, directory);
                 this.Raise(nameof(this.TotalSizeText));
                 this.CleanupCommand.RaiseCanExecuteChanged();
 
-                this.SelectedFile = this.Files.FirstOrDefault(f => f.Path == previous) ?? this.Files.FirstOrDefault();
+                this.SelectedFile ??= this.Files.FirstOrDefault(f => f.Path == previous) ?? this.Files.FirstOrDefault();
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
             {
                 this.StatusMessage = Localizer.Format("M.Log.DirFailed", e.Message);
+            }
+        }
+
+        /// <summary>
+        /// Looks at the log directory again on a worker, every <see cref="FileScanInterval"/>
+        /// while the page is shown. roll-by-time renames nothing: it starts the next period's
+        /// file under a new name and leaves the one on screen as it was, which then simply went
+        /// quiet, and the new file appeared only after a press of the rescan button.
+        /// </summary>
+        private async Task RefreshFilesAsync()
+        {
+            var entry = this.service;
+            string directory = this.LogDirectory;
+            string stem = this.logStem;
+            if (this.isScanning || entry is null || stem.Length == 0)
+            {
+                return;
+            }
+
+            this.isScanning = true;
+            this.lastFileScan = Environment.TickCount64;
+            try
+            {
+                var found = await Task.Run(() => LogFileEntry.Scan(directory, stem)).ConfigureAwait(true);
+                if (!ReferenceEquals(entry, this.service) || directory != this.LogDirectory || stem != this.logStem)
+                {
+                    // Another service, or another configuration, was put on screen meanwhile.
+                    return;
+                }
+
+                bool wasEmpty = this.Files.Count == 0;
+                var added = LogFileEntry.Merge(this.Files, found, this.selectedFile);
+                this.Raise(nameof(this.TotalSizeText));
+                this.CleanupCommand.RaiseCanExecuteChanged();
+
+                var onScreen = this.selectedFile;
+                if (onScreen is null)
+                {
+                    // The service had not written anything yet when it was put on screen.
+                    if (wasEmpty && this.Files.Count > 0)
+                    {
+                        this.StatusMessage = Localizer.Format("M.Log.Files", this.Files.Count, directory);
+                        this.SelectedFile = this.Files[0];
+                    }
+
+                    return;
+                }
+
+                // Said where the eye is rather than switched to: which file carries on from which
+                // is the appenders' naming, which this viewer deliberately does not reproduce.
+                var newer = LogFileEntry.NewerThanTheRest(this.Files, added);
+                foreach (var file in newer)
+                {
+                    this.Append(Localizer.Format("M.Log.NewerFile", file.Name));
+                }
+
+                if (newer.Count > 0)
+                {
+                    this.LinesAppended?.Invoke();
+                }
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // The directory is gone or out of reach for now. The next scan, or the rescan
+                // button, tries again; the file on screen carries on meanwhile.
+            }
+            finally
+            {
+                this.isScanning = false;
             }
         }
 
@@ -567,12 +789,12 @@ namespace WinSW.Gui.ViewModels
 
             if (this.selectedFile is null)
             {
-                this.timer.Stop();
+                // The timer keeps running while the page is shown: its file scan is how the
+                // first log of a service that has not written one yet turns up.
                 return;
             }
 
             this.reader = new LogTailReader(this.selectedFile.Path, this.selectedEncoding.Choice);
-            this.timer.Start();
             _ = this.PumpAsync();
         }
 
@@ -600,6 +822,19 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
+        /// Lets go of the file on screen and keeps the place in it, for a page that is not
+        /// reading. When a worker is inside the reader, the read does it on its way back, for
+        /// the reason <see cref="CloseReader"/> gives.
+        /// </summary>
+        private void ReleaseReader()
+        {
+            if (this.reader != null && !ReferenceEquals(this.reader, this.inFlight))
+            {
+                this.reader.Release();
+            }
+        }
+
+        /// <summary>
         /// Reads what the file has gained and puts it on screen.
         /// </summary>
         /// <remarks>
@@ -612,8 +847,9 @@ namespace WinSW.Gui.ViewModels
         private async Task PumpAsync()
         {
             // One read in flight at a time: the reader keeps its own position and buffer,
-            // and a second read started over the first would race it for both.
-            if (this.inFlight != null || this.reader is null || this.isPaused)
+            // and a second read started over the first would race it for both. Nothing is
+            // read for a page out of sight, which has let go of its file.
+            if (this.inFlight != null || this.reader is null || this.isPaused || !this.isActive)
             {
                 return;
             }
@@ -639,6 +875,13 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            if (!this.isActive || this.isPaused)
+            {
+                // The page was left, or paused, while this read was out, and letting go of the
+                // file was left to now. What was read is still shown.
+                reader.Release();
+            }
+
             string? rolled = null;
             if (reader.Restarted)
             {
@@ -652,6 +895,16 @@ namespace WinSW.Gui.ViewModels
             string? skipped = reader.SkippedBytes > 0
                 ? Localizer.Format("M.Log.Skipped", reader.SkippedBytes)
                 : null;
+
+            // The wrapper rolled the file on screen. Nothing shown so far is wrong, so nothing is
+            // cleared: the lines just read are the old file's last, and the marker goes after
+            // them, where the new file starts from the next read on.
+            string? rolledOver = reader.Rollover switch
+            {
+                LogRollover.ReadToEnd => Localizer.Get("M.Log.RolledOver"),
+                LogRollover.WhileReleased => Localizer.Get("M.Log.RolledAway"),
+                _ => null,
+            };
 
             if (lines.Count >= MaxLines)
             {
@@ -669,9 +922,15 @@ namespace WinSW.Gui.ViewModels
                     this.history.AddLast(skipped);
                 }
 
-                for (int i = lines.Count - (MaxLines - this.history.Count); i < lines.Count; i++)
+                int room = MaxLines - this.history.Count - (rolledOver is null ? 0 : 1);
+                for (int i = lines.Count - room; i < lines.Count; i++)
                 {
                     this.history.AddLast(lines[i]);
+                }
+
+                if (rolledOver != null)
+                {
+                    this.history.AddLast(rolledOver);
                 }
 
                 this.EncodingInfo = Localizer.Format("M.Log.Detected", reader.EncodingName);
@@ -694,9 +953,18 @@ namespace WinSW.Gui.ViewModels
                 this.Append(line);
             }
 
+            if (rolledOver != null)
+            {
+                this.Append(rolledOver);
+            }
+
             if (lines.Count > 0)
             {
                 this.EncodingInfo = Localizer.Format("M.Log.Detected", reader.EncodingName);
+            }
+
+            if (lines.Count > 0 || rolledOver != null)
+            {
                 this.LinesAppended?.Invoke();
             }
         }

@@ -228,6 +228,9 @@
     <sys:String x:Key="M.Log.DirFailed">无法读取日志目录：{0}</sys:String>
     <sys:String x:Key="M.Log.Rolled">── 日志文件已重置或滚动 ──</sys:String>
     <sys:String x:Key="M.Log.Skipped">── 为跟上进度，已跳过 {0:N0} 字节较早的输出 ──</sys:String>
+    <sys:String x:Key="M.Log.RolledOver">── 日志已滚动，下面是新文件 ──</sys:String>
+    <sys:String x:Key="M.Log.RolledAway">── 未读取期间日志已滚动，旧文件末尾未显示的内容在滚动出去的文件里 ──</sys:String>
+    <sys:String x:Key="M.Log.NewerFile">── 出现了新的日志文件：{0}，可在上方文件列表中切换 ──</sys:String>
     <sys:String x:Key="M.Log.TotalSize">{0} 个文件 · {1}</sys:String>
     <sys:String x:Key="M.Log.KeepDays">保留天数</sys:String>
     <sys:String x:Key="M.Log.Cleanup">清理更早的文件</sys:String>
