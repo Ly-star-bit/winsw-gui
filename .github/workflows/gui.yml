@@ -149,9 +149,10 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64
 
-      # Skipped on a pull request, where these two are self-contained WPF publishes that
-      # nobody downloads; a push to main still produces every artifact. The x64 build
-      # above runs everywhere, so a publish that breaks is still caught on the branch.
+      # For a machine that already has the .NET 8 Desktop Runtime. A server seldom does — the
+      # ASP.NET Core Hosting Bundle does not carry it — so the release body points servers to
+      # the self-contained build above. Skipped on a pull request, where nobody downloads it;
+      # a push to main still produces every artifact.
       - name: Publish (x64, framework-dependent)
         if: github.event_name != 'pull_request'
         working-directory: ./src
@@ -161,9 +162,9 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64-fdd
 
-      # Skipped on a pull request, where these two are self-contained WPF publishes that
-      # nobody downloads; a push to main still produces every artifact. The x64 build
-      # above runs everywhere, so a publish that breaks is still caught on the branch.
+      # Skipped on a pull request, where it is a self-contained WPF publish that nobody
+      # downloads; a push to main still produces every artifact. The x64 build above runs
+      # everywhere, so a publish that breaks is still caught on the branch.
       - name: Publish (arm64, self-contained, single file)
         if: github.event_name != 'pull_request'
         working-directory: ./src
@@ -249,9 +250,17 @@ jobs:
           body: |
             | Download | Size | Requires |
             | --- | --- | --- |
-            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64) |
             | `WinSW.Gui-win-x64.exe` | ~69 MB | nothing — the runtime rides along |
             | `WinSW.Gui-win-arm64.exe` | ~65 MB | nothing — the runtime rides along |
+            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64) |
+
+            **On a server, use `WinSW.Gui-win-x64.exe`.** The framework-dependent build needs the
+            .NET 8 *Desktop* Runtime, which a server seldom has: the ASP.NET Core Hosting Bundle
+            does not include it, and neither does the plain .NET Runtime. Without it the console
+            never opens; .NET shows an English dialog asking for the runtime instead, whose
+            download link Internet Explorer's Enhanced Security Configuration blocks on a server.
+            .NET 8 support ends on 10 November 2026: after that date the Desktop Runtime gets no
+            more fixes, security fixes included.
 
             WinSW itself is carried inside the console, so the new-service wizard installs a
             service on a machine with no network and no WinSW.exe to hand.
