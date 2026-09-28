@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Globalization;
 using System.Linq;
@@ -77,6 +78,9 @@ namespace WinSW.Gui.ViewModels
         private readonly DispatcherTimer rescanTimer;
         private readonly Dictionary<string, ServiceHealth> lastHealth = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>The services a command from this panel is working on; see <see cref="IsOperationInFlight"/>.</summary>
+        private readonly OperationsInFlight inFlight = new();
+
         private ServiceEntry? selectedService;
         private string searchText = string.Empty;
 
@@ -86,7 +90,13 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private string searchNeedle = string.Empty;
         private string statusMessage = string.Empty;
-        private bool isBusy;
+
+        /// <summary>
+        /// Operations running, of any kind. A count rather than a flag: operations on different
+        /// services overlap, and the first to finish must not take the progress bar away from
+        /// the ones still running.
+        /// </summary>
+        private int busyCount;
         private bool isScanning;
         private bool polling;
         private DateTime burstUntil;
@@ -130,30 +140,32 @@ namespace WinSW.Gui.ViewModels
 
             this.ApplySort();
 
+            // Each command reads the selection once, when it is clicked, and everything after that
+            // — the operation, and any question it asks on the way — runs on the service it read.
+            // The selection can move while a stop waits, or while a question is up: the list stays
+            // usable, and a click on a tray notification selects the service it names.
             this.ReloadCommand = new AsyncRelayCommand(() => this.ReloadAsync(quiet: false));
-            this.StartCommand = new AsyncRelayCommand(() => this.RunAsync("start", (w, c) => WinSwCli.StartAsync(w, c)), () => this.selectedService?.CanStart == true);
-            this.StopCommand = new AsyncRelayCommand(() => this.StopAsync(force: false), () => this.selectedService?.CanStop == true);
-            this.RestartCommand = new AsyncRelayCommand(() => this.RestartAsync(force: false), () => this.selectedService != null);
-            this.RefreshConfigCommand = new AsyncRelayCommand(() => this.RunAsync("refresh", (w, c) => WinSwCli.RefreshAsync(w, c)), () => this.selectedService != null);
+            this.StartCommand = new AsyncRelayCommand(
+                () => this.RunAsync(this.selectedService, "start", (w, c) => WinSwCli.StartAsync(w, c)),
+                () => this.selectedService?.CanStart == true && this.IsIdle(this.selectedService, "start"));
+            this.StopCommand = new AsyncRelayCommand(
+                () => this.StopAsync(this.selectedService, force: false),
+                () => this.selectedService?.CanStop == true && this.IsIdle(this.selectedService, "stop"));
+            this.RestartCommand = new AsyncRelayCommand(
+                () => this.RestartAsync(this.selectedService, force: false),
+                () => this.IsIdle(this.selectedService, "restart"));
+            this.RefreshConfigCommand = new AsyncRelayCommand(
+                () => this.RunAsync(this.selectedService, "refresh", (w, c) => WinSwCli.RefreshAsync(w, c)),
+                () => this.IsIdle(this.selectedService, "refresh"));
 
-            this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.HasStrayProcess == true);
-            this.EndStrayParentCommand = new RelayCommand(this.AskEndStrayParent, () => this.selectedService?.CanEndStrayParent == true);
+            // Ending a stray holds nothing, but is not offered while a command is working on the
+            // same service: the banner was read before that command began, and it is about to
+            // change what is running.
+            this.TerminateStrayCommand = new RelayCommand(this.AskTerminateStray, () => this.selectedService?.HasStrayProcess == true && this.IsIdle(this.selectedService, null));
+            this.EndStrayParentCommand = new RelayCommand(this.AskEndStrayParent, () => this.selectedService?.CanEndStrayParent == true && this.IsIdle(this.selectedService, null));
 
-            this.KillCommand = new RelayCommand(
-                () => this.Ask(
-                    Localizer.Get("M.Dash.KillTitle"),
-                    Localizer.Format("M.Dash.KillBody", this.selectedService?.ServiceName),
-                    Localizer.Get("M.Dash.KillAction"),
-                    this.KillAsync),
-                () => this.selectedService != null);
-
-            this.UninstallCommand = new RelayCommand(
-                () => this.Ask(
-                    Localizer.Get("M.Dash.UninstallTitle"),
-                    Localizer.Format("M.Dash.UninstallBody", this.selectedService?.ServiceName),
-                    Localizer.Get("M.Dash.UninstallAction"),
-                    () => this.RunAsync("uninstall", (w, c) => WinSwCli.UninstallAsync(w, c))),
-                () => this.selectedService != null);
+            this.KillCommand = new RelayCommand(this.AskKill, () => this.IsIdle(this.selectedService, "dev kill"));
+            this.UninstallCommand = new RelayCommand(this.AskUninstall, () => this.IsIdle(this.selectedService, "uninstall"));
 
             this.EditConfigCommand = new RelayCommand(
                 () => this.OpenConfigRequested?.Invoke(this.selectedService!),
@@ -171,9 +183,9 @@ namespace WinSW.Gui.ViewModels
             this.ConfirmCommand = new AsyncRelayCommand(this.ExecuteConfirmedAsync);
             this.CancelConfirmCommand = new RelayCommand(() => this.ConfirmVisible = false);
 
-            this.StartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("start"), () => this.HasMultipleSelected);
-            this.StopSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("stop"), () => this.HasMultipleSelected);
-            this.RestartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("restart"), () => this.HasMultipleSelected);
+            this.StartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("start"), () => this.CanRunOnSelected("start"));
+            this.StopSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("stop"), () => this.CanRunOnSelected("stop"));
+            this.RestartSelectedCommand = new AsyncRelayCommand(() => this.RunOnSelectedAsync("restart"), () => this.CanRunOnSelected("restart"));
 
             this.SetFilterCommand = new RelayCommand(p => this.HealthFilter = p as string ?? "all");
             this.CreateServiceCommand = new RelayCommand(() => this.CreateServiceRequested?.Invoke());
@@ -181,7 +193,7 @@ namespace WinSW.Gui.ViewModels
 
             this.ExportScriptCommand = new RelayCommand(this.ExportScript, () => this.selectedService?.ConfigPath != null);
             this.DiagnosticsCommand = new AsyncRelayCommand(this.CreateDiagnosticsAsync, () => this.selectedService != null);
-            this.UpgradeWrapperCommand = new AsyncRelayCommand(this.UpgradeWrapperAsync, () => this.WrapperUpdateAvailable);
+            this.UpgradeWrapperCommand = new AsyncRelayCommand(this.UpgradeWrapperAsync, () => this.WrapperUpdateAvailable && this.IsIdle(this.selectedService, "upgrade"));
 
             this.RestartChoices = new[] { new RestartChoice(true, null), new RestartChoice(false, null) }
                 .Concat(new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday }
@@ -189,6 +201,9 @@ namespace WinSW.Gui.ViewModels
                 .ToArray();
             this.selectedRestartChoice = this.RestartChoices[0];
             this.ApplyRestartScheduleCommand = new AsyncRelayCommand(this.ApplyRestartScheduleAsync, () => this.selectedService?.ConfigPath != null);
+
+            // An operation beginning or ending changes which services' commands are available.
+            this.inFlight.Changed += this.OnOperationsChanged;
 
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
             this.statusTimer.Tick += async (_, _) =>
@@ -214,7 +229,7 @@ namespace WinSW.Gui.ViewModels
             this.rescanTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(seconds > 0 ? seconds : 30) };
             this.rescanTimer.Tick += async (_, _) =>
             {
-                if (seconds > 0 && !this.isScanning && !this.isBusy)
+                if (seconds > 0 && !this.isScanning && !this.IsBusy)
                 {
                     await this.ReloadAsync(quiet: true).ConfigureAwait(true);
                 }
@@ -500,11 +515,16 @@ namespace WinSW.Gui.ViewModels
             set => this.Set(ref this.statusMessage, value);
         }
 
-        public bool IsBusy
-        {
-            get => this.isBusy;
-            set => this.Set(ref this.isBusy, value);
-        }
+        /// <summary>Something is running, anywhere on the page; shows the progress bar.</summary>
+        public bool IsBusy => this.busyCount > 0;
+
+        /// <summary>
+        /// True while a command from this panel is working on <paramref name="serviceName"/>: the
+        /// service it was given for, the ones depending on it for a stop or a restart, every one
+        /// sharing its wrapper for an upgrade. A change of state seen meanwhile is that command's
+        /// doing, and the service's own commands are unavailable until it is over.
+        /// </summary>
+        public bool IsOperationInFlight(string serviceName) => this.inFlight.Contains(serviceName);
 
         public bool IsScanning
         {
@@ -615,7 +635,7 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private async Task TerminateStrayAsync(ServiceEntry entry, ProcessMark stray)
         {
-            this.IsBusy = true;
+            this.BeginBusy();
             try
             {
                 var result = await StrayProcesses.TerminateAsync(stray).ConfigureAwait(true);
@@ -631,7 +651,7 @@ namespace WinSW.Gui.ViewModels
             }
             finally
             {
-                this.IsBusy = false;
+                this.EndBusy();
             }
 
             await this.RefreshStatusesAsync().ConfigureAwait(true);
@@ -967,26 +987,64 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        private Task StopAsync(bool force) =>
-            this.RunAsync("stop", (w, c) => WinSwCli.StopAsync(w, c, force, this.TimeoutFor(c)));
+        private Task StopAsync(ServiceEntry? entry, bool force) =>
+            this.RunAsync(entry, "stop", (w, c) => WinSwCli.StopAsync(w, c, force, this.TimeoutFor(c)));
 
-        private Task RestartAsync(bool force) =>
-            this.RunAsync("restart", (w, c) => WinSwCli.RestartAsync(w, c, force, this.TimeoutFor(c)));
+        private Task RestartAsync(ServiceEntry? entry, bool force) =>
+            this.RunAsync(entry, "restart", (w, c) => WinSwCli.RestartAsync(w, c, force, this.TimeoutFor(c)));
 
-        private Task KillAsync() =>
-            this.RunAsync("dev kill", (w, c) => WinSwCli.KillAsync(w, c));
+        private Task KillAsync(ServiceEntry? entry) =>
+            this.RunAsync(entry, "dev kill", (w, c) => WinSwCli.KillAsync(w, c));
 
-        private async Task RunAsync(string label, Func<string, string, Task<CommandResult>> operation)
+        /// <summary>Asks before terminating the selected service, and terminates that one whatever is selected by the answer.</summary>
+        private void AskKill()
         {
-            var entry = this.selectedService;
+            if (this.selectedService is not { } entry)
+            {
+                return;
+            }
+
+            this.Ask(
+                Localizer.Get("M.Dash.KillTitle"),
+                Localizer.Format("M.Dash.KillBody", entry.ServiceName),
+                Localizer.Get("M.Dash.KillAction"),
+                () => this.KillAsync(entry));
+        }
+
+        /// <summary>Asks before uninstalling the selected service, and uninstalls that one whatever is selected by the answer.</summary>
+        private void AskUninstall()
+        {
+            if (this.selectedService is not { } entry)
+            {
+                return;
+            }
+
+            this.Ask(
+                Localizer.Get("M.Dash.UninstallTitle"),
+                Localizer.Format("M.Dash.UninstallBody", entry.ServiceName),
+                Localizer.Get("M.Dash.UninstallAction"),
+                () => this.RunAsync(entry, "uninstall", (w, c) => WinSwCli.UninstallAsync(w, c)));
+        }
+
+        /// <summary>
+        /// Runs <paramref name="label"/> on <paramref name="entry"/>, the service the command was
+        /// given for, and asks any follow-up question about that same service.
+        /// </summary>
+        private async Task RunAsync(ServiceEntry? entry, string label, Func<string, string, Task<CommandResult>> operation)
+        {
             if (entry?.ConfigPath is null)
             {
                 this.StatusMessage = Localizer.Get("M.Dash.NoConfig");
                 return;
             }
 
-            this.IsBusy = true;
             this.StatusMessage = Localizer.Format("M.Dash.Running", label, entry.ServiceName);
+
+            // Held until the states have been read back afterwards. Until then a stop seen on any
+            // of these services is this operation's doing, and a second command on one of them
+            // would be racing it. Taken last before the try, so that nothing can leave it held.
+            var held = this.inFlight.Begin(OperationsInFlight.NamesFor(label, entry, this.Services));
+            this.BeginBusy();
 
             try
             {
@@ -1026,14 +1084,16 @@ namespace WinSW.Gui.ViewModels
                     await this.RefreshStatusesAsync().ConfigureAwait(true);
                 }
 
-                // The two outcomes that deserve a follow-up question rather than a message.
+                // The two outcomes that deserve a follow-up question rather than a message. Both
+                // act on the entry this operation ran on: the selection may have moved to another
+                // service while it waited, and the answer is about the one the question names.
                 if (result.HasDependents && (label == "stop" || label == "restart"))
                 {
                     this.Ask(
                         Localizer.Get("M.Dash.DependentsTitle"),
                         Localizer.Format("M.Dash.DependentsBody", entry.ServiceName),
                         Localizer.Get("M.Dash.DependentsAction"),
-                        () => label == "stop" ? this.StopAsync(force: true) : this.RestartAsync(force: true));
+                        () => label == "stop" ? this.StopAsync(entry, force: true) : this.RestartAsync(entry, force: true));
                 }
                 else if (result.TimedOut)
                 {
@@ -1041,12 +1101,13 @@ namespace WinSW.Gui.ViewModels
                         Localizer.Get("M.Dash.TimeoutTitle"),
                         Localizer.Format("M.Dash.TimeoutBody", label, entry.ServiceName),
                         Localizer.Get("M.Dash.TimeoutAction"),
-                        this.KillAsync);
+                        () => this.KillAsync(entry));
                 }
             }
             finally
             {
-                this.IsBusy = false;
+                held.Dispose();
+                this.EndBusy();
                 this.BurstPolling();
             }
         }
@@ -1225,7 +1286,7 @@ namespace WinSW.Gui.ViewModels
                 if (this.lastHealth.TryGetValue(entry.ServiceName, out var previous)
                     && previous == ServiceHealth.Running
                     && health == ServiceHealth.Stopped
-                    && !this.isBusy
+                    && !this.IsBusy
                     && AppSettings.Current.NotifyOnUnexpectedStop)
                 {
                     // A crash-looping service would otherwise raise a balloon every poll.
@@ -1254,6 +1315,14 @@ namespace WinSW.Gui.ViewModels
             this.UpgradeWrapperCommand.RaiseCanExecuteChanged();
         }
 
+        /// <summary>
+        /// Several rows are highlighted, and none of the services the batch would work on is
+        /// being worked on already: the rule each row's own commands follow, for all of them.
+        /// </summary>
+        private bool CanRunOnSelected(string command) =>
+            this.HasMultipleSelected
+            && this.selectedEntries.Where(e => e.ConfigPath != null).All(e => this.IsIdle(e, command));
+
         private async Task RunOnSelectedAsync(string command)
         {
             var chosen = this.selectedEntries.Where(e => e.ConfigPath != null).ToList();
@@ -1268,10 +1337,13 @@ namespace WinSW.Gui.ViewModels
             // something has gone wrong, so the count is said up front instead.
             int prompts = WinSwCli.PromptCountFor(command, targets);
 
-            this.IsBusy = true;
             this.StatusMessage = prompts > 1
                 ? Localizer.Format("M.Dash.RunningManyPrompts", command, targets.Count, prompts)
                 : Localizer.Format("M.Dash.RunningMany", command, targets.Count);
+
+            // Everything each row's own command would hold, held for the whole batch.
+            var held = this.inFlight.Begin(chosen.SelectMany(e => OperationsInFlight.NamesFor(command, e, this.Services)));
+            this.BeginBusy();
             try
             {
                 var result = await WinSwCli.RunOnManyAsync(command, targets).ConfigureAwait(true);
@@ -1283,7 +1355,8 @@ namespace WinSW.Gui.ViewModels
             }
             finally
             {
-                this.IsBusy = false;
+                held.Dispose();
+                this.EndBusy();
                 this.BurstPolling();
             }
         }
@@ -1326,7 +1399,9 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            this.IsBusy = true;
+            // Busy, for the progress bar, but holding no service: reading a service's files and
+            // logs changes nothing about it, and its commands stay available meanwhile.
+            this.BeginBusy();
             this.StatusMessage = Localizer.Get("M.Dash.Collecting");
             try
             {
@@ -1339,7 +1414,7 @@ namespace WinSW.Gui.ViewModels
             }
             finally
             {
-                this.IsBusy = false;
+                this.EndBusy();
             }
         }
 
@@ -1412,7 +1487,7 @@ namespace WinSW.Gui.ViewModels
                 Localizer.Get("M.Dash.UpgradeTitle"),
                 body,
                 Localizer.Get("M.Dash.UpgradeAction"),
-                () => this.RunAsync("upgrade", async (wrapper, _) =>
+                () => this.RunAsync(entry, "upgrade", async (wrapper, _) =>
                 {
                     var result = await WinSwCli.UpgradeWrapperAsync(wrapper, source, plan).ConfigureAwait(true);
                     if (result.Cancelled)
@@ -1468,6 +1543,48 @@ namespace WinSW.Gui.ViewModels
             this.ApplyRestartScheduleCommand.RaiseCanExecuteChanged();
             this.TerminateStrayCommand.RaiseCanExecuteChanged();
             this.EndStrayParentCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>
+        /// An operation has begun or ended. Besides the selected row's commands, which every poll
+        /// re-asks anyway, the upgrade and the batch commands: nothing else in a poll changes
+        /// their answer, so they are left out of it.
+        /// </summary>
+        private void OnOperationsChanged()
+        {
+            this.RefreshCommandStates();
+            this.UpgradeWrapperCommand.RaiseCanExecuteChanged();
+            this.StartSelectedCommand.RaiseCanExecuteChanged();
+            this.StopSelectedCommand.RaiseCanExecuteChanged();
+            this.RestartSelectedCommand.RaiseCanExecuteChanged();
+        }
+
+        /// <summary>
+        /// <paramref name="entry"/> is there, and nothing <paramref name="command"/> would work on
+        /// is being worked on already: the service itself, and for a stop, a restart or an upgrade
+        /// the other services that command acts on too, so that two commands from this panel do
+        /// not work on one service at once. A null command asks about the service alone.
+        /// </summary>
+        private bool IsIdle([NotNullWhen(true)] ServiceEntry? entry, string? command) =>
+            entry != null
+            && (command is null
+                ? !this.inFlight.Contains(entry.ServiceName)
+                : !this.inFlight.ContainsAny(OperationsInFlight.NamesFor(command, entry, this.Services)));
+
+        private void BeginBusy()
+        {
+            if (this.busyCount++ == 0)
+            {
+                this.Raise(nameof(this.IsBusy));
+            }
+        }
+
+        private void EndBusy()
+        {
+            if (--this.busyCount == 0)
+            {
+                this.Raise(nameof(this.IsBusy));
+            }
         }
 
         private void ApplySort()
