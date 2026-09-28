@@ -158,6 +158,10 @@
     <sys:String x:Key="M.App.CrashMessage">出现了问题。控制台仍在运行，但你请求的操作没有完成。</sys:String>
     <sys:String x:Key="M.App.CrashFatal">发生了严重错误，控制台必须关闭。</sys:String>
     <sys:String x:Key="M.App.CrashUnknown">没有更多细节。</sys:String>
+    <sys:String x:Key="M.App.CrashRepeats">自上次提示以来，这个错误又出现了 {0} 次。</sys:String>
+    <sys:String x:Key="M.App.CrashRecorded">详细信息已记入错误日志：{0}</sys:String>
+    <sys:String x:Key="M.App.CrashFolded">上一个提示打开期间又出现了 {0} 个错误，都已记入错误日志。接下来 {1} 分钟内，后台操作再遇到这些错误，只记日志，不再弹窗。</sys:String>
+    <sys:String x:Key="M.App.CrashOpenLog">要现在打开错误日志吗？</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">包装器可执行文件“{0}”已不存在。</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">无法启动包装器进程。</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">服务已在运行。</sys:String>
@@ -641,6 +645,8 @@
     <sys:String x:Key="M.Settings.TaskRootHint">默认放在当前用户目录下：桌面任务以某一个账号运行、不提权，日志必须是这个账号写得进去的。留空则使用上面显示的默认值。</sys:String>
     <sys:String x:Key="M.Settings.ActionLog">操作记录</sys:String>
     <sys:String x:Key="M.Settings.ActionLogHint">从这个控制台做的每一次启动、停止、重启、卸载、升级、安装和配置保存，连同时间、操作人和结果。按 Windows 用户分别记录；超过 1 MB 时旧文件改名为 actions.1.log，重新开始记录。</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLog">错误日志</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLogHint">控制台自身出的错，每条都带时间、控制台和 Windows 版本以及完整的堆栈：控制台出问题时，发这个文件就行。按 Windows 用户分别记录；超过 1 MB 时旧文件改名为 errors.1.log，重新开始记录。</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

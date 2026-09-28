@@ -74,6 +74,15 @@ Across the pages:
   and configuration save made from the console is recorded, one tab-separated line each —
   time, user, action, target, outcome — in `%LOCALAPPDATA%\WinSW.Gui\actions.log`, set aside
   as `actions.1.log` past 1 MB. Settings has a button that opens it.
+- **Error log**: the console's own failures — what reaches the "unexpected error" dialog, a
+  crash that closes it, and a background task that failed with nobody waiting for it — are
+  appended to `%LOCALAPPDATA%\WinSW.Gui\errors.log` with the time, the console, Windows and
+  .NET versions, and the full exception with its stack trace; set aside as `errors.1.log`
+  past 1 MB, and opened from Settings like the action log. It is the file to send when the
+  console misbehaves. Only one error dialog is shown at a time: failures that arrive while it
+  is open are counted and the count given when it is dismissed. Those come from the console's
+  own background work — the dialog is modal — so their repeats in the next 10 minutes are
+  only recorded; a command that fails is still answered every time.
 - **Full configuration coverage**: lifecycle hooks (`prestart` … `poststop`), network drive
   mappings, and the `<extensions>` element as raw XML. The preview pane can also be switched
   to a raw XML editor and applied back to the form.

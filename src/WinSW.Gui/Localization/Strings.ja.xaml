@@ -158,6 +158,10 @@
     <sys:String x:Key="M.App.CrashMessage">問題が発生しました。コンソールは動作していますが、要求された操作は完了しませんでした。</sys:String>
     <sys:String x:Key="M.App.CrashFatal">致命的なエラーが発生したため、コンソールを終了します。</sys:String>
     <sys:String x:Key="M.App.CrashUnknown">詳細情報はありません。</sys:String>
+    <sys:String x:Key="M.App.CrashRepeats">前回の表示以降、このエラーはさらに {0} 回発生しました。</sys:String>
+    <sys:String x:Key="M.App.CrashRecorded">詳細はエラーログに記録されています: {0}</sys:String>
+    <sys:String x:Key="M.App.CrashFolded">前のメッセージの表示中に、さらに {0} 件のエラーが発生しました。すべてエラーログに記録されています。今後 {1} 分間は、バックグラウンド処理で同じエラーが再発してもログに記録するだけで、メッセージは表示しません。</sys:String>
+    <sys:String x:Key="M.App.CrashOpenLog">エラーログを今すぐ開きますか?</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">ラッパー実行ファイル '{0}' はもう存在しません。</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">ラッパー プロセスを開始できませんでした。</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">サービスは既に実行中です。</sys:String>
@@ -641,6 +645,8 @@
     <sys:String x:Key="M.Settings.TaskRootHint">既定ではユーザーごとの場所です。デスクトップタスクは昇格なしで単一のアカウントとして動くため、ログはそのアカウントが書き込める必要があります。空欄にすると上に表示された既定値を使います。</sys:String>
     <sys:String x:Key="M.Settings.ActionLog">操作ログ</sys:String>
     <sys:String x:Key="M.Settings.ActionLogHint">このコンソールから行った起動・停止・再起動・アンインストール・アップグレード・インストール・構成の保存を、日時・実行者・結果とともに記録します。Windows ユーザーごとに保存され、1 MB を超えると古いファイルは actions.1.log に移され、新しいファイルに記録を続けます。</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLog">エラーログ</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLogHint">このコンソール自体で起きたエラーを、日時、コンソールと Windows のバージョン、完全なスタック トレースとともに記録します。コンソールの動作がおかしいときは、このファイルを送ってください。Windows ユーザーごとに保存され、1 MB を超えると古いファイルは errors.1.log に移され、新しいファイルに記録を続けます。</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

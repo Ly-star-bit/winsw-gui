@@ -1,4 +1,6 @@
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -50,6 +52,9 @@ namespace WinSW.Gui.Services
         public static void Record(string action, string target, string outcome) =>
             Append(FilePath, Format(DateTime.Now, CurrentUser, action, target, outcome));
 
+        /// <summary>Opens the log, or its folder when nothing has been recorded yet.</summary>
+        public static void Open() => OpenLogFile(FilePath);
+
         internal static string Describe(CommandResult result) => result switch
         {
             { Cancelled: true } => "declined",
@@ -90,6 +95,31 @@ namespace WinSW.Gui.Services
                 catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
                 }
+            }
+        }
+
+        /// <summary>
+        /// A log in whatever opens .log files, or its folder when nothing has been recorded
+        /// yet, so the button always shows where the record will be. Shared with
+        /// <see cref="ErrorLog"/>, which keeps its file the same way.
+        /// </summary>
+        internal static void OpenLogFile(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                {
+                    Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                    return;
+                }
+
+                string folder = Path.GetDirectoryName(path)!;
+                Directory.CreateDirectory(folder);
+                Process.Start(new ProcessStartInfo(folder) { UseShellExecute = true });
+            }
+            catch (Exception e) when (e is Win32Exception or IOException or UnauthorizedAccessException or InvalidOperationException)
+            {
+                // No program for .log files, or the folder cannot be created; nothing to show.
             }
         }
 

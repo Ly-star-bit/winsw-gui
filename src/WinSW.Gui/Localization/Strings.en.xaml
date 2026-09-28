@@ -158,6 +158,10 @@
     <sys:String x:Key="M.App.CrashMessage">Something went wrong. The console is still running; the operation you asked for did not finish.</sys:String>
     <sys:String x:Key="M.App.CrashFatal">A fatal error occurred and the console has to close.</sys:String>
     <sys:String x:Key="M.App.CrashUnknown">No further detail is available.</sys:String>
+    <sys:String x:Key="M.App.CrashRepeats">Repeats of this error since it was last shown: {0}.</sys:String>
+    <sys:String x:Key="M.App.CrashRecorded">The details are recorded in the error log: {0}</sys:String>
+    <sys:String x:Key="M.App.CrashFolded">Further errors while the previous message was open: {0}. Each one is recorded in the error log. If the console's background work hits any of them again in the next {1} minutes, that is only recorded there, without a message.</sys:String>
+    <sys:String x:Key="M.App.CrashOpenLog">Open the error log now?</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">The wrapper executable '{0}' no longer exists.</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">The wrapper process could not be started.</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">The service is already running.</sys:String>
@@ -641,6 +645,8 @@
     <sys:String x:Key="M.Settings.TaskRootHint">A per-user location by default: a desktop task runs as one account without elevation, and its logs have to be writable by that account. Leave blank for the default shown.</sys:String>
     <sys:String x:Key="M.Settings.ActionLog">Action log</sys:String>
     <sys:String x:Key="M.Settings.ActionLogHint">Every start, stop, restart, uninstall, upgrade, install and configuration save made from this console, with when, by whom and how it went. Kept per Windows user; past 1 MB the file is set aside as actions.1.log and a new one begun.</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLog">Error log</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLogHint">Failures inside this console itself, each with the time, the console and Windows versions and the full stack trace: the file to send when the console misbehaves. Kept per Windows user; past 1 MB the file is set aside as errors.1.log and a new one begun.</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

@@ -158,6 +158,10 @@
     <sys:String x:Key="M.App.CrashMessage">發生了問題。主控台仍在執行，但你要求的操作並未完成。</sys:String>
     <sys:String x:Key="M.App.CrashFatal">發生嚴重錯誤，主控台必須關閉。</sys:String>
     <sys:String x:Key="M.App.CrashUnknown">沒有更多細節。</sys:String>
+    <sys:String x:Key="M.App.CrashRepeats">自上次提示以來，這個錯誤又發生了 {0} 次。</sys:String>
+    <sys:String x:Key="M.App.CrashRecorded">詳細資訊已寫入錯誤記錄：{0}</sys:String>
+    <sys:String x:Key="M.App.CrashFolded">上一個提示開啟期間又發生了 {0} 個錯誤，都已寫入錯誤記錄。接下來 {1} 分鐘內，背景作業再遇到這些錯誤，只寫入記錄，不再跳出視窗。</sys:String>
+    <sys:String x:Key="M.App.CrashOpenLog">要現在開啟錯誤記錄嗎？</sys:String>
     <sys:String x:Key="M.Cli.WrapperMissing">包裝器執行檔「{0}」已不存在。</sys:String>
     <sys:String x:Key="M.Cli.CannotStart">無法啟動包裝器處理程序。</sys:String>
     <sys:String x:Key="M.Cli.AlreadyRunning">服務已在執行。</sys:String>
@@ -641,6 +645,8 @@
     <sys:String x:Key="M.Settings.TaskRootHint">預設放在目前使用者目錄下：桌面工作以某一個帳戶執行、不提權，記錄檔必須是這個帳戶寫得進去的。留空則使用上面顯示的預設值。</sys:String>
     <sys:String x:Key="M.Settings.ActionLog">操作記錄</sys:String>
     <sys:String x:Key="M.Settings.ActionLogHint">從這個主控台做的每一次啟動、停止、重新啟動、解除安裝、升級、安裝和設定儲存，連同時間、操作人和結果。按 Windows 使用者分別記錄；超過 1 MB 時舊檔案改名為 actions.1.log，重新開始記錄。</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLog">錯誤記錄</sys:String>
+    <sys:String x:Key="M.Settings.ErrorLogHint">主控台本身發生的錯誤，每筆都附有時間、主控台與 Windows 版本以及完整的堆疊追蹤：主控台出問題時，提供這個檔案即可。按 Windows 使用者分別記錄；超過 1 MB 時舊檔案改名為 errors.1.log，重新開始記錄。</sys:String>
 
 
     <!-- Closing the window over unsaved changes. -->

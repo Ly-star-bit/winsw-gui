@@ -152,7 +152,7 @@ namespace WinSW.Gui.ViewModels
 
             // Where the tray notification goes, the group chat's goes too. The dashboard has
             // already held a crash-looping service to one announcement per five minutes.
-            this.Dashboard.UnexpectedStop += entry => _ = AlertWebhook.NotifyStopAsync(entry);
+            this.Dashboard.UnexpectedStop += entry => ErrorLog.Observe(AlertWebhook.NotifyStopAsync(entry), "alert webhook");
             this.SendTestAlertCommand = new AsyncRelayCommand(this.SendTestAlertAsync, () => !string.IsNullOrWhiteSpace(this.alertUrl));
             this.Dashboard.CreateServiceRequested += () =>
             {
@@ -190,7 +190,8 @@ namespace WinSW.Gui.ViewModels
                     this.TaskRoot = path;
                 }
             });
-            this.OpenActionLogCommand = new RelayCommand(OpenActionLog);
+            this.OpenActionLogCommand = new RelayCommand(ActionLog.Open);
+            this.OpenErrorLogCommand = new RelayCommand(ErrorLog.Open);
             this.OpenGuiUpdateCommand = new RelayCommand(() =>
             {
                 if (this.guiUpdate != null)
@@ -205,11 +206,13 @@ namespace WinSW.Gui.ViewModels
                 this.Navigate(this.Editor);
             };
 
-            _ = this.CheckGuiUpdateAsync();
+            // Nobody awaits this or the reload below, so a failure is recorded as it happens
+            // rather than going nowhere.
+            ErrorLog.Observe(this.CheckGuiUpdateAsync(), "update check");
 
             // Once, in the background: the wizard needs to know which task names are taken
             // before anyone has opened the desktop-task page.
-            _ = this.Tasks.ReloadAsync(quiet: true);
+            ErrorLog.Observe(this.Tasks.ReloadAsync(quiet: true), "desktop task list");
 
             this.Dashboard.OpenConfigRequested += entry =>
             {
@@ -227,7 +230,7 @@ namespace WinSW.Gui.ViewModels
             {
                 this.Tasks.SelectWhenReady(name);
                 this.Navigate(this.Tasks);
-                _ = this.Tasks.ReloadAsync(quiet: false);
+                ErrorLog.Observe(this.Tasks.ReloadAsync(quiet: false), "desktop task list");
                 this.ShowToast(Localizer.Format("M.Wiz.Registered", name), false);
             };
 
@@ -283,9 +286,15 @@ namespace WinSW.Gui.ViewModels
 
         public RelayCommand OpenGuiUpdateCommand { get; }
 
+        /// <summary>The log in whatever opens .log files, or its folder when nothing has been recorded yet.</summary>
         public RelayCommand OpenActionLogCommand { get; }
 
         public string ActionLogPath => ActionLog.FilePath;
+
+        /// <summary>The console's own failures; see <see cref="ErrorLog"/>. Opened the same way as the action log.</summary>
+        public RelayCommand OpenErrorLogCommand { get; }
+
+        public string ErrorLogPath => ErrorLog.FilePath;
 
         public RelayCommand ToggleRailCommand { get; }
 
@@ -304,31 +313,6 @@ namespace WinSW.Gui.ViewModels
         /// the dashboard's.
         /// </summary>
         public RelayCommand CancelPageCommand { get; }
-
-        /// <summary>
-        /// The log in whatever opens .log files, or its folder when nothing has been recorded
-        /// yet, so the button always shows where the record will be.
-        /// </summary>
-        private static void OpenActionLog()
-        {
-            string path = ActionLog.FilePath;
-            try
-            {
-                if (System.IO.File.Exists(path))
-                {
-                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
-                    return;
-                }
-
-                string folder = System.IO.Path.GetDirectoryName(path)!;
-                System.IO.Directory.CreateDirectory(folder);
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(folder) { UseShellExecute = true });
-            }
-            catch (Exception e) when (e is System.ComponentModel.Win32Exception or System.IO.IOException or UnauthorizedAccessException or InvalidOperationException)
-            {
-                // No program for .log files, or the folder cannot be created; nothing to show.
-            }
-        }
 
         private ICommand? PageRefresh() => this.currentPage switch
         {

@@ -89,6 +89,13 @@
                             <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding ActionLogPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ActionLogPath}" />
                         </DockPanel>
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Settings.ActionLogHint}" />
+
+                        <TextBlock Margin="0,16,0,4" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Settings.ErrorLog}" />
+                        <DockPanel>
+                            <Button DockPanel.Dock="Left" Padding="10,4" Command="{Binding OpenErrorLogCommand}" Content="{DynamicResource S.Open2}" />
+                            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource Mono}" Text="{Binding ErrorLogPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ErrorLogPath}" />
+                        </DockPanel>
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Settings.ErrorLogHint}" />
                     </StackPanel>
                 </Border>
 

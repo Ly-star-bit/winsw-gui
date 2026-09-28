@@ -12,6 +12,9 @@ namespace WinSW.Gui
 {
     public partial class App : Application
     {
+        /// <summary>Which failures get a dialog, and when; see <see cref="ErrorDialogGate"/>.</summary>
+        private static readonly ErrorDialogGate ErrorDialogs = new();
+
         private SingleInstance? instance;
 
         /// <summary>A .xml given as the first argument: "WinSW.Gui.exe myapp.xml" or the Explorer verb.</summary>
@@ -84,46 +87,85 @@ namespace WinSW.Gui
 
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            Report(e.Exception, fatal: false);
+            Report(e.Exception, "UI thread", fatal: false);
             e.Handled = true;
         }
 
         /// <summary>A command that threw. The application is intact; the operation is not.</summary>
-        private static void OnCommandFailed(Exception exception) => Report(exception, fatal: false);
+        private static void OnCommandFailed(Exception exception) => Report(exception, "command", fatal: false, command: true);
 
         /// <summary>
         /// A background thread threw. The runtime is on its way down and nothing here can stop
         /// it, so the only thing worth doing is saying what happened before it goes.
         /// </summary>
         private static void OnBackgroundThreadException(object sender, UnhandledExceptionEventArgs e) =>
-            Report(e.ExceptionObject as Exception, fatal: true);
+            Report(e.ExceptionObject as Exception, "background thread, fatal", fatal: true);
 
         /// <summary>
         /// A faulted task nobody awaited. Since .NET 4.5 this no longer kills the process, and
         /// it is not worth a dialog — but it is worth not being invisible, because it is how a
-        /// fire-and-forget refresh fails.
+        /// fire-and-forget refresh fails. It arrives only when the task is garbage-collected,
+        /// which may be long after; <see cref="ErrorLog.Observe"/> records such a failure as it
+        /// happens.
         /// </summary>
         private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("Unobserved task exception: " + e.Exception);
+            ErrorLog.Record("unobserved task", e.Exception);
             e.SetObserved();
         }
 
         /// <summary>
-        /// Shows the failure in the application's own language. The exception text is kept —
-        /// it is what makes a report actionable — but it is put below a sentence that says
-        /// what happened, rather than being the whole message.
+        /// Records the failure, then shows it in the application's own language. The exception
+        /// text is kept — it is what makes a report actionable — but it is put below a sentence
+        /// that says what happened, rather than being the whole message.
         /// </summary>
-        private static void Report(Exception? exception, bool fatal)
+        /// <remarks>
+        /// On disk first: on the fatal path the runtime is going down, and the record must not
+        /// wait for a dialog that nobody may answer. The fatal dialog is the process's last act
+        /// and is always shown; any other goes through <see cref="ErrorDialogs"/>, which keeps
+        /// it to one at a time.
+        /// </remarks>
+        private static void Report(Exception? exception, string source, bool fatal, bool command = false)
         {
-            string headline = Localizer.Get(fatal ? "M.App.CrashFatal" : "M.App.CrashMessage");
-            string detail = exception?.ToString() ?? Localizer.Get("M.App.CrashUnknown");
+            ErrorLog.Record(source, exception);
 
-            void Show() => MessageBox.Show(
-                headline + Environment.NewLine + Environment.NewLine + detail,
-                Localizer.Get("M.App.CrashTitle"),
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+            int? repeats = fatal ? 0 : ErrorDialogs.TryOpen(ErrorDialogGate.SignatureOf(exception), DateTime.UtcNow, command);
+            if (repeats is null)
+            {
+                return;
+            }
+
+            var text = new StringBuilder(Localizer.Get(fatal ? "M.App.CrashFatal" : "M.App.CrashMessage"));
+            if (repeats > 0)
+            {
+                text.AppendLine().AppendLine().Append(Localizer.Format("M.App.CrashRepeats", repeats));
+            }
+
+            text.AppendLine().AppendLine().Append(exception?.ToString() ?? Localizer.Get("M.App.CrashUnknown"));
+            text.AppendLine().AppendLine().Append(Localizer.Format("M.App.CrashRecorded", ErrorLog.FilePath));
+
+            void Show()
+            {
+                if (fatal)
+                {
+                    MessageBox.Show(text.ToString(), Localizer.Get("M.App.CrashTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                // Released however the dialog ends: a gate left taken would silence every
+                // failure after this one.
+                int more;
+                try
+                {
+                    MessageBox.Show(text.ToString(), Localizer.Get("M.App.CrashTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                finally
+                {
+                    more = ErrorDialogs.Close(DateTime.UtcNow);
+                }
+
+                ShowFolded(more);
+            }
 
             // Report can arrive on any thread; MessageBox has to be shown on one with a
             // dispatcher, and on the way down there may no longer be one to marshal to.
@@ -135,6 +177,37 @@ namespace WinSW.Gui
             else
             {
                 dispatcher.Invoke(Show);
+            }
+        }
+
+        /// <summary>
+        /// Says how many failures arrived while the dialog was open, and offers the file they
+        /// are in. Any that arrive while this notice is open are told in another straight
+        /// after; since each one counted, other than a command's, is kept quiet for a while,
+        /// that ends as soon as a notice is dismissed with nothing new behind it.
+        /// </summary>
+        private static void ShowFolded(int count)
+        {
+            while (count > 0 && ErrorDialogs.TryOpenNotice())
+            {
+                string text = Localizer.Format("M.App.CrashFolded", count, (int)ErrorDialogGate.QuietPeriod.TotalMinutes)
+                    + Environment.NewLine + Environment.NewLine
+                    + Localizer.Get("M.App.CrashOpenLog");
+
+                MessageBoxResult answer;
+                try
+                {
+                    answer = MessageBox.Show(text, Localizer.Get("M.App.CrashTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                }
+                finally
+                {
+                    count = ErrorDialogs.Close(DateTime.UtcNow);
+                }
+
+                if (answer == MessageBoxResult.Yes)
+                {
+                    ErrorLog.Open();
+                }
             }
         }
     }
