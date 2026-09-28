@@ -332,7 +332,7 @@
     <sys:String x:Key="M.Dash.StopRestarting">自動再起動を止める</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTip">スタートアップの種類を「無効」にして、Windows のサービスの回復がこれ以上開始できないようにします</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTitle">Windows によるこのサービスの自動再起動を止めますか?</sys:String>
-    <sys:String x:Key="M.Dash.StopRestartingBody">'{0}' のスタートアップの種類を「無効」にします。Windows のサービスの回復は、すでに待機中の再起動も含めて、このサービスを開始できなくなります。開始処理中であれば停止します。現在のスタートアップの種類は {1} で、「スタートアップの種類を戻す」で元に戻せます。「構成を適用」でも構成ファイルのとおりに設定し直されます。</sys:String>
+    <sys:String x:Key="M.Dash.StopRestartingBody">'{0}' のスタートアップの種類を「無効」にします。Windows のサービスの回復は、すでに待機中の再起動も含めて、このサービスを開始できなくなります。ただし、開始処理中であればその開始は中断されません。現在のスタートアップの種類は {1} で、「スタートアップの種類を戻す」で元に戻せます。「構成を適用」でも構成ファイルのとおりに設定し直されます。</sys:String>
     <sys:String x:Key="M.Dash.RestartingStopped">'{0}' を無効にしました。Windows のサービスの回復はこれ以上開始しません。</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartType">スタートアップの種類を戻す（{0}）</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartTypeTip">「自動再起動を止める」の前のスタートアップの種類に戻します。サービスは開始しません。</sys:String>
@@ -434,7 +434,7 @@
     <sys:String x:Key="M.LastStop.NoConfig">このサービスには構成ファイルがないため、ログが見つかりません。</sys:String>
     <sys:String x:Key="M.LastStop.ConfigUnreadable">構成ファイルを読み取れないため、ログが見つかりません: {0}</sys:String>
     <sys:String x:Key="M.LastStop.ProgramExitCode">プログラムの終了コード</sys:String>
-    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">プログラム自体の終了コードです (ラッパー ログから取得)。「前回の終了コード」は Windows がサービスについて記録したもので、プログラムが自分で終了した場合は常に 1067 になります。</sys:String>
+    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">プログラム自体の終了コードです (ラッパー ログから取得)。「前回の終了コード」は Windows がサービスについて記録したもので、プログラムが自分で終了した場合、終了コードが 0 以外なら常に 1067、0 なら 0 になります。</sys:String>
     <sys:String x:Key="M.LastStop.SystemLog">システム ログ</sys:String>
     <sys:String x:Key="M.LastStop.EventTitle">{0} · イベント {1}</sys:String>
     <sys:String x:Key="M.LastStop.NoEvent">前回の開始以降、Windows はこのサービスのエラーを記録していません。</sys:String>

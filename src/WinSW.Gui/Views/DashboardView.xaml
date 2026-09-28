@@ -426,7 +426,7 @@
                             </Button>
                         </WrapPanel>
 
-                        <ScrollViewer Grid.Row="2" Padding="0,0,6,0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer x:Name="DetailScroll" Grid.Row="2" Padding="0,0,6,0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <StackPanel>
                                     <!-- Problem banner. A Grid like the banners below it: in a horizontal StackPanel the text was given all the width it asked for, so it never wrapped and the file name was cut off. -->
@@ -563,7 +563,7 @@
                                     Visibility="{Binding IsStopped, Converter={StaticResource BoolToVisibility}}">
                                     <StackPanel>
                                         <TextBlock Margin="0,0,0,2" Style="{StaticResource SectionTitle}" Text="{DynamicResource M.LastStop.Title}" />
-                                        <TextBlock Margin="0,0,0,8" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.Since}" Visibility="{Binding LastStopText.Since, Converter={StaticResource StringToVisibility}}" />
+                                        <TextBlock Margin="0,0,0,8" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.Since}" Visibility="{Binding LastStopText.Since, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
 
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -576,7 +576,7 @@
                                                 <RowDefinition Height="Auto" />
                                             </Grid.RowDefinitions>
 
-                                            <!-- What Windows recorded for the service: 1067 whenever the program ended on its own. -->
+                                            <!-- What Windows recorded for the service: 1067 whenever the program ended on its own with a nonzero code, 0 when it exited with 0. -->
                                             <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,16,6" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Metric.ExitCode}" />
                                             <TextBlock Grid.Row="0" Grid.Column="1" Margin="0,0,0,6" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap">
                                                 <Run FontFamily="{DynamicResource MonoFont}" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding LastExitCodeText, Mode=OneWay}" />
@@ -592,7 +592,7 @@
                                                 Style="{StaticResource FieldLabel}"
                                                 Text="{DynamicResource M.LastStop.ProgramExitCode}"
                                                 ToolTip="{DynamicResource M.LastStop.ProgramExitCodeTip}"
-                                                Visibility="{Binding LastStopText.ProgramExitCode, Converter={StaticResource StringToVisibility}}" />
+                                                Visibility="{Binding LastStopText.ProgramExitCode, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
                                             <TextBlock
                                                 Grid.Row="1"
                                                 Grid.Column="1"
@@ -601,7 +601,7 @@
                                                 Style="{StaticResource Mono}"
                                                 Text="{Binding LastStopText.ProgramExitCode}"
                                                 ToolTip="{DynamicResource M.LastStop.ProgramExitCodeTip}"
-                                                Visibility="{Binding LastStopText.ProgramExitCode, Converter={StaticResource StringToVisibility}}" />
+                                                Visibility="{Binding LastStopText.ProgramExitCode, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
 
                                             <!-- The service control manager's record of the stop, or that it made none. -->
                                             <TextBlock
@@ -612,7 +612,7 @@
                                                 Text="{DynamicResource M.LastStop.SystemLog}"
                                                 Visibility="{Binding LastStopText, Converter={StaticResource NullToVisibility}}" />
                                             <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,6" Visibility="{Binding LastStopText, Converter={StaticResource NullToVisibility}}">
-                                                <TextBlock Style="{StaticResource Mono}" Text="{Binding LastStopText.EventTitle}" TextWrapping="Wrap" Visibility="{Binding LastStopText.EventTitle, Converter={StaticResource StringToVisibility}}" />
+                                                <TextBlock Style="{StaticResource Mono}" Text="{Binding LastStopText.EventTitle}" TextWrapping="Wrap" Visibility="{Binding LastStopText.EventTitle, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
                                                 <TextBlock Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding LastStopText.EventText}" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Grid>
@@ -620,9 +620,9 @@
                                         <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.LastStop.Reading}" Visibility="{Binding IsReadingLastStop, Converter={StaticResource BoolToVisibility}}" />
 
                                         <!-- The program's error output: uvicorn's "address already in use", a Python traceback. -->
-                                        <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.ErrorHeading, Converter={StaticResource StringToVisibility}}">
+                                        <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.ErrorHeading, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}">
                                             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding LastStopText.ErrorHeading}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LastStop.ErrorLog.Path}" />
-                                            <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.ErrorNote}" Visibility="{Binding LastStopText.ErrorNote, Converter={StaticResource StringToVisibility}}" />
+                                            <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.ErrorNote}" Visibility="{Binding LastStopText.ErrorNote, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
                                             <TextBox
                                                 MaxHeight="180"
                                                 Margin="0,0,0,4"
@@ -632,16 +632,17 @@
                                                 FontSize="12"
                                                 HorizontalScrollBarVisibility="Disabled"
                                                 IsReadOnly="True"
+                                                PreviewMouseWheel="OnLogBoxPreviewMouseWheel"
                                                 Text="{Binding LastStopText.ErrorLines, Mode=OneWay}"
                                                 TextWrapping="Wrap"
                                                 VerticalScrollBarVisibility="Auto"
-                                                Visibility="{Binding LastStopText.ErrorLines, Converter={StaticResource StringToVisibility}}" />
+                                                Visibility="{Binding LastStopText.ErrorLines, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
                                         </StackPanel>
 
                                         <!-- The wrapper's own lines: the start, the program's exit, anything it could not do. -->
-                                        <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.WrapperHeading, Converter={StaticResource StringToVisibility}}">
+                                        <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.WrapperHeading, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}">
                                             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding LastStopText.WrapperHeading}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LastStop.WrapperLog.Path}" />
-                                            <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.WrapperNote}" Visibility="{Binding LastStopText.WrapperNote, Converter={StaticResource StringToVisibility}}" />
+                                            <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldHint}" Text="{Binding LastStopText.WrapperNote}" Visibility="{Binding LastStopText.WrapperNote, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
                                             <TextBox
                                                 MaxHeight="180"
                                                 Margin="0,0,0,4"
@@ -651,10 +652,11 @@
                                                 FontSize="12"
                                                 HorizontalScrollBarVisibility="Disabled"
                                                 IsReadOnly="True"
+                                                PreviewMouseWheel="OnLogBoxPreviewMouseWheel"
                                                 Text="{Binding LastStopText.WrapperLines, Mode=OneWay}"
                                                 TextWrapping="Wrap"
                                                 VerticalScrollBarVisibility="Auto"
-                                                Visibility="{Binding LastStopText.WrapperLines, Converter={StaticResource StringToVisibility}}" />
+                                                Visibility="{Binding LastStopText.WrapperLines, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}" />
                                         </StackPanel>
 
                                         <WrapPanel Margin="0,6,0,0">

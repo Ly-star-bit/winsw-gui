@@ -343,7 +343,7 @@
     <sys:String x:Key="M.Dash.StopRestarting">Stop restarting</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTip">Set the start type to Disabled, so that Windows service recovery can no longer start it</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTitle">Stop Windows restarting this service?</sys:String>
-    <sys:String x:Key="M.Dash.StopRestartingBody">'{0}' will be set to Disabled. Windows service recovery then cannot start it again, including a restart it is already waiting to do, and a start under way is stopped. Its start type is {1} now; 'Restore start type' puts that back. Apply config also sets the start type from the file again.</sys:String>
+    <sys:String x:Key="M.Dash.StopRestartingBody">'{0}' will be set to Disabled. Windows service recovery then cannot start it again, including a restart it is already waiting to do; a start already under way is not interrupted. Its start type is {1} now; 'Restore start type' puts that back. Apply config also sets the start type from the file again.</sys:String>
     <sys:String x:Key="M.Dash.RestartingStopped">'{0}' is disabled: Windows service recovery will not start it again.</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartType">Restore start type ({0})</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartTypeTip">Set the start type back to what it was before Stop restarting. The service is not started.</sys:String>
@@ -445,7 +445,7 @@
     <sys:String x:Key="M.LastStop.NoConfig">This service has no configuration file, so its logs cannot be found.</sys:String>
     <sys:String x:Key="M.LastStop.ConfigUnreadable">The configuration file could not be read, so its logs cannot be found: {0}</sys:String>
     <sys:String x:Key="M.LastStop.ProgramExitCode">PROGRAM EXIT CODE</sys:String>
-    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">What the program itself exited with, from the wrapper log. LAST EXIT CODE is what Windows recorded for the service, which is 1067 whenever the program ends on its own.</sys:String>
+    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">What the program itself exited with, from the wrapper log. LAST EXIT CODE is what Windows recorded for the service: 1067 whenever the program ends on its own with a nonzero code, 0 when it exits with 0.</sys:String>
     <sys:String x:Key="M.LastStop.SystemLog">SYSTEM LOG</sys:String>
     <sys:String x:Key="M.LastStop.EventTitle">{0} · event {1}</sys:String>
     <sys:String x:Key="M.LastStop.NoEvent">Windows has recorded no failure of this service since it last started.</sys:String>

@@ -332,7 +332,7 @@
     <sys:String x:Key="M.Dash.StopRestarting">停止自动重启</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTip">把启动类型改为“禁用”，Windows 服务恢复就无法再启动它</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTitle">不再让 Windows 自动重启这个服务？</sys:String>
-    <sys:String x:Key="M.Dash.StopRestartingBody">“{0}”的启动类型将改为“禁用”。这样 Windows 服务恢复就无法再启动它，包括已经在等待的那次重启；正在进行的启动会被停止。当前启动类型是 {1}，之后可以用“恢复启动类型”改回来。“应用配置”也会按配置文件重新设置启动类型。</sys:String>
+    <sys:String x:Key="M.Dash.StopRestartingBody">“{0}”的启动类型将改为“禁用”。这样 Windows 服务恢复就无法再启动它，包括已经在等待的那次重启；正在进行的启动不会被中断。当前启动类型是 {1}，之后可以用“恢复启动类型”改回来。“应用配置”也会按配置文件重新设置启动类型。</sys:String>
     <sys:String x:Key="M.Dash.RestartingStopped">“{0}”已禁用，Windows 服务恢复不会再启动它。</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartType">恢复启动类型（{0}）</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartTypeTip">把启动类型改回“停止自动重启”之前的设置，不会启动服务。</sys:String>
@@ -434,7 +434,7 @@
     <sys:String x:Key="M.LastStop.NoConfig">此服务没有配置文件，找不到它的日志。</sys:String>
     <sys:String x:Key="M.LastStop.ConfigUnreadable">无法读取配置文件，找不到它的日志：{0}</sys:String>
     <sys:String x:Key="M.LastStop.ProgramExitCode">程序退出码</sys:String>
-    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">程序本身的退出码，取自包装器日志。“上次退出码”是 Windows 为服务记录的退出码，只要是程序自己退出的，就是 1067。</sys:String>
+    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">程序本身的退出码，取自包装器日志。“上次退出码”是 Windows 为服务记录的退出码：程序自己退出时，退出码不为 0 就一律记为 1067，为 0 则记为 0。</sys:String>
     <sys:String x:Key="M.LastStop.SystemLog">系统日志</sys:String>
     <sys:String x:Key="M.LastStop.EventTitle">{0} · 事件 {1}</sys:String>
     <sys:String x:Key="M.LastStop.NoEvent">自上次启动以来，Windows 没有记录这个服务出错。</sys:String>

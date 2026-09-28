@@ -101,8 +101,9 @@ namespace WinSW.Gui.Services
 
         /// <summary>
         /// What the program itself exited with, from the wrapper's "Child process … finished with
-        /// code N" line. Windows records its own code for the service, which for a program that
-        /// ends on its own is 1067 whatever the program said.
+        /// code N" line. Windows records its own code for the service: for a program that ends on
+        /// its own with a nonzero code that is 1067 whatever the code was, because the wrapper then
+        /// exits without reporting a stop; with 0 the wrapper reports the stop, and Windows records 0.
         /// </summary>
         public int? ProgramExitCode { get; }
 

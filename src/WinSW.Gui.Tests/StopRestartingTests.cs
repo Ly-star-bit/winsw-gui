@@ -29,21 +29,22 @@ namespace WinSW.Gui.Tests
         [Fact]
         public void DisablingIsOneStepAndItsExitCodeIsTheScripts()
         {
-            var steps = WinSwCli.StartTypeSteps("demo", "disabled", stopFirst: false);
+            var steps = WinSwCli.StartTypeSteps("demo", "disabled");
 
             Assert.Equal(new[] { "sc.exe config \"demo\" start= disabled" }, steps);
         }
 
         /// <summary>
-        /// A service caught halfway through a start is asked to stop first; whether it accepts is
-        /// not what decides the outcome, so its output and its exit code are set aside.
+        /// Nothing is asked to stop, whatever state the service is in: the service control manager
+        /// refuses a stop to a service still starting, so a stop step would only fail unseen. The
+        /// name is quoted, spaces and all.
         /// </summary>
         [Fact]
-        public void AStartUnderWayIsAskedToStopFirst()
+        public void NothingIsStoppedAndTheNameIsQuoted()
         {
-            var steps = WinSwCli.StartTypeSteps("demo api", "disabled", stopFirst: true);
+            var steps = WinSwCli.StartTypeSteps("demo api", "disabled");
 
-            Assert.Equal(new[] { "sc.exe stop \"demo api\" >nul 2>&1", "sc.exe config \"demo api\" start= disabled" }, steps);
+            Assert.Equal(new[] { "sc.exe config \"demo api\" start= disabled" }, steps);
         }
 
         [Theory]
@@ -52,7 +53,7 @@ namespace WinSW.Gui.Tests
         [InlineData("demand")]
         public void ARememberedStartTypeCanBePutBack(string startType)
         {
-            Assert.Equal(new[] { $"sc.exe config \"demo\" start= {startType}" }, WinSwCli.StartTypeSteps("demo", startType, stopFirst: false));
+            Assert.Equal(new[] { $"sc.exe config \"demo\" start= {startType}" }, WinSwCli.StartTypeSteps("demo", startType));
         }
 
         [Theory]
@@ -61,7 +62,7 @@ namespace WinSW.Gui.Tests
         [InlineData("")]
         public void NoOtherStartTypeGoesOnTheCommandLine(string startType)
         {
-            Assert.Null(WinSwCli.StartTypeSteps("demo", startType, stopFirst: false));
+            Assert.Null(WinSwCli.StartTypeSteps("demo", startType));
         }
 
         /// <summary>Quoted, cmd still expands a percent sign and ends at a quote.</summary>
@@ -72,7 +73,7 @@ namespace WinSW.Gui.Tests
         [InlineData(" ")]
         public void ANameCmdWouldReadSomethingIntoIsRefused(string serviceName)
         {
-            Assert.Null(WinSwCli.StartTypeSteps(serviceName, "disabled", stopFirst: false));
+            Assert.Null(WinSwCli.StartTypeSteps(serviceName, "disabled"));
         }
 
         // Remembering ----------------------------------------------------------------------

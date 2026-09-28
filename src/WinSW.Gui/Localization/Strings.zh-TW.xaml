@@ -332,7 +332,7 @@
     <sys:String x:Key="M.Dash.StopRestarting">停止自動重新啟動</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTip">將啟動類型改為「已停用」，Windows 服務復原就無法再啟動它</sys:String>
     <sys:String x:Key="M.Dash.StopRestartingTitle">不再讓 Windows 自動重新啟動這個服務？</sys:String>
-    <sys:String x:Key="M.Dash.StopRestartingBody">「{0}」的啟動類型將改為「已停用」。如此 Windows 服務復原就無法再啟動它，包括已在等待的那次重新啟動；正在進行的啟動會被停止。目前的啟動類型是 {1}，之後可用「還原啟動類型」改回來。「套用設定」也會依設定檔重新設定啟動類型。</sys:String>
+    <sys:String x:Key="M.Dash.StopRestartingBody">「{0}」的啟動類型將改為「已停用」。如此 Windows 服務復原就無法再啟動它，包括已在等待的那次重新啟動；正在進行的啟動不會被中斷。目前的啟動類型是 {1}，之後可用「還原啟動類型」改回來。「套用設定」也會依設定檔重新設定啟動類型。</sys:String>
     <sys:String x:Key="M.Dash.RestartingStopped">「{0}」已停用，Windows 服務復原不會再啟動它。</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartType">還原啟動類型（{0}）</sys:String>
     <sys:String x:Key="M.Dash.RestoreStartTypeTip">將啟動類型改回「停止自動重新啟動」之前的設定，不會啟動服務。</sys:String>
@@ -434,7 +434,7 @@
     <sys:String x:Key="M.LastStop.NoConfig">此服務沒有設定檔，找不到它的記錄檔。</sys:String>
     <sys:String x:Key="M.LastStop.ConfigUnreadable">無法讀取設定檔，找不到它的記錄檔：{0}</sys:String>
     <sys:String x:Key="M.LastStop.ProgramExitCode">程式結束碼</sys:String>
-    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">程式本身的結束碼，取自包裝器記錄檔。「上次結束碼」是 Windows 為服務記錄的結束碼，只要是程式自行結束，就是 1067。</sys:String>
+    <sys:String x:Key="M.LastStop.ProgramExitCodeTip">程式本身的結束碼，取自包裝器記錄檔。「上次結束碼」是 Windows 為服務記錄的結束碼：程式自行結束時，結束碼不為 0 就一律記為 1067，為 0 則記為 0。</sys:String>
     <sys:String x:Key="M.LastStop.SystemLog">系統記錄檔</sys:String>
     <sys:String x:Key="M.LastStop.EventTitle">{0} · 事件 {1}</sys:String>
     <sys:String x:Key="M.LastStop.NoEvent">自上次啟動以來，Windows 沒有記錄此服務發生錯誤。</sys:String>

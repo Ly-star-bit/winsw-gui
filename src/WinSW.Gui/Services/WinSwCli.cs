@@ -310,24 +310,19 @@ namespace WinSW.Gui.Services
             RunElevatedAsync("schtasks.exe", $"/Delete /TN {Quote(taskPath)} /F", null, QuickTimeout, "schtasks");
 
         /// <summary>
-        /// Sets a service's start type with sc.exe, with administrator rights, and first asks it to
-        /// stop when <paramref name="stopFirst"/> is set. The wrapper has no command for a start type
-        /// on its own: <c>refresh</c> sets every setting from the file, which is not what is wanted
-        /// when the point is to keep the service from being started again.
+        /// Sets a service's start type with sc.exe, with administrator rights. The wrapper has no
+        /// command for a start type on its own: <c>refresh</c> sets every setting from the file,
+        /// which is not what is wanted when the point is to keep the service from being started
+        /// again. Nothing is stopped: a service halfway through a start cannot be, since the service
+        /// control manager refuses a stop until the start is over.
         /// </summary>
         /// <param name="serviceName">The service, by the name the service control manager knows it by.</param>
         /// <param name="startType">
         /// The word sc.exe takes: <c>disabled</c>, <c>auto</c>, <c>delayed-auto</c> or <c>demand</c>.
         /// </param>
-        /// <param name="stopFirst">
-        /// Stop it first, for a service caught halfway through a start. Whether the stop is accepted
-        /// is not what is reported: a service still starting may refuse it, and the start type is
-        /// what keeps Windows from starting it again after that. The exit code is sc.exe's for the
-        /// start type.
-        /// </param>
-        public static Task<CommandResult> SetStartTypeAsync(string serviceName, string startType, bool stopFirst)
+        public static Task<CommandResult> SetStartTypeAsync(string serviceName, string startType)
         {
-            if (StartTypeSteps(serviceName, startType, stopFirst) is not { } steps)
+            if (StartTypeSteps(serviceName, startType) is not { } steps)
             {
                 return Task.FromResult(CommandResult.Failed(Localizer.Format("M.Cli.NameNotUsable", serviceName)));
             }
@@ -336,12 +331,12 @@ namespace WinSW.Gui.Services
         }
 
         /// <summary>
-        /// The steps <see cref="SetStartTypeAsync"/> chains, or null when it refuses them: a start
-        /// type other than the four, or a name cmd would read something into. Quoting keeps
+        /// The script <see cref="SetStartTypeAsync"/> runs, one step, or null when it refuses it: a
+        /// start type other than the four, or a name cmd would read something into. Quoting keeps
         /// <c>&amp;</c> and the like inert, but not <c>%</c> or a quote of its own, and a service name
         /// has no need of either.
         /// </summary>
-        internal static IReadOnlyList<string>? StartTypeSteps(string serviceName, string startType, bool stopFirst)
+        internal static IReadOnlyList<string>? StartTypeSteps(string serviceName, string startType)
         {
             if (startType is not ("disabled" or "auto" or "delayed-auto" or "demand")
                 || string.IsNullOrWhiteSpace(serviceName)
@@ -350,16 +345,9 @@ namespace WinSW.Gui.Services
                 return null;
             }
 
-            var steps = new List<string>(2);
-            if (stopFirst)
-            {
-                steps.Add($"sc.exe stop {Quote(serviceName)} >nul 2>&1");
-            }
-
-            // Last, so that its exit code is the script's. The space after "start=" is sc.exe's
-            // syntax, not a slip: without it the option is not recognised.
-            steps.Add($"sc.exe config {Quote(serviceName)} start= {startType}");
-            return steps;
+            // The space after "start=" is sc.exe's syntax, not a slip: without it the option is
+            // not recognised.
+            return new[] { $"sc.exe config {Quote(serviceName)} start= {startType}" };
         }
 
         /// <summary>

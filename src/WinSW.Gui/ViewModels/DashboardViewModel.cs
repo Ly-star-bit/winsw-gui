@@ -804,28 +804,26 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
-        /// Disables the service, stopping it first if it is halfway through a start, and remembers
-        /// the start type it had. Disabled rather than any gentler setting because it is the one
-        /// Windows' recovery cannot get past: a restart it has already scheduled fails, and so does
-        /// every one after it, whatever the failure actions say.
+        /// Disables the service and remembers the start type it had. Disabled rather than any
+        /// gentler setting because it is the one Windows' recovery cannot get past: a restart it has
+        /// already scheduled fails, and so does every one after it, whatever the failure actions say.
         /// </summary>
         private async Task StopRestartingAsync(ServiceEntry entry)
         {
-            // Read when the answer was given, not when the question was asked: in a restart loop
-            // the service may be starting now, and a start under way is not undone by the start
-            // type — only the next one is refused. Running, it is left to run; it is the next
-            // failure that will not be answered.
-            bool stopFirst = entry.Status is ServiceControllerStatus.StartPending or ServiceControllerStatus.ContinuePending;
+            // Nothing is stopped. A start under way is not undone by the start type, only the next
+            // one is refused, and it cannot be stopped either: the service control manager refuses
+            // a stop to a service still starting. Running, it is left to run; it is the next
+            // failure that will not be answered, and Stop is there if it should not run at all.
             string? previous = RememberedStartTypes.TokenFor(entry.StartType, entry.DelayedAutoStart);
 
-            // Held like any command on the service until the states are read back, so that a stop
-            // it causes is not taken for a crash, and nothing else is started on it meanwhile.
-            var held = this.inFlight.Begin(stopFirst ? OperationsInFlight.NamesFor("stop", entry, this.Services) : new[] { entry.ServiceName });
+            // Held like any command on the service until the states are read back, so that nothing
+            // else is started on it meanwhile.
+            var held = this.inFlight.Begin(new[] { entry.ServiceName });
             this.BeginBusy();
             try
             {
-                var result = await WinSwCli.SetStartTypeAsync(entry.ServiceName, "disabled", stopFirst).ConfigureAwait(true);
-                ActionLog.Record(stopFirst ? "stop restarting (stop, start= disabled)" : "stop restarting (start= disabled)", entry.ServiceName, result);
+                var result = await WinSwCli.SetStartTypeAsync(entry.ServiceName, "disabled").ConfigureAwait(true);
+                ActionLog.Record("stop restarting (start= disabled)", entry.ServiceName, result);
 
                 // Only what it was before this console disabled it. Already disabled, it has nothing
                 // of its own to go back to, and what was remembered the first time is kept.
@@ -870,7 +868,7 @@ namespace WinSW.Gui.ViewModels
             this.BeginBusy();
             try
             {
-                var result = await WinSwCli.SetStartTypeAsync(entry.ServiceName, token, stopFirst: false).ConfigureAwait(true);
+                var result = await WinSwCli.SetStartTypeAsync(entry.ServiceName, token).ConfigureAwait(true);
                 ActionLog.Record("restore start type (start= " + token + ")", entry.ServiceName, result);
 
                 string restored = RememberedStartTypes.StartTypeOf(token) is { } type

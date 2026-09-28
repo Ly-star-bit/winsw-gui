@@ -79,6 +79,33 @@ namespace WinSW.Gui.Views
             }
         }
 
+        // The Last stop card's log boxes scroll on their own, and a TextBox takes every turn of the
+        // wheel over it, even with nothing left to scroll, so the panel around it would not move
+        // until the pointer left the box. A turn the box has no use for goes to the panel instead:
+        // raised on the panel's ScrollViewer itself, since raised on the box it would be taken again.
+        private void OnLogBoxPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (e.Handled || sender is not TextBox box)
+            {
+                return;
+            }
+
+            bool atEnd = e.Delta > 0
+                ? box.VerticalOffset <= 0.5
+                : box.VerticalOffset + box.ViewportHeight >= box.ExtentHeight - 0.5;
+            if (!atEnd)
+            {
+                return;
+            }
+
+            e.Handled = true;
+            this.DetailScroll.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+            {
+                RoutedEvent = UIElement.MouseWheelEvent,
+                Source = box,
+            });
+        }
+
         // A ContextMenu is not in the visual tree, so it does not inherit the DataContext.
         private void OnMoreClick(object sender, RoutedEventArgs e)
         {
