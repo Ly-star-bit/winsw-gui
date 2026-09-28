@@ -337,6 +337,7 @@
     <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}：桌面工作「{1}」已恢復執行，之後沒有再停止。</sys:String>
     <sys:String x:Key="M.Task.Alerts">意外停止時通知</sys:String>
     <sys:String x:Key="M.Task.AlertsTip">跳出系統匣通知；設定頁填了 webhook 時，同時推送到群組。在設定頁關閉通知後，這裡也不再通知。程式以結束代碼 0 正常結束的不算。</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkTooOld">注意：本機的 .NET Framework 是 {0}，而內建的包裝器是 .NET Framework 版本，需要 4.6.2 或更新版本，升級後服務會無法啟動。請先安裝 .NET Framework 4.8（離線安裝程式 {1}），重新啟動伺服器後再升級。</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">等待自動重新啟動</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">失敗後</sys:String>

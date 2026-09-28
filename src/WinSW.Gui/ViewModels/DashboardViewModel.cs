@@ -1964,14 +1964,12 @@ namespace WinSW.Gui.ViewModels
                     string.Join(", ", group.Where(e => !ReferenceEquals(e, entry)).Select(e => e.ServiceName))));
             }
 
-            // The bundled wrapper is the .NET Framework build. A service currently hosted by
-            // a self-contained one would gain that dependency. The name compared against is
-            // upstream's, which is how ReleaseAssetFor reports a framework build.
-            //
-            // .NET Framework 4.6.2 or later, since the wrapper moved to net462.
-            if (WrapperKind.ReleaseAssetFor(entry.WrapperPath) is { } asset && asset != "WinSW-net461.exe")
+            // The bundled wrapper is the .NET Framework build, which needs 4.6.2 or later since
+            // the wrapper moved to net462. Said as what this machine has when that is too old,
+            // which would leave the service unable to start; see UpgradeFramework.
+            if (UpgradeFramework.Note(WrapperKind.ReleaseAssetFor(entry.WrapperPath), NetFramework.Installed, Localizer.Format) is { } frameworkNote)
             {
-                warnings.Add(Localizer.Get("M.Dash.UpgradeFrameworkBuild"));
+                warnings.Add(frameworkNote);
             }
 
             string body = Localizer.Format("M.Dash.UpgradeBody", entry.ServiceName, entry.WrapperVersion, bundled);

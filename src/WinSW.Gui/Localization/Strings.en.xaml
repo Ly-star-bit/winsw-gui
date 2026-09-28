@@ -348,6 +348,7 @@
     <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}: desktop task '{1}' is running again and has not stopped since.</sys:String>
     <sys:String x:Key="M.Task.Alerts">Notify when it stops unexpectedly</sys:String>
     <sys:String x:Key="M.Task.AlertsTip">A tray notification, and a message to the group chat when a webhook is set on the Settings page, where notifications can also be turned off altogether. An exit with code 0 is not reported.</sys:String>
+    <sys:String x:Key="M.Dash.UpgradeFrameworkTooOld">Warning: this machine has .NET Framework {0}. The bundled wrapper is the .NET Framework build and needs 4.6.2 or later, so after the upgrade the service would fail to start. Install .NET Framework 4.8 first (offline installer {1}), restart the server, then upgrade.</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">Restarting (recovery)</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">On failure</sys:String>
