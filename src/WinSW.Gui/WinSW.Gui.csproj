@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
 
     <LangVersion>latest</LangVersion>
@@ -74,7 +74,7 @@
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
 
     <!-- Not in either shared framework, so a package that tracks the target framework's major. -->
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.0" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
 
     <!--
       The desktop runtime has System.Diagnostics.EventLog already, and its copy is the one
@@ -84,7 +84,7 @@
       a reader formats each entry from the message file its own source registered. The
       package is named here only to leave its runtime files out.
     -->
-    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.0" ExcludeAssets="runtime" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="10.0.12" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <!--

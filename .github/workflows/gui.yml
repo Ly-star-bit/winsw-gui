@@ -53,14 +53,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      # 8.0.x builds the console; 7.0.x is kept for the wrapper, whose project still lists a
+      # 10.0.x builds the console; 7.0.x is kept for the wrapper, whose project still lists a
       # net7.0-windows target alongside the net462 one this workflow actually builds.
       - name: Install .NET
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
             7.0.x
-            8.0.x
+            10.0.x
 
       # Neither workflow cached anything, so every run restored every package from
       # nuget.org. There are no packages.lock.json files here, so setup-dotnet's own
@@ -149,7 +149,7 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }} -p:InformationalVersion=${{ steps.version.outputs.full }}
           -o ../artifacts/gui/win-x64
 
-      # For a machine that already has the .NET 8 Desktop Runtime. A server seldom does — the
+      # For a machine that already has the .NET 10 Desktop Runtime. A server seldom does — the
       # ASP.NET Core Hosting Bundle does not carry it — so the release body points servers to
       # the self-contained build above. Skipped on a pull request, where nobody downloads it;
       # a push to main still produces every artifact.
@@ -252,15 +252,14 @@ jobs:
             | --- | --- | --- |
             | `WinSW.Gui-win-x64.exe` | ~69 MB | nothing — the runtime rides along |
             | `WinSW.Gui-win-arm64.exe` | ~65 MB | nothing — the runtime rides along |
-            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) (x64) |
+            | `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) |
 
             **On a server, use `WinSW.Gui-win-x64.exe`.** The framework-dependent build needs the
-            .NET 8 *Desktop* Runtime, which a server seldom has: the ASP.NET Core Hosting Bundle
+            .NET 10 *Desktop* Runtime, which a server seldom has: the ASP.NET Core Hosting Bundle
             does not include it, and neither does the plain .NET Runtime. Without it the console
             never opens; .NET shows an English dialog asking for the runtime instead, whose
             download link Internet Explorer's Enhanced Security Configuration blocks on a server.
-            .NET 8 support ends on 10 November 2026: after that date the Desktop Runtime gets no
-            more fixes, security fixes included.
+            The console is built on .NET 10, an LTS release supported until 14 November 2028.
 
             WinSW itself is carried inside the console, so the new-service wizard installs a
             service on a machine with no network and no WinSW.exe to hand.

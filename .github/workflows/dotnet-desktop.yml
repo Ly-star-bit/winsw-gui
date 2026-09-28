@@ -39,14 +39,14 @@ jobs:
       with:
         fetch-depth: 0
 
-    # 7.0 for the wrapper, 8.0 for the graphical console; the solution holds both, and
+    # 7.0 for the wrapper, 10.0 for the graphical console; the solution holds both, and
     # 'dotnet test' below builds all of it.
     - name: Install .NET
       uses: actions/setup-dotnet@v5
       with:
         dotnet-version: |
           7.0.x
-          8.0.x
+          10.0.x
 
     # Every run restored every package from nuget.org, twice over because of the
     # Debug/Release matrix. There are no packages.lock.json files here, so the key is a

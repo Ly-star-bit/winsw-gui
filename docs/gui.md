@@ -249,20 +249,22 @@ Each release carries three builds of the same console:
 | --- | --- | --- |
 | `WinSW.Gui-win-x64.exe` | ~69 MB | nothing — the .NET runtime is inside |
 | `WinSW.Gui-win-arm64.exe` | ~65 MB | nothing — the .NET runtime is inside |
-| `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the .NET 8 Desktop Runtime (x64) |
+| `WinSW.Gui-win-x64-framework-dependent.exe` | ~8 MB | the .NET 10 Desktop Runtime (x64) |
 
 **On a server, use `WinSW.Gui-win-x64.exe`.** The framework-dependent build starts only where
-the .NET 8 *Desktop* Runtime is installed, and a server seldom has it: the ASP.NET Core Hosting
+the .NET 10 *Desktop* Runtime is installed, and a server seldom has it: the ASP.NET Core Hosting
 Bundle installed for IIS does not include it, and neither does the plain .NET Runtime. Without
 it the console never opens. .NET shows an English dialog asking for the runtime instead, and
 its download link opens in Internet Explorer, whose Enhanced Security Configuration on a
 server blocks the download. The framework-dependent build is for a machine that already has
 the Desktop Runtime and keeps it patched.
 
-The console is built on .NET 8, whose support ends on **10 November 2026**: after that date
-Microsoft publishes no more fixes for it, security fixes included. A self-contained executable
-carries the .NET 8 runtime as it was patched when its release was built; the framework-dependent
-one runs on whichever .NET 8 Desktop Runtime the machine has.
+The console is built on .NET 10, an LTS release supported until **14 November 2028**. Earlier
+releases were built on .NET 8, whose support ends on 10 November 2026, after which Microsoft
+publishes no more fixes for it, security fixes included; their framework-dependent build needs the
+.NET 8 Desktop Runtime. A self-contained executable carries the runtime as it was patched when its
+release was built; the framework-dependent one runs on whichever .NET 10 Desktop Runtime the
+machine has.
 
 *Update now* keeps a console to its own kind. To move from the framework-dependent build to the
 self-contained one, put `WinSW.Gui-win-x64.exe` where the console is to live and start it while
@@ -292,9 +294,9 @@ cd src
 dotnet test WinSW.Gui.Tests
 ```
 
-The project targets `net8.0-windows` — the LTS release, and the one whose WPF carries a
-native folder picker — and lives in the main solution. .NET 8 support ends on 10 November
-2026; moving to `net10.0-windows` (supported until November 2028) is the planned next step.
+The project targets `net10.0-windows` — the LTS release, supported until 14 November 2028;
+WPF has carried a native folder picker since .NET 8 — and lives in the main solution. Building
+it needs the .NET 10 SDK.
 The wrapper it embeds is built from `WinSW.csproj` first; see the workflow.
 
 ```powershell
@@ -309,7 +311,7 @@ To produce one self-contained executable:
 dotnet publish WinSW.Gui -c Release -r win-x64 --self-contained -p:PublishSingleFile=true
 ```
 
-The result lands under `artifacts\bin\WinSW.Gui\Release\net8.0-windows\win-x64\publish\`. CI also publishes a `win-arm64` build and a framework-dependent `win-x64` one; see *Which executable to download*.
+The result lands under `artifacts\bin\WinSW.Gui\Release\net10.0-windows\win-x64\publish\`. CI also publishes a `win-arm64` build and a framework-dependent `win-x64` one; see *Which executable to download*.
 
 ## How it finds services
 
