@@ -329,11 +329,11 @@
     <sys:String x:Key="M.Task.StopTitle">桌面工作意外停止</sys:String>
     <sys:String x:Key="M.Task.StopBody">「{0}」已停止執行（結束代碼 {1}）。</sys:String>
     <sys:String x:Key="M.Task.StopLoopTitle">桌面工作反覆意外停止</sys:String>
-    <sys:String x:Key="M.Task.StopLoopBody">「{0}」最近幾分鐘內意外停止了 {1} 次，工作排程器一直在重新拉起它。</sys:String>
+    <sys:String x:Key="M.Task.StopLoopBody">「{0}」最近幾分鐘內意外停止了 {1} 次，工作排程器一直在重新啟動它。</sys:String>
     <sys:String x:Key="M.Task.RecoveredTitle">桌面工作已恢復執行</sys:String>
     <sys:String x:Key="M.Task.RecoveredBody">「{0}」已恢復執行，之後沒有再停止。</sys:String>
     <sys:String x:Key="M.Alert.TaskStopped">[WinSW] {0}：桌面工作「{1}」意外停止（結束代碼 {2}）。</sys:String>
-    <sys:String x:Key="M.Alert.TaskStopLoop">[WinSW] {0}：桌面工作「{1}」最近幾分鐘內意外停止了 {3} 次，工作排程器一直在重新拉起它（最後一次結束代碼 {2}）。</sys:String>
+    <sys:String x:Key="M.Alert.TaskStopLoop">[WinSW] {0}：桌面工作「{1}」最近幾分鐘內意外停止了 {3} 次，工作排程器一直在重新啟動它（最後一次結束代碼 {2}）。</sys:String>
     <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}：桌面工作「{1}」已恢復執行，之後沒有再停止。</sys:String>
     <sys:String x:Key="M.Task.Alerts">意外停止時通知</sys:String>
     <sys:String x:Key="M.Task.AlertsTip">跳出系統匣通知；設定頁填了 webhook 時，同時推送到群組。在設定頁關閉通知後，這裡也不再通知。程式以結束代碼 0 正常結束的不算。</sys:String>
@@ -341,7 +341,7 @@
     <sys:String x:Key="M.LastStop.Environment">服務執行環境檢查</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">等待自動重新啟動</sys:String>
-    <sys:String x:Key="M.Dash.OnFailure">失敗後</sys:String>
+    <sys:String x:Key="M.Dash.OnFailure">失敗時</sys:String>
     <sys:String x:Key="M.Dash.RecoveryDiffers">與設定檔不一致，檔案中是：{0}。執行「套用設定」即依檔案設定。</sys:String>
     <sys:String x:Key="M.Dash.RecoveryRestarting">它因錯誤而停止，Windows 服務復原即將再次啟動它。只要一直失敗，就會一直被重新啟動。</sys:String>
     <sys:String x:Key="M.Dash.StopRestarting">停止自動重新啟動</sys:String>
@@ -363,7 +363,7 @@
     <sys:String x:Key="M.Dash.Recovery.Next">{0}，{1}</sys:String>
     <sys:String x:Key="M.Dash.Recovery.ThenEvery">此後每次 {0}</sys:String>
     <sys:String x:Key="M.Dash.Recovery.ThenNothing">此後不再處理</sys:String>
-    <sys:String x:Key="M.Dash.Recovery.Reset">{0}；{1}內無失敗則重設計數</sys:String>
+    <sys:String x:Key="M.Dash.Recovery.Reset">{0}；連續 {1}沒有失敗則重新計數</sys:String>
     <sys:String x:Key="M.Dash.Recovery.NeverReset">{0}；失敗計數永不重設</sys:String>
     <sys:String x:Key="M.Dash.Recovery.Milliseconds">{0} 毫秒</sys:String>
     <sys:String x:Key="M.Dash.Recovery.Seconds">{0} 秒</sys:String>
@@ -389,7 +389,7 @@
     <sys:String x:Key="M.Alert.BadUrl">「{0}」不是 http 或 https 位址。</sys:String>
     <sys:String x:Key="M.Alert.Stopped">[WinSW] {0}：服務「{1}」意外停止（結束代碼 {2}）。</sys:String>
     <sys:String x:Key="M.Alert.Test">[WinSW] {0}：來自 WinSW 主控台的測試訊息。</sys:String>
-    <sys:String x:Key="M.Alert.Last">最近一次告警：{0}，服務「{1}」——{2}</sys:String>
+    <sys:String x:Key="M.Alert.Last">最近一次告警：{0}，「{1}」——{2}</sys:String>
     <sys:String x:Key="M.Alert.LastSent">已傳送。</sys:String>
     <sys:String x:Key="M.Alert.LastNotSent">未傳送：{0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">（由無人登入告警推送）</sys:String>
@@ -409,7 +409,7 @@
     <sys:String x:Key="M.Alert.StartTimedOut">[WinSW] {0}：服務「{1}」未在 {2} 秒內回報啟動完成。</sys:String>
     <sys:String x:Key="M.Alert.EndedWithError">[WinSW] {0}：服務「{1}」因錯誤停止：{2}。</sys:String>
     <sys:String x:Key="M.Alert.EndedWithCode">[WinSW] {0}：服務「{1}」已停止，結束代碼 {2}。</sys:String>
-    <sys:String x:Key="M.Alert.Held">上一則訊息之後，此服務又發生 {0} 次故障，未逐則推送。</sys:String>
+    <sys:String x:Key="M.Alert.Held">上一則訊息之後，此服務又失敗了 {0} 次，未逐則推送。</sys:String>
     <sys:String x:Key="M.Log.Encoding">編碼</sys:String>
     <sys:String x:Key="M.Enc.Auto">自動</sys:String>
     <sys:String x:Key="M.Enc.Utf8">UTF-8</sys:String>
@@ -513,7 +513,7 @@
     <sys:String x:Key="M.Dash.StrayGone">那個處理程序已經結束了。</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">無法結束：{0}</sys:String>
     <!-- A leftover beside a running service: the banner and hint for a process an earlier run of the service left, found while the service runs or is stopping, and the questions before ending it or its parent. StrayEarlierRun: {0} {1} the process and its PID. StrayEarlierRunBody: {0} {1} the process, {2} the service. StrayEarlierRunParentBody: {0} {1} the parent, {2} {3} the process, {4} the service. -->
-    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）是先前某次執行遺留的，仍在執行，但不在服務之下。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）是先前某次執行遺留的，仍在執行，已脫離服務。</sys:String>
     <sys:String x:Key="M.Dash.StrayEarlierRunHint">服務之後又啟動過，這個遺留的處理程序和它同時在執行：兩邊可能爭用同一個連接埠和檔案，或者把同一件事做兩次。</sys:String>
     <sys:String x:Key="M.Dash.StrayEarlierRunBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序，不做正常關閉。服務「{2}」本身不受影響。</sys:String>
     <sys:String x:Key="M.Dash.StrayEarlierRunParentBody">將強制結束 {0}（PID {1}）及其啟動的所有處理程序（包括 {2}，PID {3}），不做正常關閉。服務「{4}」本身不受影響。</sys:String>
@@ -521,7 +521,7 @@
     <sys:String x:Key="M.Dash.Listening">監聽連接埠</sys:String>
     <sys:String x:Key="M.Dash.PortHeld">連接埠 {0} 被 {1}（PID {2}）佔用。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldBy">連接埠 {0} 被 {1}（PID {2}，由 {3} 啟動）佔用。</sys:String>
-    <sys:String x:Key="M.Dash.PortParent">{0}（PID {1}）仍在執行：如果 {2} 結束後又反覆出現，就是它在重新拉起。</sys:String>
+    <sys:String x:Key="M.Dash.PortParent">{0}（PID {1}）仍在執行：如果 {2} 結束後又反覆出現，就是它在重新啟動 {2}。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldBySystem">System 是在替 HTTP.sys 佔用連接埠（IIS，或使用 HttpListener 的程式），無法在這裡結束。執行 netsh http show servicestate 可查出是哪個程式；或替服務換一個連接埠。</sys:String>
     <sys:String x:Key="M.Dash.PortHeldByWindows">{0} 是 Windows 本身的處理程序，無法在這裡結束：請停止佔用這個連接埠的 Windows 服務，或替這個服務換一個連接埠。</sys:String>
     <!-- A port held by this console's own try run, which the editor stops rather than the banner ending it. PortHeldByTryRun: {0} the port, {1} {2} the process and its PID. -->
@@ -600,7 +600,7 @@
     <sys:String x:Key="M.Wiz.CloneLogFiles">副本會和「{0}」寫入同樣的記錄檔（在 {1}），兩個服務不能共用一個記錄檔。請在上一步換一個記錄目錄。</sys:String>
     <sys:String x:Key="M.Wiz.CloneRebased">「{0}」是透過自己的資料夾 {1} 找到檔案的。副本直接寫明這個資料夾，執行的仍是同一份檔案：{2}。程式寫到那裡的東西，兩個服務會共用。</sys:String>
     <sys:String x:Key="M.Wiz.RecoveryHintCopied">複製自「{0}」，每一步前的等待：{1}。一直失敗就一直重複最後一步；{2} 內沒再失敗，就從第一步重新算。改了延遲，就換成精靈自己的等待時間。</sys:String>
-    <sys:String x:Key="M.Wiz.RollPatternCopied">複製自「{0}」：日期格式 {1} 每進到下一段就換一個新檔案，不一定是每天。檔案多於這個數量時刪除最舊的；留白則全部保留。</sys:String>
+    <sys:String x:Key="M.Wiz.RollPatternCopied">複製自「{0}」：日期格式 {1} 的值每變一次就換一個新檔案（不一定按天）。檔案多於這個數量時刪除最舊的；留白則全部保留。</sys:String>
     <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">包裝器一結束（即使是當機或在工作管理員中被結束），Windows 就會結束這個服務啟動的所有處理程序，不會留下處理程序佔用連接埠。舊版包裝器會忽略這一項。</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">啟動類型是 Disabled，Windows 不會啟動已停用的服務，所以只安裝、不啟動。</sys:String>
     <sys:String x:Key="M.Port.InUse">連接埠 {0} 已被 {1}（PID {2}）佔用，程式在這個連接埠上監聽會失敗。請先結束該處理程序，或改用其他連接埠。</sys:String>
@@ -638,18 +638,18 @@
     <sys:String x:Key="M.Replace.Title">WinSW 主控台已在執行</sys:String>
     <sys:String x:Key="M.Replace.Started">剛啟動的：v{0}  {1}</sys:String>
     <sys:String x:Key="M.Replace.Running">正在執行的：v{0}  {1}</sys:String>
-    <sys:String x:Key="M.Replace.Ask">要切換到剛啟動的這個嗎？目前的主控台會關閉，由它接手；目前這個在系統匣中監看的話，它也一樣。登入啟動項目和「以 WinSW 開啟」右鍵選單若指向目前這個，會一併改為指向它。選「否」保留目前這個。</sys:String>
+    <sys:String x:Key="M.Replace.Ask">要切換到剛啟動的這個嗎？目前的主控台會關閉，由它接手；如果目前的主控台在系統匣中監看，新的主控台也會接著在系統匣中監看。登入啟動項目和「以 WinSW 開啟」右鍵選單若指向目前這個，會一併改為指向它。選「否」保留目前這個。</sys:String>
     <sys:String x:Key="M.Replace.OlderFound">已有一個主控台在執行，但它無法自行交接：它是舊版本，或是沒有回應。</sys:String>
     <sys:String x:Key="M.Replace.OlderAsk">要結束它，改用剛啟動的這個嗎？它裡面尚未儲存的變更會遺失。登入啟動項目和「以 WinSW 開啟」右鍵選單若指向舊的，會改為指向剛啟動的這個。選「否」保留正在執行的那個。</sys:String>
     <sys:String x:Key="M.Replace.EndTimeout">5 秒後它仍在執行</sys:String>
-    <sys:String x:Key="M.Replace.EndFailed">無法結束 {0} 的主控台：{1}</sys:String>
-    <sys:String x:Key="M.Replace.Next">接著切換到 v{0}（{1}）。接手的主控台只讀取磁碟上的內容。</sys:String>
+    <sys:String x:Key="M.Replace.EndFailed">無法結束位於 {0} 的主控台：{1}</sys:String>
+    <sys:String x:Key="M.Replace.Next">接著切換到 v{0}（{1}）。接手的主控台開啟的是磁碟上已儲存的內容。</sys:String>
     <sys:String x:Key="M.Replace.Failed">無法啟動 {0}：{1}</sys:String>
     <sys:String x:Key="M.Update.Now">立即更新</sys:String>
     <sys:String x:Key="M.Update.NowTip">從發布頁面下載與目前程式同類型的檔案，以發布附帶的 SHA256SUMS.txt 驗證，取代目前的程式後重新啟動。有尚未儲存的變更時會先詢問。</sys:String>
     <sys:String x:Key="M.Update.Downloading">正在下載 v{0}… {1}%</sys:String>
     <sys:String x:Key="M.Update.Ready">v{0} 已下載並通過驗證，按「立即更新」即可重新啟動為新版本。</sys:String>
-    <sys:String x:Key="M.Update.Next">接著重新啟動為 v{0}。更新後的主控台只讀取磁碟上的內容。</sys:String>
+    <sys:String x:Key="M.Update.Next">接著重新啟動為 v{0}。更新後的主控台開啟的是磁碟上已儲存的內容。</sys:String>
     <sys:String x:Key="M.Update.NotThisBuild">目前的程式不是發布頁面提供的檔案，無法自行更新。請使用發布頁面。</sys:String>
     <sys:String x:Key="M.Update.NoAsset">此發布沒有 {0}。請使用發布頁面。</sys:String>
     <sys:String x:Key="M.Update.NoChecksum">此發布的 {1} 中沒有 {0} 的檢查碼，因此不從這裡安裝。請使用發布頁面。</sys:String>
@@ -706,7 +706,7 @@
     <sys:String x:Key="M.Wiz.PyHintPath">.py 指令碼用系統 PATH 上的 Python 執行：服務會用 {0} 執行這個檔案，後面再接上面的參數。如果指令碼旁邊有虛擬環境（.venv 或 venv），會優先使用它。</sys:String>
     <sys:String x:Key="M.Wiz.PyHintMissing">.py 指令碼需要 Python 才能執行，但系統 PATH 上和指令碼旁邊的虛擬環境（.venv 或 venv）裡都沒有 python.exe。服務會直接執行 python，啟動會失敗：請先建立虛擬環境，或為所有使用者安裝 Python。</sys:String>
     <sys:String x:Key="M.Wiz.Environment">環境變數</sys:String>
-    <sys:String x:Key="M.Wiz.PythonEnvHint">Python 程式已預先填入兩項：PYTHONUNBUFFERED=1 讓 print 的輸出立即寫進日誌；PYTHONIOENCODING=utf-8 避免系統字碼頁容納不了的字元讓程式因 UnicodeEncodeError 當掉。</sys:String>
+    <sys:String x:Key="M.Wiz.PythonEnvHint">Python 程式已預先填入兩項：PYTHONUNBUFFERED=1 讓 print 的輸出立即寫進記錄檔；PYTHONIOENCODING=utf-8 避免系統字碼頁容納不了的字元讓程式因 UnicodeEncodeError 當掉。</sys:String>
     <sys:String x:Key="M.Wiz.WorkDirVenvScripts">工作目錄 {0} 是虛擬環境的 Scripts 資料夾，裡面只有啟動器。從這裡啟動，程式無法匯入自己的模組（uvicorn 會回報 Could not import module），服務會一再失敗、一再重新啟動。請改用專案資料夾：{1}</sys:String>
     <sys:String x:Key="M.Wiz.WorkDirScripts">工作目錄 {0} 是 Python 的 Scripts 資料夾，裡面只有啟動器。從這裡啟動，程式無法匯入自己的模組，服務會一再失敗、一再重新啟動。請改用存放程式碼的資料夾。</sys:String>
     <sys:String x:Key="M.Wiz.WorkDirVenv">工作目錄 {0} 是虛擬環境本身的資料夾，不是程式的資料夾。從這裡啟動，程式無法匯入自己的模組，也找不到要讀取的檔案。請改用專案資料夾：{1}</sys:String>
@@ -783,7 +783,7 @@
     <sys:String x:Key="M.Editor.Installed">「{0}」已安裝。</sys:String>
     <sys:String x:Key="M.Editor.InstalledStarted">「{0}」已安裝並啟動。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">服務安裝失敗。</sys:String>
-    <sys:String x:Key="M.Editor.TrialRunningTitle">試執行還在執行</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningTitle">試執行尚未結束</sys:String>
     <sys:String x:Key="M.Editor.TrialRunningBody">試執行（PID {0}）還在執行，會佔用同一個連接埠和檔案。先停止它再繼續？</sys:String>
     <sys:String x:Key="M.Editor.TrialRunningAction">停止並繼續</sys:String>
     <sys:String x:Key="M.Editor.TrialStopping">正在停止試執行（PID {0}）…</sys:String>
@@ -807,7 +807,7 @@
     <sys:String x:Key="M.Recovery.Nth">第 {0} 次：{1}</sys:String>
     <sys:String x:Key="M.Recovery.Then">之後每次：{0}</sys:String>
     <sys:String x:Key="M.Recovery.Join">{0}；{1}</sys:String>
-    <sys:String x:Key="M.Recovery.Reset">{0}無故障後重新計數</sys:String>
+    <sys:String x:Key="M.Recovery.Reset">連續 {0}沒有失敗則重新計數</sys:String>
     <sys:String x:Key="M.Recovery.End">{0}。</sys:String>
     <sys:String x:Key="M.Recovery.Restart">{0}後重新啟動</sys:String>
     <sys:String x:Key="M.Recovery.RestartNow">立即重新啟動</sys:String>
@@ -933,7 +933,7 @@
     <sys:String x:Key="M.Open.Next">接著開啟：{0}</sys:String>
     <sys:String x:Key="M.Open.Save">儲存並開啟</sys:String>
     <sys:String x:Key="M.Open.Discard">不儲存直接開啟</sys:String>
-    <sys:String x:Key="M.Restart.Next">接著以系統管理員身分重新啟動。重新啟動後的主控台只讀取磁碟上的內容。</sys:String>
+    <sys:String x:Key="M.Restart.Next">接著以系統管理員身分重新啟動。重新啟動後的主控台開啟的是磁碟上已儲存的內容。</sys:String>
     <sys:String x:Key="M.Restart.Save">儲存並重新啟動</sys:String>
     <sys:String x:Key="M.Restart.Discard">不儲存直接重新啟動</sys:String>
 

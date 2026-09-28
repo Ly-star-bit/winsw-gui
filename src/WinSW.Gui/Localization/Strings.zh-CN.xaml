@@ -341,7 +341,7 @@
     <sys:String x:Key="M.LastStop.Environment">服务运行环境检查</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">等待自动重启</sys:String>
-    <sys:String x:Key="M.Dash.OnFailure">失败后</sys:String>
+    <sys:String x:Key="M.Dash.OnFailure">失败时</sys:String>
     <sys:String x:Key="M.Dash.RecoveryDiffers">与配置文件不一致，文件中是：{0}。执行“应用配置”即按文件设置。</sys:String>
     <sys:String x:Key="M.Dash.RecoveryRestarting">它出错停止了，Windows 服务恢复即将再次启动它。只要一直失败，就会一直被重启。</sys:String>
     <sys:String x:Key="M.Dash.StopRestarting">停止自动重启</sys:String>
@@ -363,7 +363,7 @@
     <sys:String x:Key="M.Dash.Recovery.Next">{0}，{1}</sys:String>
     <sys:String x:Key="M.Dash.Recovery.ThenEvery">此后每次 {0}</sys:String>
     <sys:String x:Key="M.Dash.Recovery.ThenNothing">此后不再处理</sys:String>
-    <sys:String x:Key="M.Dash.Recovery.Reset">{0}；{1}无故障后重置</sys:String>
+    <sys:String x:Key="M.Dash.Recovery.Reset">{0}；连续 {1}没有失败则重新计数</sys:String>
     <sys:String x:Key="M.Dash.Recovery.NeverReset">{0}；失败次数永不重置</sys:String>
     <sys:String x:Key="M.Dash.Recovery.Milliseconds">{0} 毫秒</sys:String>
     <sys:String x:Key="M.Dash.Recovery.Seconds">{0} 秒</sys:String>
@@ -389,7 +389,7 @@
     <sys:String x:Key="M.Alert.BadUrl">“{0}”不是 http 或 https 地址。</sys:String>
     <sys:String x:Key="M.Alert.Stopped">[WinSW] {0}：服务“{1}”意外停止（退出码 {2}）。</sys:String>
     <sys:String x:Key="M.Alert.Test">[WinSW] {0}：来自 WinSW 控制台的测试消息。</sys:String>
-    <sys:String x:Key="M.Alert.Last">最近一次告警：{0}，服务“{1}”——{2}</sys:String>
+    <sys:String x:Key="M.Alert.Last">最近一次告警：{0}，“{1}”——{2}</sys:String>
     <sys:String x:Key="M.Alert.LastSent">已发送。</sys:String>
     <sys:String x:Key="M.Alert.LastNotSent">未发送：{0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">（由无人登录告警推送）</sys:String>
@@ -409,7 +409,7 @@
     <sys:String x:Key="M.Alert.StartTimedOut">[WinSW] {0}：服务“{1}”在 {2} 秒内没有报告启动完成。</sys:String>
     <sys:String x:Key="M.Alert.EndedWithError">[WinSW] {0}：服务“{1}”因错误停止：{2}。</sys:String>
     <sys:String x:Key="M.Alert.EndedWithCode">[WinSW] {0}：服务“{1}”已停止，退出码 {2}。</sys:String>
-    <sys:String x:Key="M.Alert.Held">上一条消息之后，这个服务又出了 {0} 次故障，未逐条推送。</sys:String>
+    <sys:String x:Key="M.Alert.Held">上一条消息之后，这个服务又失败了 {0} 次，未逐条推送。</sys:String>
     <sys:String x:Key="M.Log.Encoding">编码</sys:String>
     <sys:String x:Key="M.Enc.Auto">自动</sys:String>
     <sys:String x:Key="M.Enc.Utf8">UTF-8</sys:String>
@@ -513,7 +513,7 @@
     <sys:String x:Key="M.Dash.StrayGone">那个进程已经退出了。</sys:String>
     <sys:String x:Key="M.Dash.StrayFailed">无法结束：{0}</sys:String>
     <!-- A leftover beside a running service: the banner and hint for a process an earlier run of the service left, found while the service runs or is stopping, and the questions before ending it or its parent. StrayEarlierRun: {0} {1} the process and its PID. StrayEarlierRunBody: {0} {1} the process, {2} the service. StrayEarlierRunParentBody: {0} {1} the parent, {2} {3} the process, {4} the service. -->
-    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）是之前某次运行遗留的，仍在运行，但不在服务之下。</sys:String>
+    <sys:String x:Key="M.Dash.StrayEarlierRun">{0}（PID {1}）是之前某次运行遗留的，仍在运行，已脱离服务。</sys:String>
     <sys:String x:Key="M.Dash.StrayEarlierRunHint">服务之后又启动过，这个遗留进程和它同时在跑：两边可能争用同一个端口和文件，或者把同一件事做两遍。</sys:String>
     <sys:String x:Key="M.Dash.StrayEarlierRunBody">将强制结束 {0}（PID {1}）及其启动的所有进程，不做正常关闭。服务“{2}”本身不受影响。</sys:String>
     <sys:String x:Key="M.Dash.StrayEarlierRunParentBody">将强制结束 {0}（PID {1}）及其启动的所有进程（包括 {2}，PID {3}），不做正常关闭。服务“{4}”本身不受影响。</sys:String>
@@ -600,7 +600,7 @@
     <sys:String x:Key="M.Wiz.CloneLogFiles">副本会和“{0}”写同样的日志文件（在 {1}），两个服务不能共用一个日志文件。请在上一步换一个日志目录。</sys:String>
     <sys:String x:Key="M.Wiz.CloneRebased">“{0}”是按自己的文件夹 {1} 找文件的。副本直接写明了这个文件夹，运行的还是同一份文件：{2}。程序往那里写的东西，两个服务会共用。</sys:String>
     <sys:String x:Key="M.Wiz.RecoveryHintCopied">复制自“{0}”，每一步前的等待：{1}。一直失败就一直重复最后一步；{2} 内没再失败，就从第一步重新算。改了延迟，就换成向导自己的等待时间。</sys:String>
-    <sys:String x:Key="M.Wiz.RollPatternCopied">复制自“{0}”：日期格式 {1} 每进到下一段就换一个新文件，不一定是每天。文件多于这个数时删掉最旧的；留空则全部保留。</sys:String>
+    <sys:String x:Key="M.Wiz.RollPatternCopied">复制自“{0}”：日期格式 {1} 的值每变一次就换一个新文件（不一定按天）。文件多于这个数时删掉最旧的；留空则全部保留。</sys:String>
     <sys:String x:Key="M.Wiz.EndProcessesWithWrapper">包装器一退出（哪怕是崩溃或在任务管理器里被结束），Windows 就会结束这个服务启动的所有进程，不会留下进程占着端口。旧版包装器会忽略这一项。</sys:String>
     <sys:String x:Key="M.Wiz.DisabledNotStarted">启动类型是 Disabled，Windows 不会启动被禁用的服务，所以只安装、不启动。</sys:String>
     <sys:String x:Key="M.Port.InUse">端口 {0} 已被 {1}（PID {2}）占用，程序在这个端口上监听会失败。先结束这个进程，或者换一个端口。</sys:String>
@@ -638,18 +638,18 @@
     <sys:String x:Key="M.Replace.Title">WinSW 控制台已在运行</sys:String>
     <sys:String x:Key="M.Replace.Started">刚启动的：v{0}  {1}</sys:String>
     <sys:String x:Key="M.Replace.Running">正在运行的：v{0}  {1}</sys:String>
-    <sys:String x:Key="M.Replace.Ask">切换到刚启动的这个吗？当前控制台会关闭，由它接替；当前这个在托盘里监视的话，它也一样。登录启动项和“用 WinSW 打开”右键菜单如果指向当前这个，会一并改指向它。选“否”保留当前这个。</sys:String>
+    <sys:String x:Key="M.Replace.Ask">切换到刚启动的这个吗？当前控制台会关闭，由它接替；如果当前控制台在托盘中监视，新控制台也会接着在托盘中监视。登录启动项和“用 WinSW 打开”右键菜单如果指向当前这个，会一并改指向它。选“否”保留当前这个。</sys:String>
     <sys:String x:Key="M.Replace.OlderFound">已有一个控制台在运行，但它没法自己交接：它是旧版本，或者没有响应。</sys:String>
     <sys:String x:Key="M.Replace.OlderAsk">结束它，改用刚启动的这个吗？它里面没保存的修改会丢失。登录启动项和“用 WinSW 打开”右键菜单如果指向旧的，会改指向刚启动的这个。选“否”保留正在运行的那个。</sys:String>
     <sys:String x:Key="M.Replace.EndTimeout">5 秒后它仍在运行</sys:String>
-    <sys:String x:Key="M.Replace.EndFailed">无法结束 {0} 的控制台：{1}</sys:String>
-    <sys:String x:Key="M.Replace.Next">接着切换到 v{0}（{1}）。接替的控制台只读取磁盘上的内容。</sys:String>
+    <sys:String x:Key="M.Replace.EndFailed">无法结束位于 {0} 的控制台：{1}</sys:String>
+    <sys:String x:Key="M.Replace.Next">接着切换到 v{0}（{1}）。接替的控制台打开的是磁盘上已保存的内容。</sys:String>
     <sys:String x:Key="M.Replace.Failed">无法启动 {0}：{1}</sys:String>
     <sys:String x:Key="M.Update.Now">立即更新</sys:String>
     <sys:String x:Key="M.Update.NowTip">从发布页下载与当前程序同类型的文件，用发布附带的 SHA256SUMS.txt 校验，替换当前程序后重启。有未保存的修改会先询问。</sys:String>
     <sys:String x:Key="M.Update.Downloading">正在下载 v{0}… {1}%</sys:String>
     <sys:String x:Key="M.Update.Ready">v{0} 已下载并校验通过，点“立即更新”即可重启到新版本。</sys:String>
-    <sys:String x:Key="M.Update.Next">接着重启到 v{0}。更新后的控制台只读取磁盘上的内容。</sys:String>
+    <sys:String x:Key="M.Update.Next">接着重启到 v{0}。更新后的控制台打开的是磁盘上已保存的内容。</sys:String>
     <sys:String x:Key="M.Update.NotThisBuild">当前程序不是发布页提供的文件，无法自行更新。请用发布页。</sys:String>
     <sys:String x:Key="M.Update.NoAsset">该发布里没有 {0}。请用发布页。</sys:String>
     <sys:String x:Key="M.Update.NoChecksum">该发布的 {1} 里没有 {0} 的校验值，不从这里安装。请用发布页。</sys:String>
@@ -783,7 +783,7 @@
     <sys:String x:Key="M.Editor.Installed">“{0}”已安装。</sys:String>
     <sys:String x:Key="M.Editor.InstalledStarted">“{0}”已安装并启动。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">服务安装失败。</sys:String>
-    <sys:String x:Key="M.Editor.TrialRunningTitle">试运行还在运行</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningTitle">试运行尚未结束</sys:String>
     <sys:String x:Key="M.Editor.TrialRunningBody">试运行（PID {0}）还在运行，会占用同一个端口和文件。先停止它再继续？</sys:String>
     <sys:String x:Key="M.Editor.TrialRunningAction">停止并继续</sys:String>
     <sys:String x:Key="M.Editor.TrialStopping">正在停止试运行（PID {0}）…</sys:String>
@@ -807,7 +807,7 @@
     <sys:String x:Key="M.Recovery.Nth">第 {0} 次：{1}</sys:String>
     <sys:String x:Key="M.Recovery.Then">之后每次：{0}</sys:String>
     <sys:String x:Key="M.Recovery.Join">{0}；{1}</sys:String>
-    <sys:String x:Key="M.Recovery.Reset">{0}无故障后重新计数</sys:String>
+    <sys:String x:Key="M.Recovery.Reset">连续 {0}没有失败则重新计数</sys:String>
     <sys:String x:Key="M.Recovery.End">{0}。</sys:String>
     <sys:String x:Key="M.Recovery.Restart">{0}后重启</sys:String>
     <sys:String x:Key="M.Recovery.RestartNow">立即重启</sys:String>
@@ -933,7 +933,7 @@
     <sys:String x:Key="M.Open.Next">接着打开：{0}</sys:String>
     <sys:String x:Key="M.Open.Save">保存并打开</sys:String>
     <sys:String x:Key="M.Open.Discard">不保存直接打开</sys:String>
-    <sys:String x:Key="M.Restart.Next">接着以管理员身份重新启动。重启后的控制台只读取磁盘上的内容。</sys:String>
+    <sys:String x:Key="M.Restart.Next">接着以管理员身份重新启动。重启后的控制台打开的是磁盘上已保存的内容。</sys:String>
     <sys:String x:Key="M.Restart.Save">保存并重启</sys:String>
     <sys:String x:Key="M.Restart.Discard">不保存直接重启</sys:String>
 

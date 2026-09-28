@@ -301,7 +301,7 @@ namespace WinSW.Gui.Tests
         [Fact]
         public void ASteppedRecoveryReadsAsItsStepsAndSaysTheLastRepeats()
         {
-            Assert.Equal("10 秒后重启，1 分钟后重启，此后每次 5 分钟后重启；1 小时无故障后重置", Stepped.Describe(Format("zh-CN")));
+            Assert.Equal("10 秒后重启，1 分钟后重启，此后每次 5 分钟后重启；连续 1 小时没有失败则重新计数", Stepped.Describe(Format("zh-CN")));
             Assert.Equal(
                 "restart after 10 s, restart after 1 min, then restart after 5 min every time; the count starts over after 1 h without a failure",
                 Stepped.Describe(Format("en")));
@@ -326,7 +326,7 @@ namespace WinSW.Gui.Tests
         {
             var twice = Settings(TimeSpan.FromDays(1), Restart(10), Restart(60), new RecoveryAction(RecoveryActionKind.None, TimeSpan.Zero));
 
-            Assert.Equal("10 秒后重启，1 分钟后重启，此后不再处理；1 天无故障后重置", twice.Describe(Format("zh-CN")));
+            Assert.Equal("10 秒后重启，1 分钟后重启，此后不再处理；连续 1 天没有失败则重新计数", twice.Describe(Format("zh-CN")));
         }
 
         [Fact]

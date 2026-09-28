@@ -338,7 +338,7 @@ namespace WinSW.Gui.Tests
             var finding = new StrayFinding(Mark(4312, 1, "python.exe"), null, EarlierRun: true);
 
             var zh = finding.Describe("api", FormatIn("zh-CN"));
-            Assert.Equal("python.exe（PID 4312）是之前某次运行遗留的，仍在运行，但不在服务之下。", zh.Banner);
+            Assert.Equal("python.exe（PID 4312）是之前某次运行遗留的，仍在运行，已脱离服务。", zh.Banner);
             Assert.Contains("同时在跑", zh.Hint, StringComparison.Ordinal);
 
             var en = finding.Describe("api", FormatIn("en"));

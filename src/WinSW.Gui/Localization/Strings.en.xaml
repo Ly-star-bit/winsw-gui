@@ -400,7 +400,7 @@
     <sys:String x:Key="M.Alert.BadUrl">'{0}' is not an http or https address.</sys:String>
     <sys:String x:Key="M.Alert.Stopped">[WinSW] {0}: service '{1}' stopped unexpectedly (exit code {2}).</sys:String>
     <sys:String x:Key="M.Alert.Test">[WinSW] {0}: test message from the WinSW console.</sys:String>
-    <sys:String x:Key="M.Alert.Last">Last alert: {0}, service '{1}' — {2}</sys:String>
+    <sys:String x:Key="M.Alert.Last">Last alert: {0}, '{1}' — {2}</sys:String>
     <sys:String x:Key="M.Alert.LastSent">sent.</sys:String>
     <sys:String x:Key="M.Alert.LastNotSent">not sent: {0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">(posted by the unattended alert)</sys:String>

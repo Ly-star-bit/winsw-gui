@@ -31,7 +31,7 @@ namespace WinSW.Gui.Tests
             var plan = PlanResettingAfter("1 hour", ("restart", "10 sec"), ("restart", "1 min"), ("restart", "5 min"));
 
             Assert.Equal(
-                "第 1 次失败：10 秒后重启；第 2 次：1 分钟后重启；之后每次：5 分钟后重启；1 小时无故障后重新计数。",
+                "第 1 次失败：10 秒后重启；第 2 次：1 分钟后重启；之后每次：5 分钟后重启；连续 1 小时没有失败则重新计数。",
                 plan.Describe(Text("zh-CN")));
             Assert.Equal(
                 "Failure 1: restart after 10 seconds; failure 2: restart after 1 minute; every failure after that: restart after 5 minutes; the count starts over after 1 hour without a failure.",
@@ -117,7 +117,7 @@ namespace WinSW.Gui.Tests
         {
             var plan = Plan(("restart", "10 sec"), ("none", null));
 
-            Assert.Equal("第 1 次失败：10 秒后重启；之后每次：不做任何操作；1 天无故障后重新计数。", plan.Describe(Text("zh-CN")));
+            Assert.Equal("第 1 次失败：10 秒后重启；之后每次：不做任何操作；连续 1 天没有失败则重新计数。", plan.Describe(Text("zh-CN")));
         }
 
         [Fact]
@@ -134,7 +134,7 @@ namespace WinSW.Gui.Tests
         {
             var plan = Plan(("restart", null), ("reboot", "0"));
 
-            Assert.Equal("第 1 次失败：立即重启；之后每次：立即重启计算机；1 天无故障后重新计数。", plan.Describe(Text("zh-CN")));
+            Assert.Equal("第 1 次失败：立即重启；之后每次：立即重启计算机；连续 1 天没有失败则重新计数。", plan.Describe(Text("zh-CN")));
         }
 
         /// <summary>

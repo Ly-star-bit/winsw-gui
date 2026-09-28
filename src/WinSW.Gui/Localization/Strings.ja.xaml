@@ -389,7 +389,7 @@
     <sys:String x:Key="M.Alert.BadUrl">'{0}' は http または https のアドレスではありません。</sys:String>
     <sys:String x:Key="M.Alert.Stopped">[WinSW] {0}: サービス '{1}' が予期せず停止しました（終了コード {2}）。</sys:String>
     <sys:String x:Key="M.Alert.Test">[WinSW] {0}: WinSW コンソールからのテスト メッセージです。</sys:String>
-    <sys:String x:Key="M.Alert.Last">最後のアラート: {0}、サービス '{1}' — {2}</sys:String>
+    <sys:String x:Key="M.Alert.Last">最後のアラート: {0}、'{1}' — {2}</sys:String>
     <sys:String x:Key="M.Alert.LastSent">送信済み。</sys:String>
     <sys:String x:Key="M.Alert.LastNotSent">送信できませんでした: {0}</sys:String>
     <sys:String x:Key="M.Alert.LastByTask">（無人時アラートによる投稿）</sys:String>
