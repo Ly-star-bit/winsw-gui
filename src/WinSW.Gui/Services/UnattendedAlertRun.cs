@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using WinSW.Gui.Localization;
@@ -144,15 +145,17 @@ namespace WinSW.Gui.Services
                 return UnattendedAlert.ExitDone;
             }
 
-            string? service = UnattendedAlert.FindService(
-                ServiceDiscovery.Discover().Select(s => (s.ServiceName, s.DisplayName)),
-                failure.LoggedName);
+            var services = ServiceDiscovery.Discover();
+            string? service = UnattendedAlert.FindService(services.Select(s => (s.ServiceName, s.DisplayName)), failure.LoggedName);
             if (service is null)
             {
                 // Not a WinSW service. Every service on the machine starts this run, and the
                 // others are none of this console's business.
                 return UnattendedAlert.ExitDone;
             }
+
+            // Where the service's program writes its error output, for the line saying why.
+            string? configPath = services.FirstOrDefault(s => string.Equals(s.ServiceName, service, StringComparison.OrdinalIgnoreCase))?.ConfigPath;
 
             if (UnattendedAlert.ReadCopy() is not { } copy)
             {
@@ -164,6 +167,10 @@ namespace WinSW.Gui.Services
             // in when the alert was turned on, set for this process only: nothing here saves.
             AppSettings.Current.Language = copy.Language;
             Localizer.Initialize();
+
+            // As the console does at start, which this run never reaches: a program's error
+            // output on a Chinese Windows is GBK, which would otherwise be quoted as Latin-1.
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             using var gate = new Mutex(false, GateName);
             bool owned;
@@ -181,7 +188,7 @@ namespace WinSW.Gui.Services
 
             try
             {
-                return Announce(failure, service, copy);
+                return Announce(failure, service, configPath, copy);
             }
             finally
             {
@@ -213,7 +220,40 @@ namespace WinSW.Gui.Services
             return error;
         }
 
-        private static int Announce(ScmFailure failure, string service, WebhookCopy copy)
+        /// <summary>
+        /// The message for one failure: what Windows recorded, how many failures before it were
+        /// held back, and under it the line saying why, as the console's own alert gives it.
+        /// </summary>
+        /// <param name="causeFormat"><c>M.Alert.Cause</c>: {0} the file, {1} the line.</param>
+        internal static string Message(ScmFailure failure, string machine, string service, int held, ErrorLine? cause, Func<string, object?[], string> format, string causeFormat, Func<int, string> errorText)
+        {
+            var (key, args) = failure.Describe(machine, service, errorText);
+            string text = format(key, args);
+            if (held > 0)
+            {
+                text += " " + format("M.Alert.Held", new object?[] { held });
+            }
+
+            return StopCause.Append(text, cause, causeFormat, null);
+        }
+
+        /// <summary>
+        /// Whether a failure of this kind is given the last line of the program's error output.
+        /// While this run posts to the console's own webhook the console leaves such failures to
+        /// it, and they went without the line that says why, which the console's alert carries.
+        /// </summary>
+        /// <remarks>
+        /// Only for a service that ran and then ended. The line is taken to be this run's when
+        /// the file was written after the wrapper's last start in its log (see
+        /// <see cref="StopCause"/>). A service that could not be started (7000), or whose process
+        /// did not get as far as the service control manager in time (7009), may never have
+        /// written a start: the last one in the log is then an earlier run's, and that run's
+        /// last line would be quoted as the cause of this failure.
+        /// </remarks>
+        internal static bool QuotesCause(ScmFailureKind kind) =>
+            kind is ScmFailureKind.Crashed or ScmFailureKind.EndedWithError or ScmFailureKind.EndedWithCode;
+
+        private static int Announce(ScmFailure failure, string service, string? configPath, WebhookCopy copy)
         {
             var now = DateTimeOffset.Now;
             var state = AlertState.Load(UnattendedAlert.StatePath);
@@ -227,13 +267,14 @@ namespace WinSW.Gui.Services
                 return UnattendedAlert.ExitDone;
             }
 
+            // Read only for a message that goes. Given at most StopCause.ReadTimeout, and read
+            // off this thread, so waiting on it here cannot deadlock.
+            var cause = QuotesCause(failure.Kind)
+                ? StopCause.ReadAsync(new StopCauseSource(configPath, LogEncodingChoice.Auto, null, null, null)).GetAwaiter().GetResult()
+                : null;
+
             // Worded here, on the application's thread, where the dictionaries are.
-            var (key, args) = failure.Describe(Environment.MachineName, service, ErrorText);
-            string text = Localizer.Format(key, args);
-            if (held > 0)
-            {
-                text += " " + Localizer.Format("M.Alert.Held", held);
-            }
+            string text = Message(failure, Environment.MachineName, service, held.Value, cause, Localizer.Format, Localizer.Get("M.Alert.Cause"), ErrorText);
 
             // Nothing below comes back to this thread, so waiting on it here cannot deadlock.
             string? error = SendWithRetriesAsync(() => AlertWebhook.SendAsync(copy.Url, copy.Secret, text), delay => Task.Delay(delay))
