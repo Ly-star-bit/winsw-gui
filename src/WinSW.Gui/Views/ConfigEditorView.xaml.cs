@@ -73,7 +73,8 @@ namespace WinSW.Gui.Views
 
         // The preview takes no more than leaves the form its minimum: a fixed-width column does
         // not give way when the window narrows. A maximum rather than a new width, so the width
-        // it was dragged to comes back as the window widens again.
+        // it was dragged to comes back as the window widens again. The try-run panel under the
+        // form likewise takes no more than its share of the height.
         private void OnBodySizeChanged(object sender, SizeChangedEventArgs e)
         {
             if (e.WidthChanged)
@@ -81,6 +82,11 @@ namespace WinSW.Gui.Views
                 var splitter = this.PreviewSplitter;
                 double splitterWidth = splitter.Width + splitter.Margin.Left + splitter.Margin.Right;
                 this.PreviewColumn.MaxWidth = PreviewPaneWidth.MaximumBeside(e.NewSize.Width, this.FormColumn.MinWidth, splitterWidth);
+            }
+
+            if (e.HeightChanged)
+            {
+                this.TrialPanel.Height = TrialPanelHeight.For(e.NewSize.Height);
             }
         }
 
