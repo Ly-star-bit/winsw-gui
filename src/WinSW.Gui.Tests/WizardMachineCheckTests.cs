@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using WinSW.Gui.Services;
@@ -122,11 +123,18 @@ namespace WinSW.Gui.Tests
         /// log directory on the first start: that is no finding. A log directory elsewhere that
         /// is missing still is, as it is in the editor.
         /// </summary>
+        /// <remarks>
+        /// Asked of a machine made up for the purpose, which has the program and no folders: the
+        /// real one, asked about a program that is there, reads where the user profiles are from
+        /// the registry, which only Windows has, and a check that cannot finish says nothing.
+        /// </remarks>
         [Fact]
         public async Task ALogDirectoryInTheNewFolderIsNotReportedMissing()
         {
             // The wizard's own default, %BASE%\logs, spelled with this system's separator.
-            var wizard = this.Wizard(() => ServiceNames.None);
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(Path.Combine(this.directory, "server.exe"));
+            var wizard = this.Wizard(() => ServiceNames.None, machine: machine);
             wizard.LogPath = Path.Combine("%BASE%", "logs");
 
             wizard.Step = WizardViewModel.LastStep;
@@ -138,6 +146,44 @@ namespace WinSW.Gui.Tests
             wizard.Step = WizardViewModel.LastStep;
             await wizard.MachineCheck;
             Assert.Contains("M.Warn.LogDirectoryMissing", wizard.EnvironmentWarnings);
+        }
+
+        /// <summary>
+        /// A desktop task runs as the user who registers it, in their session: what the check
+        /// says of a service running as LocalSystem — a program in a user's profile — is not said
+        /// of it.
+        /// </summary>
+        [Theory]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        public async Task WhatOnlyAServiceMeetsIsNotSaidOfADesktopTask(bool desktopTask, bool said)
+        {
+            const string program = @"C:\Users\ops\apps\robot.exe";
+            var machine = new FakeServiceMachine();
+            machine.Files.Add(program);
+            var wizard = this.Wizard(() => ServiceNames.None, program, machine: machine);
+            wizard.DesktopTask = desktopTask;
+
+            wizard.Step = WizardViewModel.LastStep;
+            await wizard.MachineCheck;
+
+            Assert.Equal(said, wizard.EnvironmentWarnings.Contains("M.Warn.UserProfile"));
+        }
+
+        [Theory]
+        [InlineData("M.Warn.UserProfile", false, true)]
+        [InlineData("M.Warn.OnUserPathOnly", false, true)]
+        [InlineData("M.Warn.NetworkShare", true, true)]
+        [InlineData("M.Warn.MappedDrive", false, true)]
+        [InlineData("M.Warn.MappedDrive", true, false)]
+        [InlineData("M.Warn.WrapperOnMappedDrive", true, false)]
+        [InlineData("M.Warn.AccountUnknown", false, true)]
+        [InlineData("M.Warn.DriverStartMode", true, true)]
+        [InlineData("M.Warn.ExecutableMissing", false, false)]
+        [InlineData("M.Warn.OnMachinePath", false, false)]
+        public void FindingsAboutAnotherAccountOrSignInAreAServicesAlone(string key, bool elevated, bool serviceOnly)
+        {
+            Assert.Equal(serviceOnly, WizardViewModel.OnlyForAService(key, elevated));
         }
 
         [Fact]
@@ -180,7 +226,7 @@ namespace WinSW.Gui.Tests
             Assert.DoesNotContain("M.Wiz.NetFxWrapper", wizard.EnvironmentWarnings);
         }
 
-        private WizardViewModel Wizard(Func<ServiceNames> services, string? program = null, NetFrameworkInfo framework = default)
+        private WizardViewModel Wizard(Func<ServiceNames> services, string? program = null, NetFrameworkInfo framework = default, FakeServiceMachine? machine = null)
         {
             string target = program ?? Path.Combine(this.directory, "server.exe");
             if (program is null)
@@ -188,7 +234,7 @@ namespace WinSW.Gui.Tests
                 File.WriteAllBytes(target, Array.Empty<byte>());
             }
 
-            return new WizardViewModel(framework, services) { TargetPath = target, ServiceId = "api", DisplayName = "API" };
+            return new WizardViewModel(framework, services, machine) { TargetPath = target, ServiceId = "api", DisplayName = "API" };
         }
     }
 }

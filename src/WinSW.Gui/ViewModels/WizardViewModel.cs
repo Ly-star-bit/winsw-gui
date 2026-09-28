@@ -121,6 +121,12 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Reads every service on the machine; called off the UI thread. See <see cref="CheckMachineAsync"/>.</summary>
         private readonly Func<ServiceNames> readServices;
 
+        /// <summary>What the review step's environment check asks about paths, accounts and drives; off the UI thread.</summary>
+        private readonly IServiceMachine machine;
+
+        /// <summary>Says which of the ports the new program will want are held already; off the UI thread. See <see cref="PortCheck"/>.</summary>
+        private readonly Func<IReadOnlyList<int>, IReadOnlyList<PortInUse>> findPortHolders;
+
         /// <summary>
         /// Every service on the machine by both its names, as last read: when step 2 or the
         /// review step opened, and again right before installing. Replaced whole, never changed.
@@ -141,12 +147,23 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// With what the machine has handed in rather than read, so that a test can say what
-        /// framework and which services it has.
+        /// framework and which services it has, and, when it passes them, what the environment
+        /// check finds on disk and who listens on which port.
         /// </summary>
-        internal WizardViewModel(NetFrameworkInfo framework, Func<ServiceNames> readServices)
+        internal WizardViewModel(
+            NetFrameworkInfo framework,
+            Func<ServiceNames> readServices,
+            IServiceMachine? machine = null,
+            Func<IReadOnlyList<int>, IReadOnlyList<PortInUse>>? findPortHolders = null)
         {
             this.framework = framework;
             this.readServices = readServices;
+            this.machine = machine ?? ServiceMachine.Local;
+
+            // Every listener counts: nothing of the new service's own is running yet, and a try
+            // run of the same program from the editor would hold the port against it all the same.
+            this.findPortHolders = findPortHolders ?? (ports => PortCheck.Find(ports, consoleProcessId: null));
+
             this.useBundledWrapper = PrefersBundledWrapper(BundledWrapper.IsAvailable, framework);
             this.Warnings.CollectionChanged += (_, _) => this.Raise(nameof(this.HasWarnings));
 
@@ -440,7 +457,8 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// What checking the configuration against this machine found on the review step — see
-        /// <see cref="ServiceConfigModel.ValidateEnvironment"/> — shown with <see cref="Warnings"/>.
+        /// <see cref="ServiceConfigModel.CheckEnvironment(string)"/> and <see cref="PortCheck"/> —
+        /// shown with <see cref="Warnings"/>.
         /// </summary>
         /// <remarks>
         /// Read off the UI thread and arriving a moment after the step opens, so it is kept
@@ -1326,8 +1344,9 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// Starts checking the wizard against this machine, off the UI thread: every service's
-        /// names always, and on the review step what the configuration will meet when it runs
-        /// and whether another service shows the ID as its display name.
+        /// names always, and on the review step what the configuration will meet when it runs,
+        /// whether the ports it names are free, and whether another service shows the ID as its
+        /// display name.
         /// A check started later makes this one's results stale.
         /// </summary>
         private void CheckMachine(bool environment)
@@ -1337,14 +1356,22 @@ namespace WinSW.Gui.ViewModels
         }
 
         /// <summary>
-        /// Reads the machine's services and runs <see cref="ServiceConfigModel.ValidateEnvironment"/>
-        /// on a worker — the service control manager, the file system and, for an account, the
-        /// domain controller are all slow when they are slow — and shows what they said back on
-        /// the thread that asked.
+        /// Reads the machine's services, runs <see cref="ServiceConfigModel.CheckEnvironment(string)"/>
+        /// and looks for what holds the ports the configuration names, on a worker — the service
+        /// control manager, the file system and, for an account, the domain controller are all
+        /// slow when they are slow — and shows what they said back on the thread that asked.
         /// </summary>
         private async Task CheckMachineAsync(int generation, ServiceConfigModel? probe)
         {
             var read = this.readServices;
+            var machine = this.machine;
+            var findPortHolders = this.findPortHolders;
+
+            // A bare program name is looked for beside the wrapper first, and the wrapper is where
+            // the install will put it, not necessarily beside the configuration.
+            string? wrapperPath = this.EffectiveWrapperPath is { Length: > 0 } effective ? effective : null;
+            bool desktopTask = this.desktopTask;
+            bool elevated = this.runElevated;
 
             // Which wrapper the service will run is settled before the worker starts, the way the
             // install settles it; whether that is the .NET Framework build is a question for its
@@ -1358,8 +1385,8 @@ namespace WinSW.Gui.ViewModels
                     SamePath(this.EffectiveWrapperPath, this.SharedWrapperPath))
                 : null;
 
-            var (names, findings, frameworkBuild) = await Task
-                .Run(() => Examine(read, probe, wrapper))
+            var (names, findings, frameworkBuild, ports) = await Task
+                .Run(() => Examine(read, machine, findPortHolders, probe, wrapperPath, wrapper))
                 .ConfigureAwait(true);
 
             if (generation != this.machineCheckGeneration)
@@ -1391,12 +1418,42 @@ namespace WinSW.Gui.ViewModels
                 warnings.Add(Localizer.Format("M.Wiz.NetFxWrapperInPlace", wrapper!.Value.Destination, this.framework.Version, NetFramework.OfflineInstaller));
             }
 
-            warnings.AddRange(findings);
+            // Worded here, on the thread that looks the words up; the worker only found them.
+            foreach (var finding in findings)
+            {
+                if (!(desktopTask && OnlyForAService(finding.Key, elevated)))
+                {
+                    warnings.Add(finding.Describe(Localizer.Get));
+                }
+            }
+
+            foreach (var port in ports)
+            {
+                warnings.Add(Localizer.Format("M.Port.InUse", port.Port, port.ProcessName, port.ProcessId));
+            }
+
             this.EnvironmentWarnings = warnings.ToArray();
         }
 
         /// <summary>
-        /// The configuration as <see cref="ServiceConfigModel.ValidateEnvironment"/> should see
+        /// Whether a finding of the environment check holds only for a program run as a service:
+        /// it is about an account other than the user's, a sign-in other than theirs, or what
+        /// installing a service takes. A desktop task runs as the user who registers it, in their
+        /// session, with their PATH, profile and network credentials — with
+        /// <paramref name="elevated"/>, under their full token, which does not see the drives
+        /// mapped under the other one — and is registered, not installed: the account, the prompt
+        /// for its password and the start mode in the file are never used.
+        /// </summary>
+        internal static bool OnlyForAService(string findingKey, bool elevated) => findingKey switch
+        {
+            "M.Warn.OnUserPathOnly" or "M.Warn.UserProfile" or "M.Warn.NetworkShare" => true,
+            "M.Warn.AccountUnknown" or "M.Warn.ConsolePrompt" or "M.Warn.DriverStartMode" => true,
+            "M.Warn.MappedDrive" or "M.Warn.WrapperOnMappedDrive" => !elevated,
+            _ => false,
+        };
+
+        /// <summary>
+        /// The configuration as <see cref="ServiceConfigModel.CheckEnvironment(string)"/> should see
         /// it: at the path it will be written to, so that <c>%BASE%</c> is the new service's
         /// folder; and without a log directory inside that folder, which cannot exist before
         /// the install and which the wrapper creates on its first start in any case. Left as
@@ -1432,33 +1489,47 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>
         /// The worker's half of <see cref="CheckMachineAsync"/>: the services, what the probe's
-        /// check finds, and — only when there is a <paramref name="wrapper"/> to ask about —
-        /// whether the service would run the .NET Framework build this machine cannot run.
+        /// check finds, who holds the ports it names, and — only when there is a
+        /// <paramref name="wrapper"/> to ask about — whether the service would run the .NET
+        /// Framework build this machine cannot run.
         /// </summary>
-        private static (ServiceNames Names, IReadOnlyList<string> Findings, FrameworkWrapper FrameworkBuild) Examine(
+        private static (ServiceNames Names, IReadOnlyList<EnvironmentFinding> Findings, FrameworkWrapper FrameworkBuild, IReadOnlyList<PortInUse> Ports) Examine(
             Func<ServiceNames> read,
+            IServiceMachine machine,
+            Func<IReadOnlyList<int>, IReadOnlyList<PortInUse>> findPortHolders,
             ServiceConfigModel? probe,
+            string? wrapperPath,
             WrapperPlan? wrapper)
         {
             var names = read();
             if (probe is null)
             {
-                return (names, Array.Empty<string>(), FrameworkWrapper.None);
+                return (names, Array.Empty<EnvironmentFinding>(), FrameworkWrapper.None, Array.Empty<PortInUse>());
             }
 
-            IReadOnlyList<string> findings;
+            // A check that cannot finish has nothing to say, which is what the editor, where it
+            // comes from, makes of it too; the names, and the other check, still stand.
+            IReadOnlyList<EnvironmentFinding> findings;
             try
             {
-                findings = probe.ValidateEnvironment();
+                findings = probe.CheckEnvironment(machine, wrapperPath).Findings;
             }
             catch (Exception)
             {
-                // A check that cannot finish has nothing to say, which is what the editor, where
-                // it comes from, makes of it too; the names still stand.
-                findings = Array.Empty<string>();
+                findings = Array.Empty<EnvironmentFinding>();
             }
 
-            return (names, findings, wrapper is { } plan ? FrameworkBuildIn(plan) : FrameworkWrapper.None);
+            IReadOnlyList<PortInUse> ports;
+            try
+            {
+                ports = findPortHolders(PortCheck.PortsOf(probe));
+            }
+            catch (Exception)
+            {
+                ports = Array.Empty<PortInUse>();
+            }
+
+            return (names, findings, wrapper is { } plan ? FrameworkBuildIn(plan) : FrameworkWrapper.None, ports);
         }
 
         /// <summary>

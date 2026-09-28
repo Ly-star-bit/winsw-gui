@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using WinSW.Gui.Model;
 using WinSW.Gui.Services;
+using WinSW.Gui.ViewModels;
 using Xunit;
 
 namespace WinSW.Gui.Tests
@@ -118,6 +121,61 @@ namespace WinSW.Gui.Tests
             var held = PortCheck.Holders(new[] { 9000, 8000 }, Table((8000, 600), (8000, 500), (9000, 700)), snapshot, consoleProcessId: null);
 
             Assert.Equal(new[] { 700, 500, 600 }, held.Select(p => p.ProcessId));
+        }
+
+        // On the wizard's review step --------------------------------------------------------
+
+        /// <summary>
+        /// What holds a port the new program is told to use is a warning with the machine's
+        /// findings, and holds nothing up.
+        /// </summary>
+        [Fact]
+        public async Task TheReviewStepNamesWhatHoldsThePort()
+        {
+            IReadOnlyList<int>? asked = null;
+            var wizard = new WizardViewModel(
+                default,
+                () => ServiceNames.None,
+                new FakeServiceMachine(),
+                ports =>
+                {
+                    asked = ports;
+                    return new[] { new PortInUse(8000, "python.exe", 4312) };
+                })
+            {
+                TargetPath = @"C:\apps\api\server.exe",
+                ServiceId = "api",
+                Arguments = "main:app --port 8000",
+            };
+
+            wizard.Step = WizardViewModel.LastStep;
+            await wizard.MachineCheck;
+
+            Assert.Equal(new[] { 8000 }, asked);
+            Assert.Contains("M.Port.InUse", wizard.EnvironmentWarnings);
+            Assert.DoesNotContain("M.Port.InUse", wizard.Problems);
+        }
+
+        /// <summary>A port check that fails costs the review step nothing else: the names are still checked.</summary>
+        [Fact]
+        public async Task APortCheckThatFailsLeavesTheNamesStanding()
+        {
+            var wizard = new WizardViewModel(
+                default,
+                () => new ServiceNames(new[] { new InstalledService("api", "API") }),
+                new FakeServiceMachine(),
+                _ => throw new IOException("unreadable"))
+            {
+                TargetPath = @"C:\apps\api\server.exe",
+                ServiceId = "api",
+                Arguments = "--port 8000",
+            };
+
+            wizard.Step = WizardViewModel.LastStep;
+            await wizard.MachineCheck;
+
+            Assert.Contains("M.Wiz.IdTaken", wizard.Problems);
+            Assert.DoesNotContain("M.Port.InUse", wizard.EnvironmentWarnings);
         }
 
         private static PortTable Table(params (int Port, int ProcessId)[] listeners)
