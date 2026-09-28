@@ -634,6 +634,11 @@
     <sys:String x:Key="M.Editor.Installed">“{0}”已安装。</sys:String>
     <sys:String x:Key="M.Editor.InstalledStarted">“{0}”已安装并启动。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">服务安装失败。</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningTitle">试运行还在运行</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningBody">试运行（PID {0}）还在运行，会占用同一个端口和文件。先停止它再继续？</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningAction">停止并继续</sys:String>
+    <sys:String x:Key="M.Editor.TrialStopping">正在停止试运行（PID {0}）…</sys:String>
+    <sys:String x:Key="M.Editor.TrialNotStopped">试运行（PID {0}）没能结束，这次操作已取消。</sys:String>
     <sys:String x:Key="M.Trial.Differs">试运行不等于服务运行：试运行用的是你当前的账户、你的环境变量和你的桌面。装成服务后，默认以 LocalSystem 身份运行，只看得到系统级环境变量，没有映射的网络驱动器，也没有桌面。把路径写成 %BASE%\… 或绝对路径，把程序需要的变量显式写进 &lt;env&gt;，两边才对得上。</sys:String>
 
     <sys:String x:Key="M.Wiz.LayoutHint">默认每个服务在安装根目录下有自己的文件夹，共用 bin 里的同一个 WinSW 可执行文件。程序所在目录不会被碰 —— 那个目录往往属于别人，比如 Python 或 JDK 的安装目录，一次升级就会把服务的配置和日志一起带走。根目录可以在设置里改。</sys:String>

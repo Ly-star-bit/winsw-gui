@@ -1,4 +1,5 @@
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using WinSW.Gui.Localization;
@@ -21,6 +22,7 @@ namespace WinSW.Gui.Views
             if (this.attached != null)
             {
                 this.attached.TrialOutput.CollectionChanged -= this.OnTrialOutputChanged;
+                this.attached.PropertyChanged -= this.OnViewModelPropertyChanged;
             }
 
             this.attached = e.NewValue as ConfigEditorViewModel;
@@ -28,6 +30,16 @@ namespace WinSW.Gui.Views
             if (this.attached != null)
             {
                 this.attached.TrialOutput.CollectionChanged += this.OnTrialOutputChanged;
+                this.attached.PropertyChanged += this.OnViewModelPropertyChanged;
+            }
+        }
+
+        // Keyboard users land on Cancel when the confirmation opens; Enter is bound to the action.
+        private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ConfigEditorViewModel.ConfirmVisible) && this.attached?.ConfirmVisible == true)
+            {
+                this.Dispatcher.BeginInvoke(() => this.ConfirmCancelButton.Focus(), System.Windows.Threading.DispatcherPriority.Input);
             }
         }
 

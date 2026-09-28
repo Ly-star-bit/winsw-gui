@@ -48,6 +48,13 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private static readonly TimeSpan RecomputeDelay = TimeSpan.FromMilliseconds(350);
 
+        /// <summary>
+        /// How long Install or Apply waits for the try run it has stopped to be gone. Ending a
+        /// process takes a moment, not seconds; one still there after this is not going to end
+        /// by waiting longer, and the action is called off rather than started into it.
+        /// </summary>
+        private static readonly TimeSpan TrialStopTimeout = TimeSpan.FromSeconds(10);
+
         private readonly DispatcherTimer recomputeTimer;
         private ServiceConfigModel model = ServiceConfigModel.CreateNew();
         private ServiceEntry? installedService;
@@ -69,6 +76,11 @@ namespace WinSW.Gui.ViewModels
         private bool proxyTestFailed;
         private string recoverySummary = string.Empty;
         private string recoveryWarning = string.Empty;
+        private bool confirmVisible;
+        private string confirmTitle = string.Empty;
+        private string confirmMessage = string.Empty;
+        private string confirmActionLabel = string.Empty;
+        private Func<Task>? pendingAction;
 
         public ConfigEditorViewModel()
         {
@@ -171,6 +183,9 @@ namespace WinSW.Gui.ViewModels
             this.TestProxyCommand = new AsyncRelayCommand(this.TestProxyAsync);
             this.StopTrialCommand = new RelayCommand(() => this.trial.Stop(), () => this.isTrialRunning);
             this.ClearTrialCommand = new RelayCommand(() => this.TrialOutput.Clear());
+
+            this.ConfirmCommand = new AsyncRelayCommand(this.ExecuteConfirmedAsync);
+            this.CancelConfirmCommand = new RelayCommand(this.DismissConfirm);
 
             this.trial.Output += (line, isError) => this.QueueTrialLine(isError ? "[stderr] " + line : line);
             this.trial.Exited += code =>
@@ -351,6 +366,37 @@ namespace WinSW.Gui.ViewModels
             private set => this.Set(ref this.trialStatus, value);
         }
 
+        // Confirmation overlay -----------------------------------------------------
+
+        /// <summary>A question over the page, the way the dashboard asks one; see <see cref="Ask"/>.</summary>
+        public bool ConfirmVisible
+        {
+            get => this.confirmVisible;
+            private set => this.Set(ref this.confirmVisible, value);
+        }
+
+        public string ConfirmTitle
+        {
+            get => this.confirmTitle;
+            private set => this.Set(ref this.confirmTitle, value);
+        }
+
+        public string ConfirmMessage
+        {
+            get => this.confirmMessage;
+            private set => this.Set(ref this.confirmMessage, value);
+        }
+
+        public string ConfirmActionLabel
+        {
+            get => this.confirmActionLabel;
+            private set => this.Set(ref this.confirmActionLabel, value);
+        }
+
+        public AsyncRelayCommand ConfirmCommand { get; }
+
+        public RelayCommand CancelConfirmCommand { get; }
+
         // Proxy check ------------------------------------------------------------
 
         /// <summary>
@@ -484,6 +530,7 @@ namespace WinSW.Gui.ViewModels
             try
             {
                 var loaded = ServiceConfigModel.Load(path);
+                this.DismissConfirm();
                 this.Detach(this.Model);
                 this.Attach(loaded);
                 this.Model = loaded;
@@ -502,6 +549,7 @@ namespace WinSW.Gui.ViewModels
         public void NewConfiguration()
         {
             var fresh = ServiceConfigModel.CreateNew();
+            this.DismissConfirm();
             this.Detach(this.Model);
             this.Attach(fresh);
             this.Model = fresh;
@@ -762,6 +810,11 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            if (this.AskToEndTrial(this.ApplyToServiceCommand))
+            {
+                return;
+            }
+
             if (this.IsDirty)
             {
                 await this.WriteAsync(this.filePath).ConfigureAwait(true);
@@ -791,6 +844,11 @@ namespace WinSW.Gui.ViewModels
         private async Task InstallAsync()
         {
             if (this.filePath is null || this.installedService != null)
+            {
+                return;
+            }
+
+            if (this.AskToEndTrial(this.InstallCommand))
             {
                 return;
             }
@@ -900,6 +958,96 @@ namespace WinSW.Gui.ViewModels
                 this.StatusMessage = Localizer.Format("M.Editor.WriteFailed", destination, e.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Asks to end a try run that is still going before <paramref name="next"/> goes on,
+        /// and says whether it asked: the caller stops there, and the answer runs it again.
+        /// </summary>
+        /// <remarks>
+        /// A try run that works is one still running — for a web server, one still listening
+        /// on its port — and installing is the step that follows it. The service then started
+        /// into the port and files the try run held, failed, and was restarted by its recovery
+        /// actions over and over while the try run went on serving; and the stray-process check
+        /// leaves this console's own children alone, so nothing on screen pointed at it.
+        /// <para>
+        /// Applying asks too, although a refresh starts nothing: what it changes takes effect
+        /// at the service's next start, and that start runs into the same port.
+        /// </para>
+        /// </remarks>
+        private bool AskToEndTrial(AsyncRelayCommand next)
+        {
+            // The process itself, not IsTrialRunning, which follows it through the dispatcher.
+            if (this.trial.ProcessId is not { } pid)
+            {
+                return false;
+            }
+
+            this.Ask(
+                Localizer.Get("M.Editor.TrialRunningTitle"),
+                Localizer.Format("M.Editor.TrialRunningBody", pid),
+                Localizer.Get("M.Editor.TrialRunningAction"),
+                () => this.EndTrialThenAsync(pid, next));
+            return true;
+        }
+
+        /// <summary>
+        /// Ends the try run, waits for it to be gone, and runs the command again. Through the
+        /// command rather than the method behind it, so its button is greyed out while it works
+        /// and whatever it checked before asking is checked again.
+        /// </summary>
+        private async Task EndTrialThenAsync(int pid, AsyncRelayCommand next)
+        {
+            this.StatusMessage = Localizer.Format("M.Editor.TrialStopping", pid);
+            if (!await this.trial.StopAsync(TrialStopTimeout).ConfigureAwait(true))
+            {
+                this.StatusMessage = Localizer.Format("M.Editor.TrialNotStopped", pid);
+                this.Toast?.Invoke(this.StatusMessage, true);
+                return;
+            }
+
+            if (next.CanExecute(null))
+            {
+                next.Execute(null);
+            }
+        }
+
+        // Confirmation -------------------------------------------------------------
+
+        /// <summary>
+        /// Puts a question over the page; <paramref name="action"/> runs on the answer that
+        /// goes ahead.
+        /// </summary>
+        private void Ask(string title, string message, string actionLabel, Func<Task> action)
+        {
+            this.ConfirmTitle = title;
+            this.ConfirmMessage = message;
+            this.ConfirmActionLabel = actionLabel;
+            this.pendingAction = action;
+            this.ConfirmVisible = true;
+        }
+
+        private async Task ExecuteConfirmedAsync()
+        {
+            var action = this.pendingAction;
+            this.pendingAction = null;
+            this.ConfirmVisible = false;
+
+            if (action != null)
+            {
+                await action().ConfigureAwait(true);
+            }
+        }
+
+        /// <summary>
+        /// Takes the question away unanswered: on Cancel, and when another configuration takes
+        /// the place of the one it was asked about. Going ahead then would act on whatever is
+        /// on screen by the time of the answer, not on what the question named.
+        /// </summary>
+        private void DismissConfirm()
+        {
+            this.pendingAction = null;
+            this.ConfirmVisible = false;
         }
 
         // Change tracking --------------------------------------------------------

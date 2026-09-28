@@ -645,6 +645,11 @@
     <sys:String x:Key="M.Editor.Installed">'{0}' installed.</sys:String>
     <sys:String x:Key="M.Editor.InstalledStarted">'{0}' installed and started.</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">The service could not be installed.</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningTitle">The try run is still running</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningBody">The try run (PID {0}) is still running and would hold the same port and files. Stop it and continue?</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningAction">Stop and continue</sys:String>
+    <sys:String x:Key="M.Editor.TrialStopping">Stopping the try run (PID {0})…</sys:String>
+    <sys:String x:Key="M.Editor.TrialNotStopped">The try run (PID {0}) did not end, so nothing was done.</sys:String>
     <sys:String x:Key="M.Trial.Differs">A try run is not a service run: it uses your account, your environment and your desktop. A service runs as LocalSystem unless an account is given, sees only machine-level environment variables, has no mapped network drives and no desktop. Write paths as %BASE%\… or absolute, and put anything the program needs into &lt;env&gt;, so the two agree.</sys:String>
 
     <sys:String x:Key="M.Wiz.LayoutHint">By default each service gets a folder of its own under the install root, all sharing one WinSW executable in bin. The program's folder is left untouched — it often belongs to something else, such as a Python or JDK installation that an upgrade would replace, taking the service's configuration and logs with it. The root can be changed in Settings.</sys:String>

@@ -774,5 +774,37 @@
         </Grid>
 
         <TextBlock Grid.Row="2" Margin="0,12,0,0" Style="{StaticResource PageSubtitle}" Text="{Binding StatusMessage}" />
+
+        <!--
+            Confirmation overlay, as on the dashboard. Escape is bound here as well as Enter:
+            the window's Escape goes to a page's own cancel only for the pages it knows.
+        -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="3"
+            Margin="-28,-24,-28,-20"
+            Background="{DynamicResource OverlayBrush}"
+            Focusable="True"
+            Visibility="{Binding ConfirmVisible, Converter={StaticResource BoolToVisibility}}">
+            <Grid.InputBindings>
+                <KeyBinding Key="Enter" Command="{Binding ConfirmCommand}" />
+                <KeyBinding Key="Escape" Command="{Binding CancelConfirmCommand}" />
+            </Grid.InputBindings>
+            <Border MaxWidth="480" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" Text="{Binding ConfirmTitle}" />
+                    <TextBlock Margin="0,10,0,20" Style="{StaticResource PageSubtitle}" Text="{Binding ConfirmMessage}" TextWrapping="Wrap" />
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button x:Name="ConfirmCancelButton" Margin="0,0,8,0" Padding="14,7" Command="{Binding CancelConfirmCommand}" Content="{DynamicResource S.Cancel}" />
+                        <Button
+                            Padding="14,7"
+                            Background="{DynamicResource HealthBrokenBrush}"
+                            Command="{Binding ConfirmCommand}"
+                            Content="{Binding ConfirmActionLabel}"
+                            Foreground="White" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

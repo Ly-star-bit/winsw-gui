@@ -634,6 +634,11 @@
     <sys:String x:Key="M.Editor.Installed">「{0}」をインストールしました。</sys:String>
     <sys:String x:Key="M.Editor.InstalledStarted">「{0}」をインストールして開始しました。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">サービスをインストールできませんでした。</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningTitle">試行実行がまだ実行中です</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningBody">試行実行 (PID {0}) がまだ実行中で、同じポートとファイルを使ったままです。停止してから続行しますか?</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningAction">停止して続行</sys:String>
+    <sys:String x:Key="M.Editor.TrialStopping">試行実行 (PID {0}) を停止しています…</sys:String>
+    <sys:String x:Key="M.Editor.TrialNotStopped">試行実行 (PID {0}) が終了しなかったため、操作を取り消しました。</sys:String>
     <sys:String x:Key="M.Trial.Differs">試し実行はサービス実行とは違います。試し実行は現在のアカウント・環境変数・デスクトップを使います。サービスとして動くときは、アカウントを指定しない限り LocalSystem で動き、システム環境変数しか見えず、割り当てたネットワークドライブもデスクトップもありません。パスは %BASE%\… か絶対パスで書き、必要な変数は &lt;env&gt; に明示してください。</sys:String>
 
     <sys:String x:Key="M.Wiz.LayoutHint">既定では各サービスがインストール先ルートの下に専用フォルダーを持ち、bin にある 1 つの WinSW 実行ファイルを共有します。プログラムのフォルダーには触れません — そこは Python や JDK のインストール先など他所のものであることが多く、アップグレードでサービスの設定やログごと置き換えられてしまいます。ルートは設定で変更できます。</sys:String>

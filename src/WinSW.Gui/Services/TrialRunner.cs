@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using WinSW.Configuration;
 using WinSW.Gui.Model;
 
@@ -153,6 +155,46 @@ namespace WinSW.Gui.Services
             catch (Exception e) when (e is InvalidOperationException or Win32Exception)
             {
                 // Already gone.
+            }
+            catch (AggregateException)
+            {
+                // Some process under it refused to end. Whether the run itself did is for
+                // IsRunning to say; a button that asked to stop it is no place for a crash.
+            }
+        }
+
+        /// <summary>
+        /// Ends the run as <see cref="Stop"/> does, then waits for it to be gone. True when
+        /// nothing of it is left running; false when it was still there after
+        /// <paramref name="timeout"/>.
+        /// </summary>
+        /// <remarks>
+        /// Stopping only asks Windows to end the processes, and the port and files the program
+        /// held are let go as each one is torn down, a moment later. Whatever comes next —
+        /// installing the same program as a service, which binds the same port as it starts —
+        /// has to wait for that rather than for the request. The wait includes the end of the
+        /// output, which lasts until the last process that inherited it is gone, so a child
+        /// still holding on counts as the run still going.
+        /// </remarks>
+        public async Task<bool> StopAsync(TimeSpan timeout)
+        {
+            var running = this.process;
+            if (running is null)
+            {
+                return true;
+            }
+
+            this.Stop();
+
+            using var cancel = new CancellationTokenSource(timeout);
+            try
+            {
+                await running.WaitForExitAsync(cancel.Token).ConfigureAwait(false);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                return false;
             }
         }
 

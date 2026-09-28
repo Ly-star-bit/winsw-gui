@@ -634,6 +634,11 @@
     <sys:String x:Key="M.Editor.Installed">「{0}」已安裝。</sys:String>
     <sys:String x:Key="M.Editor.InstalledStarted">「{0}」已安裝並啟動。</sys:String>
     <sys:String x:Key="M.Editor.InstallFailed">服務安裝失敗。</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningTitle">試執行還在執行</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningBody">試執行（PID {0}）還在執行，會佔用同一個連接埠和檔案。先停止它再繼續？</sys:String>
+    <sys:String x:Key="M.Editor.TrialRunningAction">停止並繼續</sys:String>
+    <sys:String x:Key="M.Editor.TrialStopping">正在停止試執行（PID {0}）…</sys:String>
+    <sys:String x:Key="M.Editor.TrialNotStopped">試執行（PID {0}）沒能結束，這次操作已取消。</sys:String>
     <sys:String x:Key="M.Trial.Differs">試執行不等於服務執行：試執行用的是你目前的帳戶、你的環境變數和你的桌面。裝成服務後，預設以 LocalSystem 身分執行，只看得到系統層級環境變數，沒有對應的網路磁碟機，也沒有桌面。把路徑寫成 %BASE%\… 或絕對路徑，把程式需要的變數明確寫進 &lt;env&gt;，兩邊才對得上。</sys:String>
 
     <sys:String x:Key="M.Wiz.LayoutHint">預設每個服務在安裝根目錄下有自己的資料夾，共用 bin 裡的同一個 WinSW 可執行檔。程式所在目錄不會被碰 —— 那個目錄往往屬於別人，例如 Python 或 JDK 的安裝目錄，一次升級就會把服務的設定和日誌一起帶走。根目錄可以在設定裡改。</sys:String>
