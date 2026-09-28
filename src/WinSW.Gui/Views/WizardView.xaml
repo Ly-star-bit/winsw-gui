@@ -334,10 +334,23 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource M.Wiz.KeepDays}" />
+                                <!-- A copy keeps its source's pattern, which need not roll daily: the count is then of files. -->
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource FieldLabel}">
+                                            <Setter Property="Text" Value="{DynamicResource M.Wiz.KeepDays}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding KeepsSourceRollPattern}" Value="True">
+                                                    <Setter Property="Text" Value="{DynamicResource S.FilesToKeep}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <TextBox Text="{Binding KeepDays, UpdateSourceTrigger=PropertyChanged}" />
                             </StackPanel>
-                            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.KeepDaysHint}" />
+                            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.KeepDaysHint}" Visibility="{Binding KeepsSourceRollPattern, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <TextBlock Grid.Row="1" Grid.ColumnSpan="3" MaxWidth="640" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{Binding RollPatternHint}" Visibility="{Binding KeepsSourceRollPattern, Converter={StaticResource BoolToVisibility}}" />
                         </Grid>
                         <StackPanel Style="{StaticResource Field}">
                             <TextBlock Style="{StaticResource FieldLabel}" Text="{DynamicResource S.LogDirectoryOptional}" />

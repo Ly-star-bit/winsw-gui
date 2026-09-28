@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,6 +31,9 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>The waits the restarts grow to when the program keeps failing; see <see cref="RestartDelays"/>.</summary>
         private static readonly string[] LaterRestartDelays = { "1 min", "5 min" };
+
+        /// <summary>The log modes step 3 has fields for.</summary>
+        private static readonly string[] OfferedLogModes = { "append", "reset", "roll-by-size", "roll-by-time", "none" };
 
         private int step = 1;
         private string wrapperPath = string.Empty;
@@ -64,6 +68,16 @@ namespace WinSW.Gui.ViewModels
         private bool useBundledWrapper = BundledWrapper.IsAvailable;
         private string manufacturer = string.Empty;
         private ServiceEntry? cloneSource;
+
+        /// <summary>The configuration of the service being copied, when there is one; see <see cref="PrefillFrom"/>.</summary>
+        private ServiceClone? clone;
+
+        /// <summary>
+        /// The delay the copied recovery was shown with. While <see cref="RestartDelay"/> still
+        /// holds it, the source's own failure actions are written; see <see cref="UsesSourceRecovery"/>.
+        /// </summary>
+        private string? cloneRestartDelay;
+        private string[] logModes = OfferedLogModes;
         private bool placeNextToProgram;
         private string suggestedWorkingDirectory = string.Empty;
         private bool desktopTask;
@@ -143,6 +157,7 @@ namespace WinSW.Gui.ViewModels
                 this.Raise(nameof(this.InstallLabel));
                 this.Raise(nameof(this.PythonHint));
                 this.Raise(nameof(this.RecoveryHint));
+                this.Raise(nameof(this.RollPatternHint));
                 if (this.step == LastStep)
                 {
                     this.RefreshPreview();
@@ -305,21 +320,7 @@ namespace WinSW.Gui.ViewModels
         public string SharedWrapperPath => Path.Combine(this.InstallRoot, "bin", "WinSW.exe");
 
         /// <summary>True when the chosen ID already belongs to an installed service or a registered task.</summary>
-        public bool IdInUse
-        {
-            get
-            {
-                if (string.IsNullOrWhiteSpace(this.serviceId))
-                {
-                    return false;
-                }
-
-                string id = this.serviceId.Trim();
-                return this.desktopTask
-                    ? this.TaskSources.Any(t => string.Equals(t.Name, id, StringComparison.OrdinalIgnoreCase))
-                    : this.Sources.Any(s => string.Equals(s.ServiceName, id, StringComparison.OrdinalIgnoreCase));
-            }
-        }
+        public bool IdInUse => !string.IsNullOrWhiteSpace(this.serviceId) && this.InUse(this.serviceId.Trim());
 
         public ObservableCollection<string> Problems { get; } = new();
 
@@ -350,7 +351,14 @@ namespace WinSW.Gui.ViewModels
         /// <summary>Installed services the wizard can start from; supplied by the shell.</summary>
         public IEnumerable<ServiceEntry> Sources { get; set; } = Array.Empty<ServiceEntry>();
 
-        /// <summary>Picking one copies its program, arguments and settings into the wizard.</summary>
+        /// <summary>
+        /// Picking one starts the new service from its whole configuration; see <see cref="PrefillFrom"/>.
+        /// </summary>
+        /// <remarks>
+        /// Null never drops what was copied. The picker writes null back when the service it
+        /// shows leaves the list — uninstalled, say, under the wizard — and the fields filled
+        /// in from it are still there. Only <see cref="ResetCommand"/> starts over.
+        /// </remarks>
         public ServiceEntry? CloneSource
         {
             get => this.cloneSource;
@@ -419,7 +427,15 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        public string[] LogModes { get; } = { "append", "reset", "roll-by-size", "roll-by-time", "none" };
+        /// <summary>
+        /// The wizard's own log modes, and a copied service's when it used another: a copy of
+        /// a <c>roll-by-size-time</c> service stays one, with the settings it came with.
+        /// </summary>
+        public string[] LogModes
+        {
+            get => this.logModes;
+            private set => this.Set(ref this.logModes, value);
+        }
 
         public int Step
         {
@@ -588,10 +604,18 @@ namespace WinSW.Gui.ViewModels
             get => this.logMode;
             set
             {
+                // The picker writes null back when its list is swapped for one without the
+                // mode it showed, as a copy's list can be. No mode is ever meant as blank.
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return;
+                }
+
                 if (this.Set(ref this.logMode, value))
                 {
                     this.Raise(nameof(this.UsesSizeRolling));
                     this.Raise(nameof(this.UsesTimeRolling));
+                    this.Raise(nameof(this.KeepsSourceRollPattern));
                 }
             }
         }
@@ -600,6 +624,17 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>One file a day; only how many days to keep is asked. See <see cref="BuildModel"/>.</summary>
         public bool UsesTimeRolling => this.logMode == "roll-by-time";
+
+        /// <summary>
+        /// A copy rolls by time on the pattern its source had rather than on the daily one,
+        /// which need not be daily; the count is then a count of files.
+        /// </summary>
+        public bool KeepsSourceRollPattern => this.UsesTimeRolling && this.clone?.RollPattern != null;
+
+        /// <summary>What <see cref="KeepsSourceRollPattern"/> means for the count, in place of the daily hint.</summary>
+        public string RollPatternHint => this.clone?.RollPattern is { } pattern
+            ? Localizer.Format("M.Wiz.RollPatternCopied", this.clone.SourceName, pattern)
+            : string.Empty;
 
         public string LogPath
         {
@@ -648,9 +683,35 @@ namespace WinSW.Gui.ViewModels
             }
         }
 
-        /// <summary>The waits before each restart, and that the last one repeats; see <see cref="RestartDelays"/>.</summary>
-        public string RecoveryHint =>
-            Localizer.Format("M.Wiz.RecoveryHint", string.Join(" → ", RestartDelays(this.restartDelay)));
+        /// <summary>
+        /// The waits before each restart, and that the last one repeats; see
+        /// <see cref="RestartDelays"/>. For a copy still on its source's actions, those.
+        /// </summary>
+        public string RecoveryHint => this.UsesSourceRecovery
+            ? Localizer.Format(
+                "M.Wiz.RecoveryHintCopied",
+                this.clone!.SourceName,
+                string.Join(" → ", this.clone.Recovery.Select(DescribeFailureAction)),
+                this.clone.ResetFailureAfter ?? ServiceClone.WrapperResetPeriod)
+            : Localizer.Format("M.Wiz.RecoveryHint", string.Join(" → ", RestartDelays(this.restartDelay)));
+
+        /// <summary>
+        /// A copy writes its source's failure actions — every row, and the reset period — for
+        /// as long as the delay it was shown with is left alone. The wizard has one field for
+        /// what can be a ladder of restarts with a reboot at the end; changing it asks for the
+        /// wizard's own ladder instead, and unticking recovery for none at all.
+        /// </summary>
+        /// <remarks>
+        /// Compared as durations: the delay editor writes its own spelling back as soon as its
+        /// unit is picked, and a source's <c>30 secs</c> or <c>30000</c> is still the same wait.
+        /// </remarks>
+        private bool UsesSourceRecovery =>
+            this.clone is { HasRecovery: true }
+            && this.restartDelay is { } delay
+            && this.cloneRestartDelay is { } shown
+            && (ServiceConfigModel.TryParseTime(delay, out var wait) && ServiceConfigModel.TryParseTime(shown, out var shownWait)
+                ? wait == shownWait
+                : string.Equals(delay.Trim(), shown, StringComparison.Ordinal));
 
         // Step 4 ---------------------------------------------------------------
 
@@ -882,6 +943,42 @@ namespace WinSW.Gui.ViewModels
                 .ToArray();
         }
 
+        /// <summary>
+        /// One failure action as the recovery hint lists it: a restart by its wait alone, as
+        /// the wizard's own ladder is listed, anything else by its name as well. An action
+        /// without a delay is taken at once, which is what the wrapper makes of it.
+        /// </summary>
+        internal static string DescribeFailureAction((string Action, string? Delay) action)
+        {
+            string delay = string.IsNullOrWhiteSpace(action.Delay) ? "0 sec" : action.Delay.Trim();
+            return action.Action switch
+            {
+                "restart" => delay,
+                "none" => action.Action,
+                _ => action.Action + " " + delay,
+            };
+        }
+
+        /// <summary>
+        /// The ID a copy of <paramref name="id"/> is suggested under, with the number that
+        /// goes with it: the first of <c>-2</c>, <c>-3</c> and on that nothing here uses yet.
+        /// </summary>
+        private (string Id, int Number) CopyId(string id)
+        {
+            int number = 2;
+            while (number < 100 && this.InUse(id + "-" + number.ToString(CultureInfo.InvariantCulture)))
+            {
+                number++;
+            }
+
+            return (id + "-" + number.ToString(CultureInfo.InvariantCulture), number);
+        }
+
+        /// <summary>True when <paramref name="id"/> belongs to an installed service or, for a desktop task, a registered task.</summary>
+        private bool InUse(string id) => this.desktopTask
+            ? this.TaskSources.Any(t => string.Equals(t.Name, id, StringComparison.OrdinalIgnoreCase))
+            : this.Sources.Any(s => string.Equals(s.ServiceName, id, StringComparison.OrdinalIgnoreCase));
+
         private bool CanLeaveCurrentStep() => this.step switch
         {
             1 => !string.IsNullOrWhiteSpace(this.targetPath) && (this.useBundledWrapper || this.wrapperExists),
@@ -965,7 +1062,10 @@ namespace WinSW.Gui.ViewModels
 
         public ServiceConfigModel BuildModel()
         {
-            var model = ServiceConfigModel.CreateNew();
+            // A copy starts from everything its source's file says, so that what the wizard has
+            // no field for comes along: the account, stop settings, hooks, dependencies. What
+            // it does have a field for is written over it below.
+            var model = this.clone?.NewModel() ?? ServiceConfigModel.CreateNew();
             model.Id = this.serviceId.Trim();
             model.DisplayName = NullIfBlank(this.displayName);
             model.Description = NullIfBlank(this.description);
@@ -995,6 +1095,9 @@ namespace WinSW.Gui.ViewModels
                 model.Arguments = NullIfBlank(this.arguments);
             }
 
+            // A copy's variables were filled into the wizard's list, where they can be edited;
+            // the list is what is written.
+            model.EnvironmentVariables.Clear();
             foreach (var variable in this.EnvironmentVariables)
             {
                 model.EnvironmentVariables.Add(new EnvironmentVariable { Name = variable.Name.Trim(), Value = variable.Value });
@@ -1015,22 +1118,36 @@ namespace WinSW.Gui.ViewModels
             {
                 // The wrapper refuses roll-by-time without a pattern, and without keepFiles it
                 // keeps every file it ever wrote. A daily pattern makes the count a count of
-                // days; the period is left at the wrapper's default of one.
-                model.RollPattern = DailyRollPattern;
+                // days; the period is left at the wrapper's default of one. A copy keeps the
+                // pattern and period its source rolled on.
+                model.RollPattern = this.clone?.RollPattern ?? DailyRollPattern;
                 model.KeepFiles = NullIfBlank(this.keepDays);
             }
 
+            // Anything else the mode needs — a copy's roll-by-size-time, say — is still as the
+            // source's file had it, and the other modes' settings are not written.
             if (this.desktopTask)
             {
                 // The wrapper allocates a console so that it can send the child a Ctrl+C on
                 // stop. In session 0 nobody sees it; in the session the user is logged on to
                 // it would be a black window in front of them for as long as the program runs.
                 model.HideWindow = true;
-            }
-            else if (this.restartOnFailure)
-            {
+
                 // Recovery actions belong to the service control manager, which never sees a
-                // desktop task. Bringing one of those back up is the trigger's job instead.
+                // desktop task. Bringing one of those back up is the trigger's job instead, so
+                // a service copied as a task leaves its source's behind.
+                model.FailureActions.Clear();
+                model.ResetFailureAfter = null;
+            }
+            else if (!this.restartOnFailure)
+            {
+                // A new service has no recovery actions for an empty list to leave in place.
+                model.FailureActions.Clear();
+                model.ResetFailureAfter = null;
+            }
+            else if (!this.UsesSourceRecovery)
+            {
+                model.FailureActions.Clear();
                 foreach (string delay in RestartDelays(this.restartDelay))
                 {
                     model.FailureActions.Add(new FailureAction { Action = "restart", Delay = delay });
@@ -1085,6 +1202,11 @@ namespace WinSW.Gui.ViewModels
                 this.Warnings.Add(warning);
             }
 
+            foreach (string note in this.CloneWarnings(model))
+            {
+                this.Warnings.Add(note);
+            }
+
             try
             {
                 this.ConfigPreview = model.ToXmlString();
@@ -1137,6 +1259,47 @@ namespace WinSW.Gui.ViewModels
                 (PythonFolder.VirtualEnvironment or PythonFolder.Installation, _) => Localizer.Format("M.Wiz.WorkDirPython", directory),
                 _ => null,
             };
+        }
+
+        /// <summary>
+        /// What a copy probably still has of its source that has to change before both can
+        /// run: the port it listens on, a password that may have changed since, log files the
+        /// two would fight over, and the source's own files it now runs. Empty for a service
+        /// not copied from another.
+        /// </summary>
+        private IEnumerable<string> CloneWarnings(ServiceConfigModel model)
+        {
+            if (this.clone is not { } clone)
+            {
+                yield break;
+            }
+
+            // Only the ports the source listens on too: once one is changed, it stops being a
+            // problem, and a second port the copy was given is none of the source's business.
+            var ports = ServiceClone.FindPorts(string.Join(" ", model.Arguments, model.StartArguments), model.EnvironmentVariables)
+                .Where(clone.Ports.Contains)
+                .ToList();
+            if (ports.Count > 0)
+            {
+                yield return Localizer.Format("M.Wiz.ClonePort", string.Join(", ", ports), clone.SourceName);
+            }
+
+            // A task runs as whoever registers it; the account is a service's alone.
+            if (!this.desktopTask && ServiceClone.CarriesPassword(model))
+            {
+                yield return Localizer.Format("M.Wiz.ClonePassword", model.ServiceAccountUser!.Trim(), clone.SourceName);
+            }
+
+            string configPath = this.ConfigPath;
+            if (clone.SharesLogFilesWith(model, configPath))
+            {
+                yield return Localizer.Format("M.Wiz.CloneLogFiles", clone.SourceName, ConfigPaths.ResolveLogDirectory(model, configPath));
+            }
+
+            if (clone.PointingIntoSource(model) is { Count: > 0 } settings)
+            {
+                yield return Localizer.Format("M.Wiz.CloneRebased", clone.SourceName, clone.SourceDirectory, string.Join(", ", settings));
+            }
         }
 
         private async Task InstallAsync()
@@ -1348,6 +1511,16 @@ namespace WinSW.Gui.ViewModels
             return false;
         }
 
+        /// <summary>
+        /// Fills the wizard in from an installed service, keeping its whole configuration for
+        /// <see cref="BuildModel"/> to start from; see <see cref="ServiceClone"/>.
+        /// </summary>
+        /// <remarks>
+        /// The wrapper and the folder are left as they are for any new service: the copy gets
+        /// a folder of its own under the install root and the wrapper shared from there. The
+        /// source's wrapper is no guide to either — the shared one would put the copy's file
+        /// in <c>bin</c>, and a branded one in the source's own folder.
+        /// </remarks>
         private void PrefillFrom(ServiceEntry entry)
         {
             if (entry.ConfigPath is null)
@@ -1355,44 +1528,93 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
-            ServiceConfigModel model;
+            ServiceClone copied;
             try
             {
-                model = ServiceConfigModel.Load(entry.ConfigPath);
+                copied = ServiceClone.Load(entry.ServiceName, entry.ConfigPath);
             }
             catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException)
             {
+                // Nothing is changed: what the wizard held, from an earlier copy or typed in,
+                // is still whole.
                 this.StatusMessage = Localizer.Format("M.Wiz.CloneFailed", e.Message);
                 return;
             }
 
-            this.UseBundledWrapper = false;
-            this.WrapperPath = entry.WrapperPath;
+            this.clone = copied;
+            var model = copied.NewModel();
+
+            // The source's variables go in first, so that a Python program is offered only
+            // the ones it does not have yet; an earlier copy's are replaced, not added to.
+            this.EnvironmentVariables.Clear();
+            this.offeredVariables.Clear();
+            this.pythonEnvironmentOffered = false;
+            foreach (var variable in model.EnvironmentVariables)
+            {
+                this.EnvironmentVariables.Add(new EnvironmentVariable { Name = variable.Name, Value = variable.Value });
+            }
+
             this.TargetPath = model.Executable;
             this.Arguments = model.Arguments ?? string.Empty;
+
+            // The program may be the one already there, which the setter does not look at again.
+            this.OfferPythonEnvironment();
+
+            // Set after the program, whose own suggestion would otherwise stand; the source's
+            // is never empty — see ServiceClone.
             this.WorkingDirectory = model.WorkingDirectory ?? string.Empty;
-            this.ServiceId = model.Id + "-2";
-            this.DisplayName = string.IsNullOrWhiteSpace(model.DisplayName) ? model.Id + " (2)" : model.DisplayName + " (2)";
+
+            var (id, number) = this.CopyId(model.Id);
+            this.ServiceId = id;
+            this.DisplayName = string.Format(
+                CultureInfo.InvariantCulture,
+                "{0} ({1})",
+                string.IsNullOrWhiteSpace(model.DisplayName) ? model.Id : model.DisplayName,
+                number);
             this.Description = model.Description ?? string.Empty;
             this.StartMode = model.StartMode;
             this.DelayedAutoStart = model.DelayedAutoStart;
-            this.LogMode = Array.IndexOf(this.LogModes, model.LogMode) >= 0 ? model.LogMode : "roll-by-size";
+
+            // A mode the wizard has no fields for is offered as well, and written with the
+            // settings the source had for it. One the wrapper would not know is not copied.
+            string mode = model.LogMode;
+            if (Array.IndexOf(ServiceConfigModel.LogModes, mode) < 0)
+            {
+                mode = "roll-by-size";
+            }
+
+            this.LogModes = OfferedLogModes.Contains(mode) ? OfferedLogModes : OfferedLogModes.Append(mode).ToArray();
+            this.LogMode = mode;
             this.LogPath = model.LogPath ?? string.Empty;
             this.SizeThresholdKb = model.SizeThreshold ?? "10240";
 
-            // A time-rolled source's count is a count of its files, which is a count of days
-            // once the wizard writes its daily pattern in place of whatever the source had.
-            bool byTime = model.LogMode == "roll-by-time";
+            // A time-rolled source's count is a count of files on its own pattern, which the
+            // copy keeps. Without one it kept every file, and so does the copy.
+            bool byTime = mode == "roll-by-time";
             this.KeepFiles = (byTime ? null : model.KeepFiles) ?? "8";
-            this.KeepDays = (byTime ? model.KeepFiles : null) ?? "30";
-            this.RestartOnFailure = model.FailureActions.Count > 0;
-            this.RestartDelay = model.FailureActions.FirstOrDefault()?.Delay ?? "10 sec";
+            this.KeepDays = byTime ? model.KeepFiles ?? string.Empty : "30";
+
+            // The source's actions are shown by the first delay, and written as they are for
+            // as long as that is left alone; see UsesSourceRecovery.
+            this.RestartOnFailure = copied.HasRecovery;
+            this.cloneRestartDelay = copied.HasRecovery
+                ? DescribeDelay(copied.Recovery[0].Delay)
+                : "10 sec";
+            this.RestartDelay = this.cloneRestartDelay;
+
+            this.Raise(nameof(this.RecoveryHint));
+            this.Raise(nameof(this.KeepsSourceRollPattern));
+            this.Raise(nameof(this.RollPatternHint));
             this.StatusMessage = Localizer.Format("M.Wiz.Cloned", entry.ServiceName);
+
+            static string DescribeDelay(string? delay) => string.IsNullOrWhiteSpace(delay) ? "0 sec" : delay.Trim();
         }
 
         private void Reset()
         {
             this.CloneSource = null;
+            this.clone = null;
+            this.cloneRestartDelay = null;
             this.UseBundledWrapper = BundledWrapper.IsAvailable;
             this.PlaceNextToProgram = false;
             this.suggestedWorkingDirectory = string.Empty;
@@ -1410,13 +1632,19 @@ namespace WinSW.Gui.ViewModels
             this.Description = string.Empty;
             this.StartMode = "Automatic";
             this.DelayedAutoStart = false;
+
+            // The mode first, so that it is in the list the picker is handed next.
             this.LogMode = "roll-by-size";
+            this.LogModes = OfferedLogModes;
             this.LogPath = string.Empty;
             this.SizeThresholdKb = "10240";
             this.KeepFiles = "8";
             this.KeepDays = "30";
             this.RestartOnFailure = true;
             this.RestartDelay = "10 sec";
+            this.Raise(nameof(this.RecoveryHint));
+            this.Raise(nameof(this.KeepsSourceRollPattern));
+            this.Raise(nameof(this.RollPatternHint));
             this.LogonDelay = "30 sec";
             this.KeepAliveInterval = "1 min";
             this.RunElevated = false;

@@ -473,9 +473,15 @@
     <sys:String x:Key="M.Diff.Unchanged">… {0} 行未變 …</sys:String>
     <sys:String x:Key="M.Diff.ReadFailed">無法比較：{0}</sys:String>
     <sys:String x:Key="M.Wiz.CloneFrom">以現有服務為基礎（選填）</sys:String>
-    <sys:String x:Key="M.Wiz.CloneHint">複製其程式、參數和設定；ID 和顯示名稱會加上後綴。</sys:String>
+    <sys:String x:Key="M.Wiz.CloneHint">複製它的全部設定：環境變數、執行帳戶、停止設定、掛勾、相依服務和失敗復原。副本在安裝根目錄下有自己的 ID、名稱和資料夾；最後一步會列出可能還要修改的地方。</sys:String>
     <sys:String x:Key="M.Wiz.CloneFailed">無法讀取來源設定：{0}</sys:String>
     <sys:String x:Key="M.Wiz.Cloned">已從「{0}」填入。</sys:String>
+    <sys:String x:Key="M.Wiz.ClonePort">副本仍然監聽連接埠 {0}，和「{1}」一樣。兩個服務不能監聽同一個連接埠：安裝前請在啟動參數或環境變數裡改掉。</sys:String>
+    <sys:String x:Key="M.Wiz.ClonePassword">副本和「{1}」一樣以 {0} 執行，密碼取自那個服務的設定。如果密碼後來改過，副本會啟動失敗（錯誤 1069）：安裝後請在編輯器裡更正。</sys:String>
+    <sys:String x:Key="M.Wiz.CloneLogFiles">副本會和「{0}」寫入同樣的記錄檔（在 {1}），兩個服務不能共用一個記錄檔。請在上一步換一個記錄目錄。</sys:String>
+    <sys:String x:Key="M.Wiz.CloneRebased">「{0}」是透過自己的資料夾 {1} 找到檔案的。副本直接寫明這個資料夾，執行的仍是同一份檔案：{2}。程式寫到那裡的東西，兩個服務會共用。</sys:String>
+    <sys:String x:Key="M.Wiz.RecoveryHintCopied">複製自「{0}」，每一步前的等待：{1}。一直失敗就一直重複最後一步；{2} 內沒再失敗，就從第一步重新算。改了延遲，就換成精靈自己的等待時間。</sys:String>
+    <sys:String x:Key="M.Wiz.RollPatternCopied">複製自「{0}」：日期格式 {1} 每進到下一段就換一個新檔案，不一定是每天。檔案多於這個數量時刪除最舊的；留白則全部保留。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">品牌化 wrapper：複製為 &lt;服務ID&gt;.exe 並設定公司名稱</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">公司名稱</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">註冊為：</sys:String>

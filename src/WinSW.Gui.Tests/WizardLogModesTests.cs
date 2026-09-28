@@ -117,8 +117,9 @@ namespace WinSW.Gui.Tests
         }
 
         /// <summary>
-        /// Cloning a time-rolled service carries its count into the days field, where it
-        /// means what it meant, and leaves the size fields at their own defaults.
+        /// Cloning a time-rolled service carries its count into the days field and keeps the
+        /// pattern it rolled on, so the count means what it meant, and leaves the size fields
+        /// at their own defaults.
         /// </summary>
         [Fact]
         public void CloningATimeRolledServiceCarriesItsCountAsDays()
@@ -139,7 +140,7 @@ namespace WinSW.Gui.Tests
             Assert.Equal("8", wizard.KeepFiles);
 
             var model = wizard.BuildModel();
-            Assert.Equal(WizardViewModel.DailyRollPattern, model.RollPattern);
+            Assert.Equal("yyyy-MM-dd", model.RollPattern);
             Assert.Equal("90", model.KeepFiles);
         }
 

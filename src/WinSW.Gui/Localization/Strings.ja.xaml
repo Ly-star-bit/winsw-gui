@@ -473,9 +473,15 @@
     <sys:String x:Key="M.Diff.Unchanged">… 変更のない {0} 行 …</sys:String>
     <sys:String x:Key="M.Diff.ReadFailed">比較できませんでした: {0}</sys:String>
     <sys:String x:Key="M.Wiz.CloneFrom">既存のサービスをもとにする (任意)</sys:String>
-    <sys:String x:Key="M.Wiz.CloneHint">プログラム、引数、設定をコピーします。ID と表示名にはサフィックスが付きます。</sys:String>
+    <sys:String x:Key="M.Wiz.CloneHint">構成をまるごとコピーします (環境変数、アカウント、停止の設定、フック、依存関係、回復)。コピーにはインストール先ルートの下に専用の ID、名前、フォルダーが付きます。変更が必要そうな点は最後のステップに表示されます。</sys:String>
     <sys:String x:Key="M.Wiz.CloneFailed">コピー元の構成を読み取れませんでした: {0}</sys:String>
     <sys:String x:Key="M.Wiz.Cloned">'{0}' から入力しました。</sys:String>
+    <sys:String x:Key="M.Wiz.ClonePort">コピーは '{1}' と同じくポート {0} で待ち受けます。2 つのサービスが同じポートで待ち受けることはできません。インストールする前に引数か環境変数で変更してください。</sys:String>
+    <sys:String x:Key="M.Wiz.ClonePassword">コピーは '{1}' と同じく {0} として実行され、パスワードはそのサービスの構成から取られます。その後パスワードが変わっていれば、コピーは起動しません (エラー 1069)。インストール後にエディターで修正してください。</sys:String>
+    <sys:String x:Key="M.Wiz.CloneLogFiles">コピーは '{0}' と同じログ ファイル ({1} 内) に書き込むことになりますが、2 つのサービスで 1 つのログ ファイルは共有できません。前のステップで別のログ ディレクトリを選んでください。</sys:String>
+    <sys:String x:Key="M.Wiz.CloneRebased">'{0}' は自分のフォルダー {1} を基準にファイルを探していました。コピーではこのフォルダーを直接指定するので、同じファイルを実行します: {2}。プログラムがそこに書き込むものは両方で共有されます。</sys:String>
+    <sys:String x:Key="M.Wiz.RecoveryHintCopied">'{0}' からコピー。各アクションまでの待ち時間: {1}。失敗が続く間は最後のアクションを繰り返し、{2} 失敗がなければ最初から数え直します。遅延を変更すると、ウィザード既定の待ち時間に置き換わります。</sys:String>
+    <sys:String x:Key="M.Wiz.RollPatternCopied">'{0}' からコピー: 日付パターン {1} が次の区切りに進むたびに新しいファイルになります (1 日ごととは限りません)。この数を超えると古いものから削除され、空欄ならすべて保持します。</sys:String>
     <sys:String x:Key="M.Wiz.Brand">ラッパーをブランド化: &lt;サービス ID&gt;.exe としてコピーし、会社名を設定</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">会社名</sys:String>
     <sys:String x:Key="M.Wiz.BrandHint">登録名:</sys:String>
