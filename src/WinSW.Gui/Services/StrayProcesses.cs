@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using WinSW.Gui.Localization;
 
@@ -354,8 +355,8 @@ namespace WinSW.Gui.Services
                     return CommandResult.Failed(Localizer.Get("M.Dash.StrayGone"));
                 }
 
-                await Task.Run(() => process.Kill(entireProcessTree: true)).ConfigureAwait(false);
-                return CommandResult.Ok();
+                bool refused = await Task.Run(() => EndTree(process)).ConfigureAwait(false);
+                return refused ? await KillElevatedAsync(mark).ConfigureAwait(false) : CommandResult.Ok();
             }
             catch (Exception e) when (e is ArgumentException or InvalidOperationException)
             {
@@ -365,12 +366,70 @@ namespace WinSW.Gui.Services
             }
             catch (Win32Exception)
             {
-                // Access denied, most likely: the program runs as the service's account. The
-                // elevated kill is filtered on the image name, so an ID reused by now cannot take
-                // something else down with it.
-                return await WinSwCli.KillProcessElevatedAsync(mark.ProcessId, mark.Name).ConfigureAwait(false);
+                // Its start could not even be read: the program runs as an account this user may
+                // not look into, let alone end.
+                return await KillElevatedAsync(mark).ConfigureAwait(false);
             }
         }
+
+        /// <summary>
+        /// Whether ending a process failed on a refusal — access denied, most likely — rather than
+        /// on the process having gone. <see cref="Process.Kill(bool)"/> with the whole tree does not
+        /// stop at a refusal: it ends what it may and throws what it was refused together, as an
+        /// <see cref="AggregateException"/> of <see cref="Win32Exception"/>s.
+        /// </summary>
+        internal static bool IsRefusal(Exception e) => e switch
+        {
+            Win32Exception => true,
+            AggregateException all => all.InnerExceptions.Count > 0 && all.InnerExceptions.All(IsRefusal),
+            _ => false,
+        };
+
+        /// <summary>
+        /// Ends the process and everything under it, on a worker. True when the process itself was
+        /// refused and still runs, which is for the elevated taskkill to end with its tree.
+        /// </summary>
+        /// <remarks>
+        /// Refused only something under it, the process itself has been ended: taskkill's /T walks
+        /// the tree from the process it is given, and would have nothing to walk from. What is left
+        /// is found again at the next reading — among what was noted under the wrapper, or holding
+        /// the port — and offered on its own, where ending it meets the refusal head on.
+        /// </remarks>
+        private static bool EndTree(Process process)
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+                return false;
+            }
+            catch (Exception e) when (IsRefusal(e))
+            {
+                return !HasEnded(process);
+            }
+        }
+
+        /// <summary>
+        /// Whether the process has gone, given the moment ending it takes: TerminateProcess returns
+        /// before the process is over. One that cannot even be waited on is taken to be running.
+        /// </summary>
+        private static bool HasEnded(Process process)
+        {
+            try
+            {
+                return process.WaitForExit(500);
+            }
+            catch (Exception e) when (e is Win32Exception or InvalidOperationException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Ends the process and its tree with administrator rights. Filtered on the image name, so
+        /// that an ID reused by now cannot take something else down with it.
+        /// </summary>
+        private static Task<CommandResult> KillElevatedAsync(ProcessMark mark) =>
+            WinSwCli.KillProcessElevatedAsync(mark.ProcessId, mark.Name);
 
         /// <summary>
         /// Within a second, the tolerance <see cref="TerminateAsync"/> uses too. Two processes

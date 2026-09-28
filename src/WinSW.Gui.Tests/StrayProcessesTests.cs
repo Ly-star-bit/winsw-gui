@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using WinSW.Gui.Services;
 using Xunit;
@@ -15,6 +16,9 @@ namespace WinSW.Gui.Tests
         /// <summary>With forward slashes, which Windows takes as well, so the tests read the same on any host.</summary>
         private const string Program = "C:/apps/server/server.exe";
         private const int Console = 900;
+
+        /// <summary>ERROR_ACCESS_DENIED, what TerminateProcess fails with on another account's program.</summary>
+        private const int AccessDenied = 5;
 
         private static readonly DateTime T0 = new(2026, 9, 23, 8, 0, 0);
         private static readonly ISet<string> Wrappers = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "WinSW.exe" };
@@ -212,6 +216,29 @@ namespace WinSW.Gui.Tests
             Assert.True(Confirmed(new StrayFinding(Mark(11380, 5, "python.exe"), Mark(2540, 1, "uvicorn.exe"))).CanEndStrayParent);
             Assert.False(Confirmed(new StrayFinding(Mark(11380, 5, "python.exe"), Mark(900, 1, "svchost.exe"))).CanEndStrayParent);
             Assert.False(Confirmed(new StrayFinding(Mark(11380, 5, "python.exe"), null)).CanEndStrayParent);
+        }
+
+        /// <summary>
+        /// Ending a whole tree does not stop at a refusal: it ends what it may and throws what it was
+        /// refused together. That is as much a refusal as one thrown on its own, and goes to the
+        /// elevated taskkill the same way; it used to escape as an error nobody caught.
+        /// </summary>
+        [Fact]
+        public void RefusalsGatheredTogetherAreARefusal()
+        {
+            Assert.True(StrayProcesses.IsRefusal(new Win32Exception(AccessDenied)));
+            Assert.True(StrayProcesses.IsRefusal(new AggregateException(new Win32Exception(AccessDenied))));
+            Assert.True(StrayProcesses.IsRefusal(new AggregateException(new Win32Exception(AccessDenied), new Win32Exception(AccessDenied))));
+            Assert.True(StrayProcesses.IsRefusal(new AggregateException(new AggregateException(new Win32Exception(AccessDenied)))));
+        }
+
+        /// <summary>Anything else among them is not a refusal the elevated path can do anything about.</summary>
+        [Fact]
+        public void AnythingElseIsNotARefusal()
+        {
+            Assert.False(StrayProcesses.IsRefusal(new InvalidOperationException()));
+            Assert.False(StrayProcesses.IsRefusal(new AggregateException()));
+            Assert.False(StrayProcesses.IsRefusal(new AggregateException(new Win32Exception(AccessDenied), new InvalidOperationException())));
         }
 
         private static Model.ServiceEntry Confirmed(StrayFinding finding)
