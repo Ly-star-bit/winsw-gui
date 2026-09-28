@@ -43,6 +43,8 @@ Works like the append mode, but in addition, if the log file gets bigger than a 
 </log>
 ```
 
+If the files cannot be rolled, for example because another program holds one of them open, WinSW writes the reason to the Windows event log and starts *myapp.out.log* over, and what it held is lost.
+
 ## Roll by time mode
 
 Works like the roll mode, except that instead of using the size as a threshold, use the time period as the threshold.
@@ -62,7 +64,8 @@ For example, in the above example, the log of Jan 1, 2013 gets written to `myapp
 
 ## Roll by size and time mode
 
-Works in a combination of roll size mode and roll time mode, if the log file gets bigger than a set size, it gets rolled using `<pattern>` provided.
+Works in a combination of roll size mode and roll time mode. Outputs are appended to *myapp.out.log* and *myapp.err.log*, and if one of them gets bigger than a set size, it gets rolled to a name made from the `<pattern>` provided and a number, and a new file is started.
+The nested `<sizeThreshold>` element specifies the rotation threshold in KB (defaults to 10MB), and the nested `<pattern>` element is required.
 
 ```xml
 <log mode="roll-by-size-time">
@@ -73,40 +76,36 @@ Works in a combination of roll size mode and roll time mode, if the log file get
 ```
 
 The syntax of the pattern string is specified by [DateTime.ToString(String)](https://docs.microsoft.com/dotnet/api/system.datetime.tostring#System_DateTime_ToString_System_String_).
-For example, in the above example, the log of Jan 1, 2013 gets written to `myapp.20130101.out.log` and `myapp.20130101.err.log`.
+For example, in the above example, the log of Jan 1, 2013 gets rolled to `myapp.20130101.#0001.out.log`, `myapp.20130101.#0002.out.log` and so on.
 
 The syntax of the autoRollAtTime is specified by [TimeSpan.ToString(String)](https://docs.microsoft.com/dotnet/api/system.timespan.tostring#System_TimeSpan_ToString_System_String_).
-For example, in the above example, at the start of the day it will roll the file over.
+For example, in the above example, at the start of the day it will roll the file over, whatever its size.
+A file rolled at that time is named after the day before.
+
+If a file cannot be rolled, for example because another program holds it open without allowing it to be deleted, WinSW writes the reason to the Windows event log and keeps appending to the same file.
+A roll on size is tried again once another `<sizeThreshold>` of output has been written.
 
 ### Automatic archiving of logs
 
 :warning: This feature is reported to be broken in recent WinSW versions.
 It is a potential subject for removal.
 
+Archiving runs only right after the roll at `<autoRollAtTime>`; a roll on size never archives anything.
+Without `<autoRollAtTime>`, `<zipOlderThanNumDays>` and `<zipDateFormat>` have no effect.
+
 ```xml
 <log mode="roll-by-size-time">
+  <pattern>yyyyMMdd</pattern>
+  <autoRollAtTime>00:00:00</autoRollAtTime>
   <zipOlderThanNumDays>5</zipOlderThanNumDays>
   <zipDateFormat>yyyyMM</zipDateFormat>
 </log>
 ```
 
-The `zipOlderThanNumDays` can only be used in conjection with autoRollAtTime, provide the number of days of files to keep.
+The `zipOlderThanNumDays` element provides the number of days of files to keep as they are: every file in the log directory whose name ends like the log files (*.out.log* and *.err.log* by default) and that has not been written to for longer is added to a zip file and deleted.
+This includes the logs of other programs that share the directory.
 
-```xml
-<log mode="roll-by-size-time">
-  <autoRollAtTime>00:00:00</autoRollAtTime>
-  <zipOlderThanNumDays>5</zipOlderThanNumDays>
-</log>
-```
-
-The zipDateFormat can only be used in conjection with autoRollAtTime, provide the zip file format using the [TimeSpan.ToString(String)](https://docs.microsoft.com/dotnet/api/system.timespan.tostring#System_TimeSpan_ToString_System_String_).
-
-```xml
-<log mode="roll-by-size-time">
-  <autoRollAtTime>00:00:00</autoRollAtTime>
-  <zipDateFormat>yyyyMM</zipDateFormat>
-</log>
-```
+The `zipDateFormat` element names the zip file from the date the log file was last accessed, for example *myapp.201301.zip* for January 2013 in the above example. It defaults to `yyyyMM`, and its syntax is specified by [DateTime.ToString(String)](https://docs.microsoft.com/dotnet/api/system.datetime.tostring#System_DateTime_ToString_System_String_).
 
 ## Error reporting
 

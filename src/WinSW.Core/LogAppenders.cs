@@ -88,8 +88,12 @@ namespace WinSW
             {
                 FileHelper.MoveOrReplaceFile(sourceFileName, destFileName);
             }
-            catch (IOException e)
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
+                // Access denied is not an IOException. Older versions of Windows, Windows Server 2016
+                // among them, give it when the file being replaced is still held open by another
+                // program, such as a log viewer, and thrown from here it would fail the start of a
+                // program that is already running.
                 this.EventLogger.WriteEntry("Failed to move :" + sourceFileName + " to " + destFileName + " because " + e.Message);
             }
         }
@@ -284,8 +288,10 @@ namespace WinSW
                 {
                     File.Delete(file);
                 }
-                catch (IOException e)
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                 {
+                    // A read-only file, or one already marked for deletion while a reader holds it, is
+                    // denied rather than in use. This runs in the middle of the copy, which must go on.
                     this.EventLogger.WriteEntry("Failed to purge old log file: " + e.Message);
                 }
             }
@@ -361,8 +367,13 @@ namespace WinSW
 
                         File.Move(this.BaseLogFileName + ext, this.BaseLogFileName + ".0" + ext);
                     }
-                    catch (IOException e)
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException)
                     {
+                        // A log viewer that follows the file down the rolled names ends up holding the
+                        // last one. On older versions of Windows, Windows Server 2016 among them, deleting
+                        // it then only marks it for deletion, and the next delete, or a move onto its name,
+                        // is denied rather than in use. Were that to end the copy, nothing would read the
+                        // program's output any more, and the program would hang once the pipe filled up.
                         this.EventLogger.WriteEntry("Failed to roll log: " + e.Message);
                     }
 
@@ -414,8 +425,15 @@ namespace WinSW
 
         public TimeSpan? AutoRollAtTime { get; }
 
+        /// <summary>
+        /// Log files not written to for longer than this many days are zipped. Only the roll at
+        /// <see cref="AutoRollAtTime"/> zips files, so without it this has no effect.
+        /// </summary>
         public int? ZipOlderThanNumDays { get; }
 
+        /// <summary>
+        /// Names the zip files. Like <see cref="ZipOlderThanNumDays"/>, it needs <see cref="AutoRollAtTime"/>.
+        /// </summary>
         public string ZipDateFormat { get; }
 
         public RollingSizeTimeLogAppender(
@@ -475,15 +493,12 @@ namespace WinSW
                         timer.Stop();
                         lock (fileLock)
                         {
-                            writer.Dispose();
-
-                            var now = DateTime.Now.AddDays(-1);
-                            int nextFileNumber = this.GetNextFileNumber(extension, baseDirectory, baseFileName, now);
-                            string? nextFileName = Path.Combine(baseDirectory, string.Format("{0}.{1}.#{2:D4}{3}", baseFileName, now.ToString(this.FilePattern), nextFileNumber, extension));
-                            File.Move(logFile, nextFileName);
-
-                            copy.Writer = writer = new FileStream(logFile, FileMode.Create);
-                            fileLength = new FileInfo(logFile).Length;
+                            // A file that could not be rolled keeps its length, so that it still rolls
+                            // on size when it should.
+                            if (Roll(DateTime.Now.AddDays(-1), "Failed to to trigger auto roll at time event due to: "))
+                            {
+                                fileLength = 0;
+                            }
                         }
 
                         // Next day so check if file can be zipped
@@ -511,31 +526,47 @@ namespace WinSW
                     fileLength += written;
                     if (fileLength > this.SizeThreshold)
                     {
-                        try
-                        {
-                            // roll file
-                            var now = DateTime.Now;
-                            int nextFileNumber = this.GetNextFileNumber(extension, baseDirectory, baseFileName, now);
-                            string? nextFileName = Path.Combine(
-                                    baseDirectory,
-                                    string.Format("{0}.{1}.#{2:D4}{3}", baseFileName, now.ToString(this.FilePattern), nextFileNumber, extension));
-                            File.Move(logFile, nextFileName);
+                        _ = Roll(DateTime.Now, "Failed to roll size time log: ");
 
-                            // even if the log rotation fails, create a new one, or else
-                            // we'll infinitely try to roll.
-                            copy.Writer = writer = new FileStream(logFile, FileMode.Create);
-                            fileLength = new FileInfo(logFile).Length;
-                        }
-                        catch (Exception e)
-                        {
-                            this.EventLogger.WriteEntry($"Failed to roll size time log: {e.Message}");
-                        }
+                        // Count from zero even when the roll failed and the file is the old one, or
+                        // every line after this one would try again and write another event. The next
+                        // try comes after another threshold's worth of output.
+                        fileLength = 0;
                     }
                 }
             }
 
             reader.Dispose();
             writer.Dispose();
+
+            // Renames the log file to the next number for the date and starts a new one. The writer is
+            // closed first, because Windows does not rename a file that is open without sharing delete
+            // access. When the rename fails, the failure is reported and the same file is opened again
+            // and appended to, so that the copy goes on and no output is lost. Returns whether the file
+            // was renamed.
+            bool Roll(DateTime date, string failureMessage)
+            {
+                writer.Dispose();
+
+                bool rolled;
+                try
+                {
+                    int nextFileNumber = this.GetNextFileNumber(extension, baseDirectory, baseFileName, date);
+                    string? nextFileName = Path.Combine(
+                            baseDirectory,
+                            string.Format("{0}.{1}.#{2:D4}{3}", baseFileName, date.ToString(this.FilePattern), nextFileNumber, extension));
+                    File.Move(logFile, nextFileName);
+                    rolled = true;
+                }
+                catch (Exception e)
+                {
+                    this.EventLogger.WriteEntry(failureMessage + e.Message);
+                    rolled = false;
+                }
+
+                copy.Writer = writer = new FileStream(logFile, rolled ? FileMode.Create : FileMode.Append);
+                return rolled;
+            }
         }
 
         private void ZipFiles(string directory, string fileExtension, string zipFileBaseName)
