@@ -338,6 +338,7 @@
     <sys:String x:Key="M.Task.Alerts">予期せず停止したら通知</sys:String>
     <sys:String x:Key="M.Task.AlertsTip">トレイに通知し、設定ページで Webhook を設定していればグループ チャットにも投稿します。設定ページで通知をオフにすると、ここでも通知しません。終了コード 0 での正常終了は通知しません。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeFrameworkTooOld">注意: このマシンの .NET Framework は {0} です。同梱のラッパーは .NET Framework 版で 4.6.2 以降が必要なため、アップグレード後にサービスが起動しなくなります。先に .NET Framework 4.8 (オフライン インストーラー {1}) をインストールし、サーバーを再起動してからアップグレードしてください。</sys:String>
+    <sys:String x:Key="M.LastStop.Environment">サービス実行環境のチェック</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">自動再起動待ち</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">失敗時の動作</sys:String>

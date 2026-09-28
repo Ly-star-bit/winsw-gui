@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -1012,7 +1013,39 @@ namespace WinSW.Gui.ViewModels
             {
                 this.StatusMessage = Localizer.Format("M.Dash.StoppedAfterStart", entry.ServiceName);
                 this.Toast?.Invoke(this.StatusMessage, true);
+                ErrorLog.Observe(this.CheckWhatTheServiceSeesAsync(entry), "environment check");
             }
+        }
+
+        /// <summary>
+        /// Checks the service's configuration as the service will run it — a bare name its PATH
+        /// cannot find, a program installed for one user, a mapped drive, a virtual environment
+        /// whose Python has gone — after a start from this panel failed or fell back to stopped
+        /// straight after, and puts what it finds on the Last stop card. These all pass a try run
+        /// in the signed-in session and fail at the service's first start. Off this thread: the
+        /// check looks accounts up and touches paths, possibly on a share that is gone.
+        /// </summary>
+        private async Task CheckWhatTheServiceSeesAsync(ServiceEntry entry)
+        {
+            if (entry.ConfigPath is not { } configPath)
+            {
+                return;
+            }
+
+            int run = entry.BeginStartCheck();
+            string wrapperPath = entry.WrapperPath;
+            ImmutableArray<EnvironmentFinding> findings;
+            try
+            {
+                findings = await Task.Run(() => ServiceConfigModel.Load(configPath).CheckEnvironment(wrapperPath).Findings.ToImmutableArray()).ConfigureAwait(true);
+            }
+            catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                // A configuration that cannot be read has nothing to check, and the card says so.
+                return;
+            }
+
+            entry.EndStartCheck(run, findings);
         }
 
         // Scheduled restart ----------------------------------------------------
@@ -1502,6 +1535,14 @@ namespace WinSW.Gui.ViewModels
                     }
 
                     await this.RefreshStatusesAsync().ConfigureAwait(true);
+                }
+
+                // A start that did not take: what the service will see is checked, now that the
+                // state it is in has been read back; see CheckWhatTheServiceSeesAsync. A start that
+                // took and then fell over is the start watch's to catch.
+                if ((label is "start" or "restart") && !result.Succeeded && !result.Cancelled)
+                {
+                    ErrorLog.Observe(this.CheckWhatTheServiceSeesAsync(entry), "environment check");
                 }
 
                 // The two outcomes that deserve a follow-up question rather than a message. Both

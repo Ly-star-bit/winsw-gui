@@ -338,6 +338,7 @@
     <sys:String x:Key="M.Task.Alerts">意外停止时通知</sys:String>
     <sys:String x:Key="M.Task.AlertsTip">弹出托盘通知；设置页填了 webhook 时，同时推送到群里。在设置页关掉通知后，这里也不再通知。程序以退出码 0 正常退出的不算。</sys:String>
     <sys:String x:Key="M.Dash.UpgradeFrameworkTooOld">注意：本机的 .NET Framework 是 {0}，而内置的包装器是 .NET Framework 版，需要 4.6.2 或更高，升级后服务会启动失败。请先安装 .NET Framework 4.8（离线安装包 {1}），重启服务器后再升级。</sys:String>
+    <sys:String x:Key="M.LastStop.Environment">服务运行环境检查</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">等待自动重启</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">失败后</sys:String>

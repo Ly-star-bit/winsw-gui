@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.ServiceProcess;
 using WinSW.Gui.Localization;
 using WinSW.Gui.Mvvm;
@@ -107,6 +108,8 @@ namespace WinSW.Gui.Model
         private int stopStamp;
         private int lastStopReadFor = -1;
         private int recentStops;
+        private ImmutableArray<EnvironmentFinding> startFindings = ImmutableArray<EnvironmentFinding>.Empty;
+        private int runStamp;
 
         public ServiceEntry(string serviceName, string displayName, string wrapperPath, string? configPath)
         {
@@ -493,6 +496,53 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.IsReadingLastStop));
         }
 
+        // Checked after a failed start --------------------------------------------
+
+        /// <summary>
+        /// What checking the configuration as the service will run it found — a program its PATH
+        /// cannot find, a mapped drive, a virtual environment whose Python has gone — after a start
+        /// from this console failed or fell back to stopped straight after; empty otherwise. Shown
+        /// on the Last stop card. Dropped when the service is next seen starting or running: it was
+        /// about the start that failed. See <see cref="ServiceConfigModel.CheckEnvironment(string)"/>.
+        /// </summary>
+        public ImmutableArray<EnvironmentFinding> StartFindings => this.startFindings;
+
+        /// <summary><see cref="StartFindings"/> in words, in the interface's language, one each.</summary>
+        public IReadOnlyList<string> StartFindingsText => this.startFindings.Select(finding => finding.Describe(Localizer.Get)).ToList();
+
+        public bool HasStartFindings => !this.startFindings.IsEmpty;
+
+        /// <summary>
+        /// Starts a check after a failed start. Returns the run it is for, to hand back with what it
+        /// finds: the check is made off the UI thread, and the service may be started again meanwhile.
+        /// </summary>
+        internal int BeginStartCheck() => this.runStamp;
+
+        /// <summary>
+        /// Keeps what the check begun for <paramref name="run"/> found, unless the service has been
+        /// seen starting or running since, which makes it about a start that is over.
+        /// </summary>
+        internal void EndStartCheck(int run, ImmutableArray<EnvironmentFinding> findings)
+        {
+            if (run == this.runStamp)
+            {
+                this.SetStartFindings(findings.IsDefault ? ImmutableArray<EnvironmentFinding>.Empty : findings);
+            }
+        }
+
+        private void SetStartFindings(ImmutableArray<EnvironmentFinding> findings)
+        {
+            if (this.startFindings.IsEmpty && findings.IsEmpty)
+            {
+                return;
+            }
+
+            this.startFindings = findings;
+            this.Raise(nameof(this.StartFindings));
+            this.Raise(nameof(this.StartFindingsText));
+            this.Raise(nameof(this.HasStartFindings));
+        }
+
         // Live metrics --------------------------------------------------------
 
         /// <summary>The Win32 or service-specific exit code from the last stop, if any.</summary>
@@ -721,6 +771,14 @@ namespace WinSW.Gui.Model
                     this.Raise(nameof(this.CanStop));
                     this.Raise(nameof(this.IsStopped));
                     this.ForgetLastStop();
+
+                    // Seen starting or running: a new run, and what was found after the start
+                    // that failed is about one that is over.
+                    if (value is { } state && state != ServiceControllerStatus.Stopped && state != ServiceControllerStatus.StopPending)
+                    {
+                        this.runStamp++;
+                        this.SetStartFindings(ImmutableArray<EnvironmentFinding>.Empty);
+                    }
                 }
             }
         }
@@ -1148,6 +1206,7 @@ namespace WinSW.Gui.Model
             this.Raise(nameof(this.RecoveryDifferenceText));
             this.Raise(nameof(this.StartUnavailableTip));
             this.Raise(nameof(this.AttentionText));
+            this.Raise(nameof(this.StartFindingsText));
 
             // Made in the language it was first asked for in.
             if (this.lastStopText != null)

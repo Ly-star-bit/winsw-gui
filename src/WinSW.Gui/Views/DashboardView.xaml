@@ -619,6 +619,32 @@
 
                                         <TextBlock Style="{StaticResource FieldHint}" Text="{DynamicResource M.LastStop.Reading}" Visibility="{Binding IsReadingLastStop, Converter={StaticResource BoolToVisibility}}" />
 
+                                        <!--
+                                            After a start from this panel failed: what checking the configuration as the
+                                            service will run it found, such as a program its PATH cannot find or a mapped
+                                            drive. In amber, as the wizard's warnings: likely causes, not certain ones.
+                                            Nothing when it found nothing; see CheckWhatTheServiceSeesAsync.
+                                        -->
+                                        <Border
+                                            Margin="0,6,0,0"
+                                            Padding="10,8"
+                                            Background="{DynamicResource InputBrush}"
+                                            BorderBrush="{DynamicResource HealthPendingBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Visibility="{Binding HasStartFindings, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel>
+                                                <TextBlock Margin="0,0,0,4" Style="{StaticResource FieldLabel}" Text="{DynamicResource M.LastStop.Environment}" TextWrapping="Wrap" />
+                                                <ItemsControl ItemsSource="{Binding StartFindingsText}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" Text="{Binding}" TextWrapping="Wrap" />
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
+
                                         <!-- The program's error output: uvicorn's "address already in use", a Python traceback. -->
                                         <StackPanel Margin="0,6,0,0" Visibility="{Binding LastStopText.ErrorHeading, Converter={StaticResource StringToVisibility}, FallbackValue=Collapsed}">
                                             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding LastStopText.ErrorHeading}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LastStop.ErrorLog.Path}" />
