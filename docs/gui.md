@@ -44,7 +44,11 @@ Across the pages:
   it maximized, and a reconnect at another resolution fits it again.
 - **Elevated save**: when a configuration lives somewhere a standard user cannot write, the
   file is staged and copied into place with one elevation prompt. There is also a
-  "Restart as administrator" button in the rail for prompt-free sessions.
+  "Restart as administrator" button in the rail for prompt-free sessions. Over unsaved
+  changes in the editor it first asks whether to save them; the restarted console opens the
+  configuration the editor was showing, as `WinSW.Gui.exe myapp.xml` would, and one that was
+  watching from the tray (started with Windows) still goes to the tray when its window is
+  closed.
 - **Try run**: the Configuration page can launch the program with the configured arguments,
   working directory and environment as the current user, without installing anything, and
   show its output — the fastest way to find a bad path or argument. The panel also spells out

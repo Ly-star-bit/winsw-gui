@@ -659,6 +659,9 @@
     <sys:String x:Key="M.Open.Next">次に開くファイル: {0}</sys:String>
     <sys:String x:Key="M.Open.Save">保存して開く</sys:String>
     <sys:String x:Key="M.Open.Discard">保存せずに開く</sys:String>
+    <sys:String x:Key="M.Restart.Next">続けて管理者として再起動します。再起動後のコンソールはディスク上の内容から始まります。</sys:String>
+    <sys:String x:Key="M.Restart.Save">保存して再起動</sys:String>
+    <sys:String x:Key="M.Restart.Discard">保存せずに再起動</sys:String>
 
     <!-- ラップされたプログラムに渡すネットワークプロキシ。 -->
     <sys:String x:Key="M.Proxy.Title">ネットワークプロキシ</sys:String>

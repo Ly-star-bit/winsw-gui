@@ -659,6 +659,9 @@
     <sys:String x:Key="M.Open.Next">Then open: {0}</sys:String>
     <sys:String x:Key="M.Open.Save">Save and open</sys:String>
     <sys:String x:Key="M.Open.Discard">Open without saving</sys:String>
+    <sys:String x:Key="M.Restart.Next">Then restart as administrator. The restarted console starts from what is on disk.</sys:String>
+    <sys:String x:Key="M.Restart.Save">Save and restart</sys:String>
+    <sys:String x:Key="M.Restart.Discard">Restart without saving</sys:String>
 
     <!-- The network proxy handed to the wrapped program. -->
     <sys:String x:Key="M.Proxy.Title">NETWORK PROXY</sys:String>

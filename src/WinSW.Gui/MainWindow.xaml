@@ -196,10 +196,10 @@
         </Grid>
 
         <!--
-            Unsaved changes on the way out, or before another configuration is opened over
-            them. Spans the title bar as well: it is the window that is being closed, not a
-            page, and a dialog you can walk behind is one you can lose. Escape cancels, which
-            is the safe answer.
+            Unsaved changes on the way out, before another configuration is opened over them,
+            or before the console restarts as administrator. Spans the title bar as well: it is
+            the window that is being closed, not a page, and a dialog you can walk behind is
+            one you can lose. Escape cancels, which is the safe answer.
         -->
         <Grid
             Grid.Row="0"

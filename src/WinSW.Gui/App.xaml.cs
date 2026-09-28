@@ -17,21 +17,21 @@ namespace WinSW.Gui
 
         private SingleInstance? instance;
 
-        /// <summary>A .xml given as the first argument: "WinSW.Gui.exe myapp.xml" or the Explorer verb.</summary>
+        /// <summary>
+        /// A .xml given on the command line: "WinSW.Gui.exe myapp.xml", the Explorer verb, or the
+        /// configuration a copy restarted as administrator had open; see <see cref="StartupArguments"/>.
+        /// </summary>
         public static string? StartupConfigPath { get; private set; }
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            if (e.Args.Length > 0 && e.Args[0].EndsWith(".xml", System.StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(e.Args[0]))
-            {
-                StartupConfigPath = System.IO.Path.GetFullPath(e.Args[0]);
-            }
-
-            bool startInTray = HasArgument(e, Autostart.TrayArgument);
+            var arguments = StartupArguments.Parse(e.Args, System.IO.File.Exists);
+            StartupConfigPath = arguments.ConfigPath;
 
             // A configuration to open is handed to the running copy, when there is one that
-            // takes it; see SingleInstance.
-            this.instance = SingleInstance.Claim(replacing: HasArgument(e, Elevation.ReplaceArgument), wake: !startInTray, configPath: StartupConfigPath);
+            // takes it; see SingleInstance. A copy restarted as administrator comes with one as
+            // well, and still waits for the copy it replaces rather than handing the file to it.
+            this.instance = SingleInstance.Claim(replacing: arguments.Replacing, wake: !arguments.Tray, configPath: StartupConfigPath);
             if (this.instance is null)
             {
                 this.Shutdown();
@@ -61,12 +61,17 @@ namespace WinSW.Gui
             // puts only the tray icon on screen.
             var window = new MainWindow();
             this.MainWindow = window;
-            if (startInTray)
+            if (arguments.Tray)
             {
                 window.StartInTray();
             }
             else
             {
+                if (arguments.KeepTray)
+                {
+                    window.KeepTrayWatch();
+                }
+
                 window.Show();
             }
 
@@ -79,9 +84,6 @@ namespace WinSW.Gui
             this.instance?.Dispose();
             base.OnExit(e);
         }
-
-        private static bool HasArgument(StartupEventArgs e, string argument) =>
-            Array.Exists(e.Args, a => string.Equals(a, argument, StringComparison.OrdinalIgnoreCase));
 
         private static void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {

@@ -659,6 +659,9 @@
     <sys:String x:Key="M.Open.Next">接著開啟：{0}</sys:String>
     <sys:String x:Key="M.Open.Save">儲存並開啟</sys:String>
     <sys:String x:Key="M.Open.Discard">不儲存直接開啟</sys:String>
+    <sys:String x:Key="M.Restart.Next">接著以系統管理員身分重新啟動。重新啟動後的主控台只讀取磁碟上的內容。</sys:String>
+    <sys:String x:Key="M.Restart.Save">儲存並重新啟動</sys:String>
+    <sys:String x:Key="M.Restart.Discard">不儲存直接重新啟動</sys:String>
 
     <!-- 傳給被包裝程式的網路代理。 -->
     <sys:String x:Key="M.Proxy.Title">網路代理</sys:String>

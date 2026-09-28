@@ -659,6 +659,9 @@
     <sys:String x:Key="M.Open.Next">接着打开：{0}</sys:String>
     <sys:String x:Key="M.Open.Save">保存并打开</sys:String>
     <sys:String x:Key="M.Open.Discard">不保存直接打开</sys:String>
+    <sys:String x:Key="M.Restart.Next">接着以管理员身份重新启动。重启后的控制台只读取磁盘上的内容。</sys:String>
+    <sys:String x:Key="M.Restart.Save">保存并重启</sys:String>
+    <sys:String x:Key="M.Restart.Discard">不保存直接重启</sys:String>
 
     <!-- 传给被包装程序的网络代理。 -->
     <sys:String x:Key="M.Proxy.Title">网络代理</sys:String>

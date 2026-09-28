@@ -23,14 +23,14 @@ namespace WinSW.Gui
         private bool everShown;
 
         /// <summary>
-        /// Started at sign-in, in the tray. Such a console keeps to the tray whatever the
-        /// minimize-to-tray setting says: closing its window must not end the watching that
-        /// starting with Windows was asked for.
+        /// Started at sign-in, in the tray — or restarted as administrator from a console that
+        /// was. Such a console keeps to the tray whatever the minimize-to-tray setting says:
+        /// closing its window must not end the watching that starting with Windows was asked for.
         /// </summary>
-        private bool startedInTray;
+        private bool watchesFromTray;
 
         /// <summary>Close and minimize put the window in the tray rather than ending or iconizing it.</summary>
-        private bool KeepsToTray => AppSettings.Current.MinimizeToTray || this.startedInTray;
+        private bool KeepsToTray => AppSettings.Current.MinimizeToTray || this.watchesFromTray;
 
         public MainWindow()
         {
@@ -58,6 +58,7 @@ namespace WinSW.Gui
             this.tray.NotificationClicked += serviceName => this.shell.ShowService(serviceName);
 
             this.shell.ExitDecided += this.OnExitDecided;
+            this.shell.RestartElevatedDecided += this.OnRestartElevatedDecided;
 
             // The size the window is laid out for, read before a saved one replaces it: when a
             // window that does not fit the screen would not fit at that size either, it opens
@@ -80,10 +81,18 @@ namespace WinSW.Gui
         /// </summary>
         public void StartInTray()
         {
-            this.startedInTray = true;
+            this.watchesFromTray = true;
             this.tray.Visible = true;
             this.shell.Dashboard.KeepWatching();
         }
+
+        /// <summary>
+        /// Watches from the tray as the copy this one replaced did, without starting there: that
+        /// copy restarted as administrator, and the window is what the user is waiting for.
+        /// Closing or minimizing it puts the console in the tray, where the dashboard goes on
+        /// polling, as it would for a console started in the tray.
+        /// </summary>
+        public void KeepTrayWatch() => this.watchesFromTray = true;
 
         /// <summary>Shows the window and puts it in front: a second launch asked for this copy.</summary>
         public void BringToFront()
@@ -207,6 +216,28 @@ namespace WinSW.Gui
                 return;
             }
 
+            this.closeConfirmed = true;
+            this.Close();
+        }
+
+        /// <summary>
+        /// Starts the copy that replaces this one as administrator, and makes way for it. The
+        /// unsaved changes have been asked about already.
+        /// </summary>
+        /// <remarks>
+        /// A declined UAC prompt changes nothing: this copy stays, and so do any changes in the
+        /// editor, even after "restart without saving", which only said not to write them.
+        /// </remarks>
+        private void OnRestartElevatedDecided(string? configPath)
+        {
+            if (!Elevation.RestartElevated(configPath, keepTray: this.watchesFromTray))
+            {
+                return;
+            }
+
+            // Closed as an exit already answered for. Kept to the tray, the window would hide
+            // instead and go on holding the session the new copy is waiting for; and it would ask
+            // again about changes that were just discarded.
             this.closeConfirmed = true;
             this.Close();
         }

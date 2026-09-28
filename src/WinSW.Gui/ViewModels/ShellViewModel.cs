@@ -82,6 +82,9 @@ namespace WinSW.Gui.ViewModels
 
         /// <summary>The configuration the unsaved-changes prompt stands before; null when it stands before exiting.</summary>
         private string? pathToOpen;
+
+        /// <summary>The unsaved-changes prompt stands before restarting as administrator.</summary>
+        private bool restartingElevated;
         private readonly System.Windows.Threading.DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(3.5) };
 
         public ShellViewModel()
@@ -120,6 +123,7 @@ namespace WinSW.Gui.ViewModels
             this.UnsavedCancelCommand = new RelayCommand(() =>
             {
                 this.pathToOpen = null;
+                this.restartingElevated = false;
                 this.UnsavedPromptVisible = false;
             });
             this.toastTimer.Tick += (_, _) =>
@@ -182,7 +186,7 @@ namespace WinSW.Gui.ViewModels
             };
             this.selectedTheme = this.Themes.First(t => t.Choice == ThemeManager.Current);
 
-            this.RestartElevatedCommand = new RelayCommand(() => Elevation.RestartElevated(), () => !this.IsElevated);
+            this.RestartElevatedCommand = new RelayCommand(this.RestartElevated, () => !this.IsElevated);
             this.BrowseInstallRootCommand = new RelayCommand(() =>
             {
                 if (Dialogs.PickFolder(Localizer.Get("M.Settings.InstallRoot"), AppSettings.Current.EffectiveInstallRoot) is { } path)
@@ -369,7 +373,14 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         public event Action<bool>? ExitDecided;
 
-        /// <summary>Writes the changes, then goes on: out, or to the other configuration.</summary>
+        /// <summary>
+        /// Raised when the console is to restart as administrator, with the configuration the new
+        /// copy is to open, if any; the window starts that copy and closes. Unsaved changes have
+        /// been written or let go by then: this is raised only once that has been answered.
+        /// </summary>
+        public event Action<string?>? RestartElevatedDecided;
+
+        /// <summary>Writes the changes, then goes on: out, to the other configuration, or to the restart.</summary>
         public AsyncRelayCommand UnsavedSaveCommand { get; }
 
         /// <summary>Goes on without writing them.</summary>
@@ -388,24 +399,35 @@ namespace WinSW.Gui.ViewModels
         /// <summary>The file that would lose its changes; blank for one never saved.</summary>
         public string UnsavedPromptFile => this.Editor.FilePath ?? string.Empty;
 
-        /// <summary>The configuration waiting to be opened; blank when the prompt stands before exiting.</summary>
-        public string UnsavedPromptNext => this.pathToOpen is null ? string.Empty : Localizer.Format("M.Open.Next", this.pathToOpen);
+        /// <summary>
+        /// What comes after the answer: the configuration waiting to be opened, or the restart;
+        /// blank when the prompt stands before exiting, which its buttons say.
+        /// </summary>
+        public string UnsavedPromptNext => this.restartingElevated
+            ? Localizer.Get("M.Restart.Next")
+            : this.pathToOpen is null ? string.Empty : Localizer.Format("M.Open.Next", this.pathToOpen);
 
-        public string UnsavedSaveLabel => Localizer.Get(this.pathToOpen is null ? "M.Exit.Save" : "M.Open.Save");
+        public string UnsavedSaveLabel => Localizer.Get(this.ForNextStep("M.Exit.Save", "M.Open.Save", "M.Restart.Save"));
 
-        public string UnsavedDiscardLabel => Localizer.Get(this.pathToOpen is null ? "M.Exit.Discard" : "M.Open.Discard");
+        public string UnsavedDiscardLabel => Localizer.Get(this.ForNextStep("M.Exit.Discard", "M.Open.Discard", "M.Restart.Discard"));
 
         /// <summary>Asks what to do about the editor's unsaved changes before the window closes.</summary>
         public void AskToExit() => this.AskAboutUnsavedChanges(null);
 
+        /// <summary>The one of three keys that fits what the prompt stands before.</summary>
+        private string ForNextStep(string exit, string open, string restart) =>
+            this.restartingElevated ? restart : this.pathToOpen is null ? exit : open;
+
         /// <summary>
         /// Puts the prompt up, standing before exiting or, with <paramref name="next"/>, before
-        /// opening that configuration. The latest request is the one answered: an exit that was
-        /// interrupted starts over at the next close anyway.
+        /// opening that configuration, or with <paramref name="restart"/> before restarting as
+        /// administrator. The latest request is the one answered: an exit that was interrupted
+        /// starts over at the next close anyway.
         /// </summary>
-        private void AskAboutUnsavedChanges(string? next)
+        private void AskAboutUnsavedChanges(string? next, bool restart = false)
         {
             this.pathToOpen = next;
+            this.restartingElevated = restart;
             this.Raise(nameof(this.UnsavedPromptFile));
             this.Raise(nameof(this.UnsavedPromptNext));
             this.Raise(nameof(this.UnsavedSaveLabel));
@@ -416,10 +438,12 @@ namespace WinSW.Gui.ViewModels
         private async Task DecideUnsavedAsync(bool save)
         {
             string? next = this.pathToOpen;
+            bool restart = this.restartingElevated;
             this.pathToOpen = null;
+            this.restartingElevated = false;
             this.UnsavedPromptVisible = false;
 
-            if (next is null)
+            if (next is null && !restart)
             {
                 this.ExitDecided?.Invoke(save);
                 return;
@@ -427,15 +451,48 @@ namespace WinSW.Gui.ViewModels
 
             // As on the way out: a save that did not take — an invalid configuration, a
             // declined elevation, a cancelled Save As — leaves the changes in the editor, with
-            // the editor showing why, rather than opening the other file over them.
+            // the editor showing why, rather than opening the other file over them or
+            // restarting without them.
             if (save && !await this.Editor.TrySaveAsync().ConfigureAwait(true))
             {
                 return;
             }
 
-            this.Editor.Load(next);
-            this.Navigate(this.Editor);
+            if (restart)
+            {
+                this.RestartElevatedDecided?.Invoke(this.ConfigurationToReopen);
+            }
+            else if (next != null)
+            {
+                this.Editor.Load(next);
+                this.Navigate(this.Editor);
+            }
         }
+
+        /// <summary>
+        /// "Restart as administrator". The new copy is another process, and the editor's
+        /// changes do not go with it; it used to be started straight over them. Now they are
+        /// asked about first, as on the way out.
+        /// </summary>
+        private void RestartElevated()
+        {
+            if (this.Editor.IsDirty)
+            {
+                // Answer it looking at the thing that is unsaved.
+                this.Navigate(this.Editor);
+                this.AskAboutUnsavedChanges(null, restart: true);
+                return;
+            }
+
+            this.RestartElevatedDecided?.Invoke(this.ConfigurationToReopen);
+        }
+
+        /// <summary>
+        /// The configuration the restarted copy opens, as the command line would: the file in the
+        /// editor, when the editor is the page on screen — which it is once the prompt has been
+        /// answered. None for a configuration never saved.
+        /// </summary>
+        private string? ConfigurationToReopen => ReferenceEquals(this.currentPage, this.Editor) ? this.Editor.FilePath : null;
 
         /// <summary>
         /// Opens a configuration no installed service uses — one given at start, or handed over

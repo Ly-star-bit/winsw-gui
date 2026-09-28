@@ -28,6 +28,12 @@ namespace WinSW.Gui.Services
     /// running copy does not take it — hung, or a version that does not listen — opens the file
     /// itself rather than losing it.
     /// </para>
+    /// <para>
+    /// "Restart as administrator" starts the elevated copy while the standard one is still
+    /// closing. Told so by <see cref="StartupArguments.ReplaceArgument"/>, it waits for the
+    /// session rather than deferring to the copy on its way out; should that copy not be gone in
+    /// time, the configuration the new copy came with is opened there, not handed to the old one.
+    /// </para>
     /// </remarks>
     public sealed class SingleInstance : IDisposable
     {
@@ -112,12 +118,14 @@ namespace WinSW.Gui.Services
                 mutex.Dispose();
                 if (configPath != null)
                 {
-                    return HandOver(configPath) ? null : new SingleInstance(null, null);
+                    // Not to a copy this one is replacing: that one has not closed in time, but
+                    // it is closing, and would take the file with it.
+                    return !replacing && HandOver(configPath) ? null : new SingleInstance(null, null);
                 }
 
-                if (wake)
+                if (wake && !WakeRunningCopy())
                 {
-                    WakeRunningCopy();
+                    return new SingleInstance(null, null);
                 }
 
                 return null;
@@ -215,7 +223,18 @@ namespace WinSW.Gui.Services
             return ConfigHandoff.TrySend(configPath);
         }
 
-        private static void WakeRunningCopy()
+        /// <summary>
+        /// Asks the running copy to show its window. False when that copy runs as administrator
+        /// and this launch does not, so that it cannot be asked; the launch then starts on its
+        /// own, as it does when the session's mutex is closed to it.
+        /// </summary>
+        /// <remarks>
+        /// The mutex alone does not tell. A copy restarted as administrator waited on the mutex
+        /// the standard copy before it had created, and holds that one now, open to a standard
+        /// launch; only the event it created itself is closed to one. Such a launch used to find
+        /// the session taken, fail to wake the copy holding it, and exit with nothing on screen.
+        /// </remarks>
+        private static bool WakeRunningCopy()
         {
             try
             {
@@ -230,10 +249,16 @@ namespace WinSW.Gui.Services
                     }
                 }
             }
-            catch (Exception e) when (e is UnauthorizedAccessException or IOException)
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+            catch (IOException)
             {
                 // The running copy cannot be reached. It is still running; this one exits anyway.
             }
+
+            return true;
         }
     }
 }
