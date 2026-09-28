@@ -594,6 +594,7 @@
     <sys:String x:Key="M.Wiz.CloneRebased">'{0}' found its files through its own folder, {1}. The copy names that folder outright, so it runs the same files: {2}. Anything the program writes there, the two now share.</sys:String>
     <sys:String x:Key="M.Wiz.RecoveryHintCopied">Copied from '{0}' — waits before each action: {1}. The last one repeats for as long as the program keeps failing, and {2} without a failure starts again from the first. Change the delay to use the wizard's own waits instead.</sys:String>
     <sys:String x:Key="M.Wiz.RollPatternCopied">Copied from '{0}': a new file each time the date pattern {1} moves on, which need not be daily. Once there are more files than this, the oldest are deleted; left empty, every file is kept.</sys:String>
+    <sys:String x:Key="M.Wiz.DisabledNotStarted">The start mode is Disabled, and Windows does not start a disabled service: it is installed without being started.</sys:String>
     <sys:String x:Key="M.Port.InUse">Port {0} is already in use by {1} (PID {2}), so the program will fail to listen on it. End that process, or give the program another port.</sys:String>
     <sys:String x:Key="M.Wiz.Brand">Brand the wrapper: copy it as &lt;service id&gt;.exe with a custom company name</sys:String>
     <sys:String x:Key="M.Wiz.Manufacturer">Company name</sys:String>

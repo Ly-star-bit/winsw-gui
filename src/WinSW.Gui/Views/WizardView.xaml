@@ -448,7 +448,11 @@
                                 VerticalScrollBarVisibility="Auto" />
                         </Border>
 
-                        <CheckBox Margin="0,16,0,0" Content="{DynamicResource S.StartTheServiceAfterInstalling}" IsChecked="{Binding StartAfterInstall}" Visibility="{Binding IsService, Converter={StaticResource BoolToVisibility}}" />
+                        <!-- Windows will not start a Disabled service: the box is unticked and greyed out while that mode is picked. -->
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsService, Converter={StaticResource BoolToVisibility}}">
+                            <CheckBox Content="{DynamicResource S.StartTheServiceAfterInstalling}" IsChecked="{Binding StartServiceAfterInstall}" IsEnabled="{Binding CanStartServiceAfterInstall}" />
+                            <TextBlock Margin="24,2,0,0" MaxWidth="616" HorizontalAlignment="Left" Style="{StaticResource FieldHint}" TextWrapping="Wrap" Text="{DynamicResource M.Wiz.DisabledNotStarted}" Visibility="{Binding CanStartServiceAfterInstall, Converter={StaticResource InverseBoolToVisibility}}" />
+                        </StackPanel>
                         <CheckBox Margin="0,16,0,0" Content="{DynamicResource M.Wiz.StartAfterRegister}" IsChecked="{Binding StartAfterInstall}" Visibility="{Binding DesktopTask, Converter={StaticResource BoolToVisibility}}" />
                     </StackPanel>
                 </Grid>

@@ -763,7 +763,22 @@ namespace WinSW.Gui.ViewModels
         public string StartMode
         {
             get => this.startMode;
-            set => this.Set(ref this.startMode, value);
+            set
+            {
+                // The picker writes null back when it is shown a mode its list does not have, as
+                // the log mode's does. No start mode is ever meant as blank: written, it would
+                // leave the model's own, which for a copy is the source's.
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    return;
+                }
+
+                if (this.Set(ref this.startMode, value))
+                {
+                    this.Raise(nameof(this.CanStartServiceAfterInstall));
+                    this.Raise(nameof(this.StartServiceAfterInstall));
+                }
+            }
         }
 
         public bool DelayedAutoStart
@@ -893,7 +908,39 @@ namespace WinSW.Gui.ViewModels
         public bool StartAfterInstall
         {
             get => this.startAfterInstall;
-            set => this.Set(ref this.startAfterInstall, value);
+            set
+            {
+                if (this.Set(ref this.startAfterInstall, value))
+                {
+                    this.Raise(nameof(this.StartServiceAfterInstall));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Whether a service can be started once it is installed: not a Disabled one. Windows
+        /// refuses to start it (1058), and the install, which had succeeded, read as a failure;
+        /// trying again then failed on the service it had installed (1073).
+        /// </summary>
+        public bool CanStartServiceAfterInstall =>
+            !string.Equals(this.startMode, "Disabled", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The service's "start after installing" box, and what the install goes by: the choice
+        /// in <see cref="StartAfterInstall"/>, shown unticked and greyed out while the start mode
+        /// is Disabled, and as it was once another mode is picked.
+        /// </summary>
+        public bool StartServiceAfterInstall
+        {
+            get => this.startAfterInstall && this.CanStartServiceAfterInstall;
+            set
+            {
+                // The box is greyed out while it cannot be ticked; nothing else writes here.
+                if (this.CanStartServiceAfterInstall)
+                {
+                    this.StartAfterInstall = value;
+                }
+            }
         }
 
         /// <summary>
@@ -1996,12 +2043,14 @@ namespace WinSW.Gui.ViewModels
                 }
 
                 // Install and start ride on one elevation prompt; a separate start would
-                // mean a second UAC dialog for what the user sees as one action.
-                this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstallingStarting" : "M.Wiz.Installing", model.Id);
-                var result = this.startAfterInstall
+                // mean a second UAC dialog for what the user sees as one action. A Disabled
+                // service is only installed, whatever the box said before Disabled was picked.
+                bool start = this.StartServiceAfterInstall;
+                this.StatusMessage = Localizer.Format(start ? "M.Wiz.InstallingStarting" : "M.Wiz.Installing", model.Id);
+                var result = start
                     ? await WinSwCli.InstallAndStartAsync(wrapper, configPath).ConfigureAwait(true)
                     : await WinSwCli.InstallAsync(wrapper, configPath).ConfigureAwait(true);
-                ActionLog.Record(this.startAfterInstall ? "install + start" : "install", model.Id, result);
+                ActionLog.Record(start ? "install + start" : "install", model.Id, result);
 
                 if (!result.Succeeded)
                 {
@@ -2011,7 +2060,7 @@ namespace WinSW.Gui.ViewModels
                     return;
                 }
 
-                this.StatusMessage = Localizer.Format(this.startAfterInstall ? "M.Wiz.InstalledStarted" : "M.Wiz.Installed", model.Id);
+                this.StatusMessage = Localizer.Format(start ? "M.Wiz.InstalledStarted" : "M.Wiz.Installed", model.Id);
                 this.Completed?.Invoke(model.Id);
             }
             finally
@@ -2180,7 +2229,12 @@ namespace WinSW.Gui.ViewModels
             this.ServiceId = names.Id;
             this.DisplayName = names.DisplayName;
             this.Description = model.Description ?? string.Empty;
-            this.StartMode = model.StartMode;
+
+            // Boot and System parse, but they are drivers' modes, which Windows refuses for the
+            // service the wrapper installs (87), and the box does not offer them: left as they
+            // are, the box shows nothing and writes a blank back. A copy is started by hand
+            // instead, the way an unknown log mode becomes the wizard's default below.
+            this.StartMode = Array.IndexOf(ServiceConfigModel.StartModes, model.StartMode) < 0 ? "Manual" : model.StartMode;
             this.DelayedAutoStart = model.DelayedAutoStart;
 
             // A mode the wizard has no fields for is offered as well, and written with the

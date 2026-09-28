@@ -298,6 +298,23 @@ namespace WinSW.Gui.Tests
             Assert.Equal(new[] { "none", "restart" }, Written(wizard).FailureActions.Select(a => a.Action));
         }
 
+        /// <summary>
+        /// Boot and System are drivers' modes, which Windows refuses for the service the wrapper
+        /// installs; the box does not offer them, and a copy of such a file starts by hand.
+        /// </summary>
+        [Theory]
+        [InlineData("Boot", "Manual")]
+        [InlineData("System", "Manual")]
+        [InlineData("manual", "Manual")]
+        [InlineData("Disabled", "Disabled")]
+        public void ACopysStartModeIsOneTheBoxOffers(string source, string copied)
+        {
+            var wizard = this.Clone($"<executable>server.exe</executable><startmode>{source}</startmode>");
+
+            Assert.Equal(copied, wizard.StartMode);
+            Assert.Equal(copied, Written(wizard).StartMode);
+        }
+
         [Fact]
         public void ACopyRegisteredAsADesktopTaskLeavesTheRecoveryBehind()
         {
