@@ -104,6 +104,13 @@ namespace WinSW.Gui.Services
         /// <summary>Why that alert was not sent; null when it was.</summary>
         public string? LastAlertError { get; set; }
 
+        /// <summary>
+        /// Desktop tasks whose unexpected stops are not told, in the tray or the group chat, by
+        /// name; null or empty when every task's are. Each task's own checkbox on the Desktop tasks
+        /// page sets it: a robot that is expected to end now and then should not page anyone.
+        /// </summary>
+        public List<string>? QuietDesktopTasks { get; set; }
+
         public double? WindowLeft { get; set; }
 
         public double? WindowTop { get; set; }

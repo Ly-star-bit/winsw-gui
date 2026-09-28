@@ -207,6 +207,7 @@
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
                             <!-- Title line -->
@@ -285,8 +286,18 @@
                                 <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource FactValue}" Text="{Binding RunElevated}" />
                             </Grid>
 
+                            <!-- Whether this task's crashes are told, in the tray and the group chat; kept per task by the page, like the actions. -->
+                            <CheckBox
+                                Grid.Row="3"
+                                Margin="0,0,0,14"
+                                HorizontalAlignment="Left"
+                                Content="{DynamicResource M.Task.Alerts}"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                IsChecked="{Binding SelectedTaskAlerts}"
+                                ToolTip="{DynamicResource M.Task.AlertsTip}" />
+
                             <!-- Actions; bound to the page, not to the selected task -->
-                            <WrapPanel Grid.Row="3" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <WrapPanel Grid.Row="4" DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                                 <Button Style="{StaticResource ActionButton}" Command="{Binding StartCommand}" Content="{DynamicResource S.Start}" />
                                 <Button Style="{StaticResource ActionButton}" Command="{Binding StopCommand}" Content="{DynamicResource S.Stop}" />
                                 <Button Style="{StaticResource ActionButton}" Command="{Binding RestartCommand}" Content="{DynamicResource S.Restart}" />

@@ -122,6 +122,12 @@ namespace WinSW.Gui.Services
     }
 
     /// <summary>
+    /// What one registered task is doing, and nothing else: the reading the desktop-task page
+    /// takes behind other pages; see <see cref="DesktopTasks.ReadStates"/>.
+    /// </summary>
+    public sealed record DesktopTaskReading(string Name, DesktopTaskState State, bool Enabled, DateTime? LastRun, int LastResult);
+
+    /// <summary>
     /// Registers and drives the scheduled tasks that host a program with a user interface.
     /// </summary>
     /// <remarks>
@@ -226,7 +232,32 @@ namespace WinSW.Gui.Services
         /// <summary>Every task registered under <see cref="FolderName"/>, in name order.</summary>
         public static IReadOnlyList<DesktopTaskInfo> List()
         {
-            var results = new List<DesktopTaskInfo>();
+            var results = ReadFolder<DesktopTaskInfo>(Describe);
+            results.Sort(static (x, y) => string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase));
+            return results;
+        }
+
+        /// <summary>
+        /// The state of every task under <see cref="FolderName"/>, and nothing more: the reading
+        /// taken every half-minute behind the desktop-task page, to see a robot that has stopped.
+        /// </summary>
+        /// <remarks>
+        /// No definition is read and no file looked for, which is what <see cref="List"/> spends
+        /// its time on: a configuration on a share that is not answering makes each of its file
+        /// checks a network timeout, and a console left in the tray would wait on one twice a
+        /// minute for weeks. Tasks that are not desktop tasks — the unattended alert's — are read
+        /// too; the caller keeps to the names <see cref="List"/> found.
+        /// </remarks>
+        public static IReadOnlyList<DesktopTaskReading> ReadStates() => ReadFolder<DesktopTaskReading>(ReadState);
+
+        /// <summary>
+        /// Reads each task in the folder with <paramref name="read"/>, keeping what it returns,
+        /// with one connection for the lot; empty when there is no task scheduler or no folder.
+        /// </summary>
+        private static List<T> ReadFolder<T>(Func<object, T?> read)
+            where T : class
+        {
+            var results = new List<T>();
 
             object? connection = Connect();
             if (connection is null)
@@ -255,9 +286,9 @@ namespace WinSW.Gui.Services
                     object task = collection.Item(i);
                     try
                     {
-                        if (Describe(task) is { } info)
+                        if (read(task) is { } found)
                         {
-                            results.Add(info);
+                            results.Add(found);
                         }
                     }
                     finally
@@ -277,8 +308,27 @@ namespace WinSW.Gui.Services
                 Release(connection);
             }
 
-            results.Sort(static (x, y) => string.Compare(x.Name, y.Name, StringComparison.OrdinalIgnoreCase));
             return results;
+        }
+
+        /// <summary>One registered task's state, straight off the live object; null when it cannot be asked.</summary>
+        private static DesktopTaskReading? ReadState(object registered)
+        {
+            dynamic task = registered;
+            try
+            {
+                DateTime run = (DateTime)task.LastRunTime;
+                return new DesktopTaskReading(
+                    (string)task.Name,
+                    (DesktopTaskState)(int)task.State,
+                    (bool)task.Enabled,
+                    run.Year < 1980 ? null : run,
+                    (int)task.LastTaskResult);
+            }
+            catch (Exception e) when (IsComFailure(e) || e is Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+            {
+                return null;
+            }
         }
 
         public static DesktopTaskInfo? Find(string name)

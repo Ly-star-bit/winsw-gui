@@ -56,6 +56,7 @@ namespace WinSW.Gui
             this.shell.Dashboard.UnexpectedStop += entry =>
                 this.NotifyStop(new StopNotice(entry.ServiceName, StopNoticeKind.UnexpectedStop, entry.CrashCount, entry.LastExitCode ?? 0));
             this.shell.Dashboard.StopNoticed += this.NotifyStop;
+            this.shell.Tasks.StopNoticed += this.NotifyStop;
             this.tray.NotificationClicked += this.shell.ShowNotified;
 
             this.shell.ExitDecided += this.OnExitDecided;

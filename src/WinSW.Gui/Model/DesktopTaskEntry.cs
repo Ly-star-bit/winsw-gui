@@ -185,6 +185,19 @@ namespace WinSW.Gui.Model
                 null;
         }
 
+        /// <summary>
+        /// Folds in a reading of the state alone, the one taken behind the page; see
+        /// <see cref="DesktopTasks.ReadStates"/>. What it does not read — the configuration and the
+        /// wrapper, and whether they are there — stays as the last full reading left it.
+        /// </summary>
+        public void ApplyState(DesktopTaskReading reading)
+        {
+            this.State = reading.State;
+            this.Enabled = reading.Enabled;
+            this.LastRun = reading.LastRun;
+            this.LastResult = reading.LastResult;
+        }
+
         /// <summary>Re-evaluates the localized text after a language change.</summary>
         public void RefreshLocalized()
         {

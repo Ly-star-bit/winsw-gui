@@ -23,8 +23,9 @@ namespace WinSW.Gui.Services
     public sealed record WebhookRequest(string Url, string Body);
 
     /// <summary>
-    /// Posts to a group chat when a service stops unexpectedly: the same moment the tray
-    /// notification is raised, to wherever the people who look after the machine are.
+    /// Posts to a group chat when a service or a desktop task stops unexpectedly: the same
+    /// moment the tray notification is raised, to wherever the people who look after the
+    /// machine are.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -135,6 +136,7 @@ namespace WinSW.Gui.Services
             string causeFormat = Localizer.Get("M.Alert.Cause");
             string url = Url;
             string secret = Secret;
+            string logged = notice.DesktopTask ? "task alert" : "alert";
 
             // While the unattended alert is on, the failure Windows records is what posts it,
             // whether or not this console is running; posting here as well would say it twice.
@@ -143,7 +145,7 @@ namespace WinSW.Gui.Services
             // Which notices it posts is decided kind by kind: see UnattendedAlert.Covers.
             if (UnattendedAlert.Covers(notice) && await Task.Run(() => UnattendedAlert.PostsTo(url, secret)).ConfigureAwait(false))
             {
-                ActionLog.Record("alert", service, "left to the unattended alert");
+                ActionLog.Record(logged, service, "left to the unattended alert");
                 return null;
             }
 
@@ -153,7 +155,7 @@ namespace WinSW.Gui.Services
             }
 
             string? error = await SendAsync(url, secret, text).ConfigureAwait(false);
-            ActionLog.Record("alert", service, error is null ? "ok" : "failed: " + error);
+            ActionLog.Record(logged, service, error is null ? "ok" : "failed: " + error);
             return new AlertOutcome { At = DateTimeOffset.Now, Service = service, Error = error };
         }
 

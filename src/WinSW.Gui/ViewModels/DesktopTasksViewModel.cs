@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Threading;
@@ -27,7 +28,29 @@ namespace WinSW.Gui.ViewModels
         /// </summary>
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(4);
 
+        /// <summary>
+        /// How often the folder is read while the page is not shown, whichever page is and whether
+        /// or not the window is in the tray: often enough to see most robots that die, which the
+        /// keep-alive trigger starts again within the minute; seldom enough to cost nothing.
+        /// </summary>
+        private static readonly TimeSpan WatchInterval = TimeSpan.FromSeconds(30);
+
         private readonly DispatcherTimer statusTimer;
+
+        /// <summary>The background reading; see <see cref="WatchAsync"/>.</summary>
+        private readonly DispatcherTimer watchTimer;
+
+        /// <summary>Which stops are told, and how; fed every reading, told through <see cref="StopNoticed"/>.</summary>
+        private readonly DesktopTaskWatch watch = new();
+
+        /// <summary>
+        /// The tasks an operation from this page is working on, until the reading after it: a stop
+        /// seen meanwhile is that operation's, and not told.
+        /// </summary>
+        private readonly OperationsInFlight inFlight = new();
+
+        /// <summary>This is the page in front, between <see cref="Activate"/> and <see cref="Deactivate"/>.</summary>
+        private bool pageShown;
 
         private DesktopTaskEntry? selectedTask;
         private string searchText = string.Empty;
@@ -80,6 +103,15 @@ namespace WinSW.Gui.ViewModels
             this.statusTimer = new DispatcherTimer { Interval = PollInterval };
             this.statusTimer.Tick += async (_, _) => await this.ReloadAsync(quiet: true).ConfigureAwait(true);
 
+            // From the start, for as long as the console runs: a console started with Windows sits
+            // in the tray and may never show this page at all.
+            this.watchTimer = new DispatcherTimer { Interval = WatchInterval };
+            this.watchTimer.Tick += (_, _) => ErrorLog.Observe(this.WatchAsync(), "desktop task watch");
+            if (this.IsAvailable)
+            {
+                this.watchTimer.Start();
+            }
+
             Localizer.Changed += () =>
             {
                 foreach (var task in this.Tasks)
@@ -101,6 +133,14 @@ namespace WinSW.Gui.ViewModels
         public event Action? CreateTaskRequested;
 
         public event Action<string, bool>? Toast;
+
+        /// <summary>
+        /// Raised for each notice about a task's stops — a crash, a restart loop's count at the end
+        /// of its window, a crashed task running again — marked <see cref="StopNotice.DesktopTask"/>.
+        /// On the UI thread, in the order they are to be told, only while notifications are on and
+        /// only for a task whose own alerts are on; see <see cref="DesktopTaskWatch"/>.
+        /// </summary>
+        public event Action<StopNotice>? StopNoticed;
 
         public ObservableCollection<DesktopTaskEntry> Tasks { get; } = new();
 
@@ -151,7 +191,39 @@ namespace WinSW.Gui.ViewModels
                 if (this.Set(ref this.selectedTask, value))
                 {
                     this.RefreshCommands();
+                    this.Raise(nameof(this.SelectedTaskAlerts));
                 }
+            }
+        }
+
+        /// <summary>
+        /// Whether the selected task's unexpected stops are told, in the tray and the group chat:
+        /// the task's checkbox. On unless it has been turned off for the task, which is kept in the
+        /// settings by name; see <see cref="AppSettings.QuietDesktopTasks"/>. The setting that turns
+        /// every notification off turns these off with the services'.
+        /// </summary>
+        public bool SelectedTaskAlerts
+        {
+            get => this.selectedTask is { } task && AlertsOn(task.Name);
+            set
+            {
+                if (this.selectedTask is not { } task || value == AlertsOn(task.Name))
+                {
+                    return;
+                }
+
+                var quiet = AppSettings.Current.QuietDesktopTasks ??= new List<string>();
+                if (value)
+                {
+                    quiet.RemoveAll(name => string.Equals(name, task.Name, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    quiet.Add(task.Name);
+                }
+
+                AppSettings.Current.Save();
+                this.Raise();
             }
         }
 
@@ -238,16 +310,25 @@ namespace WinSW.Gui.ViewModels
                 return;
             }
 
+            this.pageShown = true;
             ErrorLog.Observe(this.ReloadAsync(quiet: this.Tasks.Count > 0), "desktop task list");
             this.statusTimer.Start();
         }
 
-        public void Deactivate() => this.statusTimer.Stop();
+        /// <summary>
+        /// The page is no longer in front. Its four-second reading stops; the half-minute one
+        /// behind it (<see cref="WatchAsync"/>) goes on telling stops.
+        /// </summary>
+        public void Deactivate()
+        {
+            this.pageShown = false;
+            this.statusTimer.Stop();
+        }
 
         /// <summary>
-        /// Re-reads the whole folder. There is no cheaper "just the state" call: the task
-        /// scheduler hands back a registered task, not a status word, so a full read is the
-        /// only read there is.
+        /// Re-reads the whole folder. The task scheduler hands back a registered task, not a
+        /// status word, so the page's reading is a full one; behind the page, the state alone is
+        /// read instead (<see cref="WatchAsync"/>).
         /// </summary>
         public async Task ReloadAsync(bool quiet)
         {
@@ -266,8 +347,10 @@ namespace WinSW.Gui.ViewModels
 
             try
             {
+                var requested = this.Requested();
                 var found = await Task.Run(DesktopTasks.List).ConfigureAwait(true);
                 this.Merge(found);
+                this.AnnounceStops(requested);
 
                 if (!quiet)
                 {
@@ -284,6 +367,102 @@ namespace WinSW.Gui.ViewModels
                 this.reloading = false;
             }
         }
+
+        /// <summary>
+        /// A stop would be told: the tray notification is on, or a webhook is set. The Services
+        /// page's rule for reading behind another page, for the same reason.
+        /// </summary>
+        private static bool WatchesForStops => AppSettings.Current.NotifyOnUnexpectedStop || AlertWebhook.IsConfigured;
+
+        /// <summary>
+        /// The reading every half-minute while the page is not shown: the state of the tasks the
+        /// page's last reading found, and nothing else, handed on to be told. Not while the page
+        /// is shown, whose own reading every four seconds is a full one and tells the same; not
+        /// while another reading is under way; not while no stop would be told.
+        /// </summary>
+        /// <remarks>
+        /// Tasks it does not know are left alone — the unattended alert's, which is in the same
+        /// folder, and one registered since the last full reading, which the page's next reading
+        /// adds. The wizard's own registrations are read in at once.
+        /// </remarks>
+        private async Task WatchAsync()
+        {
+            if (this.pageShown || this.reloading || this.Tasks.Count == 0 || !WatchesForStops)
+            {
+                return;
+            }
+
+            this.reloading = true;
+            try
+            {
+                var requested = this.Requested();
+                var readings = await Task.Run(DesktopTasks.ReadStates).ConfigureAwait(true);
+                foreach (var reading in readings)
+                {
+                    if (this.Tasks.FirstOrDefault(t => string.Equals(t.Name, reading.Name, StringComparison.OrdinalIgnoreCase)) is { } entry)
+                    {
+                        entry.ApplyState(reading);
+                    }
+                }
+
+                this.Raise(nameof(this.RunningCount));
+                this.RefreshCommands();
+                this.AnnounceStops(requested);
+            }
+            catch (Exception e) when (e is COMException or IOException or InvalidCastException or InvalidOperationException or UnauthorizedAccessException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+            {
+                // The task scheduler could not be asked this time. The next reading asks again,
+                // and the page says what is wrong when it is opened; a line in the error log
+                // twice a minute for as long as it cannot be asked would say nothing more.
+            }
+            finally
+            {
+                this.reloading = false;
+            }
+        }
+
+        /// <summary>
+        /// The tasks an operation from this page holds as a reading begins. A reading counts a task
+        /// as held when it was held then or is held when the reading is applied: an operation that
+        /// lets go while a reading is out would otherwise have its own stop told by that reading.
+        /// </summary>
+        private HashSet<string> Requested() =>
+            new(this.Tasks.Select(t => t.Name).Where(this.inFlight.Contains), StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Hands every task's state to the watch and raises what it decides to tell. Every reading
+        /// is handed over whatever the settings say, so that the watch is right the moment they
+        /// allow it to tell; only the raising depends on them, as on the Services page.
+        /// </summary>
+        private void AnnounceStops(HashSet<string> requestedAtStart)
+        {
+            bool notify = AppSettings.Current.NotifyOnUnexpectedStop;
+            var now = DateTime.UtcNow;
+
+            foreach (var entry in this.Tasks)
+            {
+                var notices = this.watch.Observe(
+                    entry.Name,
+                    entry.State,
+                    entry.LastResult,
+                    requested: requestedAtStart.Contains(entry.Name) || this.inFlight.Contains(entry.Name),
+                    now);
+
+                if (!notify || !AlertsOn(entry.Name))
+                {
+                    continue;
+                }
+
+                foreach (var notice in notices)
+                {
+                    this.StopNoticed?.Invoke(notice);
+                }
+            }
+        }
+
+        /// <summary>A task's stops are told unless its checkbox has been cleared; see <see cref="SelectedTaskAlerts"/>.</summary>
+        private static bool AlertsOn(string taskName) =>
+            AppSettings.Current.QuietDesktopTasks?.Contains(taskName, StringComparer.OrdinalIgnoreCase) != true;
 
         /// <summary>
         /// Folds a scan into the collection in place, so that the selection, the scroll
@@ -306,6 +485,7 @@ namespace WinSW.Gui.ViewModels
                 }
                 else
                 {
+                    this.watch.Forget(existing.Name);
                     this.Tasks.RemoveAt(i);
                 }
             }
@@ -383,6 +563,10 @@ namespace WinSW.Gui.ViewModels
             this.IsBusy = true;
             this.StatusMessage = Localizer.Format("M.Task.Running", verb, entry.Name);
 
+            // Held until the state has been read back afterwards: the task ending meanwhile is this
+            // operation's doing, not a crash to tell. Taken last before the try, so that nothing
+            // can leave it held.
+            var held = this.inFlight.Begin(new[] { entry.Name });
             try
             {
                 await Task.Run(() => operation(entry)).ConfigureAwait(true);
@@ -401,7 +585,23 @@ namespace WinSW.Gui.ViewModels
             finally
             {
                 this.IsBusy = false;
-                await this.ReloadAsync(quiet: true).ConfigureAwait(true);
+                try
+                {
+                    // Read back by a reading of this operation's own, not by one already under way
+                    // when it ended, which may have read the task before it stopped: the next
+                    // reading would then find the stop with nothing holding the task, and tell
+                    // it as a crash. A reading always lets go of the flag when it ends.
+                    while (this.reloading)
+                    {
+                        await Task.Delay(100).ConfigureAwait(true);
+                    }
+
+                    await this.ReloadAsync(quiet: true).ConfigureAwait(true);
+                }
+                finally
+                {
+                    held.Dispose();
+                }
             }
         }
 

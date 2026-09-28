@@ -214,6 +214,7 @@ namespace WinSW.Gui.ViewModels
                 this.PostStopAsync(new StopNotice(entry.ServiceName, StopNoticeKind.UnexpectedStop, entry.CrashCount, entry.LastExitCode ?? 0), CauseOf(entry)),
                 "alert webhook");
             this.Dashboard.StopNoticed += notice => ErrorLog.Observe(this.PostStopAsync(notice, this.CauseFor(notice)), "alert webhook");
+            this.Tasks.StopNoticed += notice => ErrorLog.Observe(this.PostStopAsync(notice, this.CauseFor(notice)), "alert webhook");
             this.SendTestAlertCommand = new AsyncRelayCommand(this.SendTestAlertAsync, () => !string.IsNullOrWhiteSpace(this.alertUrl));
             this.ApplyUnattendedAlertCommand = new AsyncRelayCommand(() => this.SetUnattendedAlertAsync(true), () => !this.unattendedAlertBusy);
             this.Dashboard.CreateServiceRequested += () =>
@@ -1051,12 +1052,21 @@ namespace WinSW.Gui.ViewModels
         /// <summary>
         /// The same for a notice, from the service or the desktop task it names as the list has it
         /// now; null when it has no cause to give (a clean stop, a recovery) or is no longer listed.
+        /// A task's run began at its last run, which the task scheduler knows; what a task leaves
+        /// running is not looked for.
         /// </summary>
         private StopCauseSource? CauseFor(StopNotice notice)
         {
             if (!StopCause.Explains(notice.Kind))
             {
                 return null;
+            }
+
+            if (notice.DesktopTask)
+            {
+                return this.Tasks.Tasks.FirstOrDefault(t => string.Equals(t.Name, notice.ServiceName, StringComparison.OrdinalIgnoreCase)) is { } task
+                    ? new StopCauseSource(task.ConfigPath, AppSettings.Current.LogEncoding, StartedAt: task.LastRun, LastSeenStart: null, Stray: null)
+                    : null;
             }
 
             return this.Dashboard.Services.FirstOrDefault(s => string.Equals(s.ServiceName, notice.ServiceName, StringComparison.OrdinalIgnoreCase)) is { } entry

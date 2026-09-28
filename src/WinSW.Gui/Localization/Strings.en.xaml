@@ -346,6 +346,8 @@
     <sys:String x:Key="M.Alert.TaskStopped">[WinSW] {0}: desktop task '{1}' stopped unexpectedly (exit code {2}).</sys:String>
     <sys:String x:Key="M.Alert.TaskStopLoop">[WinSW] {0}: desktop task '{1}' stopped unexpectedly {3} time(s) in the last few minutes; its keep-alive trigger keeps starting it again (last exit code {2}).</sys:String>
     <sys:String x:Key="M.Alert.TaskRecovered">[WinSW] {0}: desktop task '{1}' is running again and has not stopped since.</sys:String>
+    <sys:String x:Key="M.Task.Alerts">Notify when it stops unexpectedly</sys:String>
+    <sys:String x:Key="M.Task.AlertsTip">A tray notification, and a message to the group chat when a webhook is set on the Settings page, where notifications can also be turned off altogether. An exit with code 0 is not reported.</sys:String>
     <!-- Recovery (the Recovery tab of services.msc) on the Services page: the state while Windows is about to restart a failed service, the "On failure" row, and Stop restarting / Restore start type, which set the start type through sc.exe. M.Dash.Recovery.* are the pieces the row is built from: {0} in Restart/Reboot/RunCommand and {1} in Reset are durations; Next joins two steps; Every/ThenEvery wrap the last step, which repeats. -->
     <sys:String x:Key="M.Status.Restarting">Restarting (recovery)</sys:String>
     <sys:String x:Key="M.Dash.OnFailure">On failure</sys:String>
@@ -384,9 +386,9 @@
     <sys:String x:Key="M.Theme.Light">Light</sys:String>
     <sys:String x:Key="M.Theme.Dark">Dark</sys:String>
     <sys:String x:Key="M.Shell.MinimizeToTray">Minimize to the tray</sys:String>
-    <sys:String x:Key="M.Shell.NotifyOnStop">Notify when a service stops unexpectedly</sys:String>
+    <sys:String x:Key="M.Shell.NotifyOnStop">Notify when a service or a desktop task stops unexpectedly</sys:String>
     <sys:String x:Key="M.Alert.Section">ALERTS</sys:String>
-    <sys:String x:Key="M.Alert.Hint">When a service stops unexpectedly, the message also goes to a WeCom, DingTalk or Feishu group robot, or to any webhook that takes a JSON "text" field. From this console, only while it runs and notifications are on; for when nobody is signed in, see below. Messages begin with [WinSW]; add that to a DingTalk robot's keywords if it checks them. The address and secret are stored encrypted to this Windows user.</sys:String>
+    <sys:String x:Key="M.Alert.Hint">When a service or a desktop task stops unexpectedly, the message also goes to a WeCom, DingTalk or Feishu group robot, or to any webhook that takes a JSON "text" field. From this console, only while it runs and notifications are on; for when nobody is signed in, see below. Messages begin with [WinSW]; add that to a DingTalk robot's keywords if it checks them. The address and secret are stored encrypted to this Windows user.</sys:String>
     <sys:String x:Key="M.Alert.Url">Webhook address</sys:String>
     <sys:String x:Key="M.Alert.Secret">Signing secret (DingTalk or Feishu, optional)</sys:String>
     <sys:String x:Key="M.Alert.SendTest">Send a test</sys:String>
