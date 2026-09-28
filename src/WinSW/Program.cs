@@ -540,6 +540,9 @@ namespace WinSW
                     sc.SetDescription(description);
                 }
 
+                // A service that has just been created has no failure actions and no delayed
+                // start, so only what the file asks for needs writing here. DoRefresh, which
+                // meets a service that already has both, is where an absent value matters.
                 var actions = config.FailureActions;
                 if (actions.Length > 0)
                 {
@@ -1122,16 +1125,27 @@ namespace WinSW
 
                     sc.SetDescription(config.Description);
 
+                    // A file with no <onfailure> leaves the failure actions the service already
+                    // has alone: they may have been set by hand in the Services console, and a
+                    // refresh should not quietly take away recovery nobody asked it to remove.
+                    // A file clears them with <onfailure action="none"/>, which arrives here as
+                    // one real action. Handing the empty array on would not clear them anyway:
+                    // 'fixed' on an empty array gives a null action pointer, which
+                    // ChangeServiceConfig2 takes to mean "leave the actions unchanged".
                     var actions = config.FailureActions;
                     if (actions.Length > 0)
                     {
                         sc.SetFailureActions(config.ResetFailureAfter, actions);
                     }
 
-                    bool isDelayedAutoStart = config.StartMode == ServiceStartMode.Automatic && config.DelayedAutoStart;
-                    if (isDelayedAutoStart)
+                    // Delayed start is part of the start type, which ChangeConfig above has just
+                    // set from the file, so the flag comes from the file as well, false included.
+                    // Writing only 'true' meant a file that dropped <delayedAutoStart>, or set it
+                    // to false, could never turn delayed start off short of reinstalling. Windows
+                    // ignores the flag for any other start type, so it is left alone there.
+                    if (config.StartMode == ServiceStartMode.Automatic)
                     {
-                        sc.SetDelayedAutoStart(true);
+                        sc.SetDelayedAutoStart(config.DelayedAutoStart);
                     }
 
                     if (config.PreshutdownTimeout is TimeSpan preshutdownTimeout)

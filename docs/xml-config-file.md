@@ -86,6 +86,10 @@ Windows service installation may fail in such case.
 <delayedAutoStart>true</delayedAutoStart>
 ```
 
+The [refresh](cli-commands.md#refresh-command) command, and [auto refresh](#auto-refresh), apply this option to an `Automatic` service whether it is `true` or `false`, the same way they apply `<startmode>`.
+Removing the element, or setting it to `false`, and refreshing turns delayed start off, including delayed start that was switched on by hand in the Services console.
+A `Manual` service keeps whatever setting it has; Windows ignores it for any start mode but `Automatic`.
+
 ### depend
 
 **Optional**
@@ -407,6 +411,14 @@ Therefore, if you just want to always restart the service automatically, simply 
 
 ```xml
 <onfailure action="restart" />
+```
+
+The [refresh](cli-commands.md#refresh-command) command, and [auto refresh](#auto-refresh), replace the service's failure actions with the ones in the file, and apply `<resetfailure>` (or its default) along with them.
+If the file has no `<onfailure>` at all, refresh leaves the failure actions the service already has as they are, including ones set by hand in the Services console.
+Deleting the `<onfailure>` elements and refreshing therefore does not stop the restarts; to clear them from the file, declare a single action that does nothing:
+
+```xml
+<onfailure action="none" />
 ```
 
 ### resetfailure

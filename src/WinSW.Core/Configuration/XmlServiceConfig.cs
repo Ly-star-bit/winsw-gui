@@ -420,7 +420,8 @@ namespace WinSW
 
         /// <summary>
         /// True if the service should be installed with the DelayedAutoStart flag.
-        /// This setting will be applyed only during the install command and only when the Automatic start mode is configured.
+        /// The install and refresh commands apply it only when the Automatic start mode is configured,
+        /// and refresh applies false as well, so leaving the element out turns delayed start off.
         /// </summary>
         public override bool DelayedAutoStart => this.SingleBoolElementOrDefault("delayedAutoStart", base.DelayedAutoStart);
 

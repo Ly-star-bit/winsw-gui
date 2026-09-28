@@ -168,6 +168,9 @@ If a file isn't specified, WinSW searches the executable directory for a *.xml* 
 
 Refreshes the service properties without reinstallation.
 
+The start mode is always set from the file, and so is delayed start for an `Automatic` service, `false` included.
+Failure actions are replaced only when the file has at least one `<onfailure>`; see [onfailure](xml-config-file.md#onfailure) for how to clear them.
+
 ### Usage
 
 ```console
